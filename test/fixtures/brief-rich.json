@@ -1,0 +1,28 @@
+{
+  "request": "إعلان لمنصة تقنية",
+  "language": "ar", "dialect": "saudi", "objective": "promote", "industry": "saas", "platform": "tiktok",
+  "tone": ["حديث"],
+  "brand": { "name": "نبض" },
+  "content": {
+    "hook": "إدارة متجرك صارت أسهل؟",
+    "subhook": "كل شيء في لوحة واحدة",
+    "emphasis": ["أسهل", "لوحة واحدة", "اليوم"],
+    "bridge": "الحل؟",
+    "problem": "طلبات متفرقة، ومخزون ما تدري عنه، وتقارير متأخرة",
+    "problemPoints": ["طلبات متفرقة", "مخزون غير واضح", "تقارير متأخرة"],
+    "solution": "نبض يجمع كل شيء في لوحة واحدة",
+    "features": [{"title":"تقارير فورية"},{"title":"ربط مع المتاجر"},{"title":"تنبيهات المخزون"},{"title":"دفع آمن"}],
+    "steps": ["سجّل حسابك", "اربط متجرك", "تابع مبيعاتك"],
+    "stats": [{"value": 1200, "label": "متجر", "suffix": "+", "source": "بيانات العميل"}, {"value": 98, "label": "رضا", "suffix": "%", "source": "بيانات العميل"}],
+    "series": {"title": "المبيعات", "labels": ["يناير","فبراير","مارس","أبريل"], "values": [10, 14, 19, 25], "source": "بيانات العميل"},
+    "comparison": {"leftTitle": "قبل", "rightTitle": "مع نبض", "left": ["جداول يدوية","تأخير"], "right": ["تحديث تلقائي","تقارير فورية"]},
+    "testimonials": [{"quote": "وفّر علينا ساعات كل أسبوع", "author": "سارة", "role": "صاحبة متجر", "source": "مقابلة مع العميل"}, {"quote":"سهل جداً","author":"خالد","source":"مقابلة مع العميل"}],
+    "product": {"name": "نبض برو", "price": "99 ر.س", "oldPrice": "149 ر.س", "tagline": "لكل المتاجر"},
+    "products": [{"name":"أ","image":"x.png"},{"name":"ب","image":"y.png"}],
+    "categories": [{"label":"عطور"},{"label":"أزياء"},{"label":"إلكترونيات"}],
+    "offer": "خصم 30% لأول شهر", "offerBadge": "لفترة محدودة",
+    "ui": {"url": "nabd.example", "appName": "نبض", "menu": ["الرئيسية","الطلبات"], "headline": "لوحة المبيعات", "items": ["طلب جديد","تم الشحن","تم الدفع"], "screens": [{"headline":"الطلبات"},{"headline":"التقارير"}]},
+    "messages": ["وين طلبي؟", "جاري التحقق...", "متى يوصل؟"],
+    "cta": {"text": "ابدأ مجاناً اليوم", "button": "جرّب الآن", "url": "https://nabd.example", "qr": "https://nabd.example", "contacts": [{"kind":"website","value":"nabd.example"}]}
+  }
+}

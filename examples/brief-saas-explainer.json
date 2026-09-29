@@ -1,0 +1,31 @@
+{
+  "request": "Create a motion video explainer for our SaaS analytics platform, Arabic with English product terms",
+  "title": "test-c-saas-explainer",
+  "language": "mixed",
+  "dialect": "msa",
+  "objective": "explain",
+  "industry": "SaaS analytics",
+  "platform": "youtube",
+  "aspect": "16:9",
+  "duration": 30,
+  "tone": ["professional", "clear"],
+  "brand": { "name": "Insightly" },
+  "audio": { "mode": "none", "sfx": true },
+  "content": {
+    "hook": "بياناتك موجودة، لكن هل تفهمها؟",
+    "emphasis": ["تفهمها", "Dashboard", "دقائق"],
+    "problem": "تقارير Excel متفرقة وقرارات متأخرة",
+    "bridge": "مع Insightly",
+    "solution": "Dashboard واحد يحوّل بياناتك إلى قرارات",
+    "steps": ["اربط مصادر البيانات عبر API", "اختر مؤشرات KPI المهمة", "شارك التقارير مع فريقك"],
+    "features": [
+      { "title": "Real-time Dashboard", "description": "تحديث لحظي للمؤشرات" },
+      { "title": "تنبيهات ذكية", "description": "إشعار عند أي تغير مهم" },
+      { "title": "تكامل مع Slack", "description": "التقارير تصل لفريقك" },
+      { "title": "تصدير PDF", "description": "بضغطة زر" }
+    ],
+    "series": { "title": "زمن إعداد التقرير (دقائق)", "labels": ["يدوي", "Excel", "Insightly"], "values": [180, 95, 12], "source": "قياس داخلي — بيانات اختبار للعرض" },
+    "ui": { "url": "app.insightly.io", "appName": "Insightly", "screenshot": "../test/fixtures/dashboard-screenshot.png", "menu": ["Overview", "Reports", "Alerts"], "headline": "Overview" },
+    "cta": { "text": "ابدأ تجربتك المجانية اليوم", "button": "Start free trial", "url": "https://insightly.io", "qr": "https://insightly.io" }
+  }
+}

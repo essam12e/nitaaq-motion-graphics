@@ -1,0 +1,73 @@
+{
+  "name": "arabic-motion-director",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Arabic-first AI motion graphics director: brief -> creative plan -> storyboard -> video.json -> Remotion render -> automated QC -> auto repair -> MP4.",
+  "type": "module",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18.18"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.530",
+    "@remotion/cli": "4.0.530",
+    "@remotion/layout-utils": "4.0.530",
+    "@remotion/media-utils": "4.0.530",
+    "@remotion/player": "4.0.530",
+    "@remotion/renderer": "4.0.530",
+    "lucide-react": "0.460.0",
+    "qrcode": "^1.5.4",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.530",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@fontsource/alexandria": "5.3.0",
+    "@fontsource/anton": "5.3.0",
+    "@fontsource/cairo": "5.3.0",
+    "@fontsource/changa": "5.3.0",
+    "@fontsource/ibm-plex-sans-arabic": "5.3.0",
+    "@fontsource/inter": "5.3.0",
+    "@fontsource/jetbrains-mono": "5.3.0",
+    "@fontsource/manrope": "5.3.0",
+    "@fontsource/noto-kufi-arabic": "5.3.0",
+    "@fontsource/noto-sans-arabic": "5.3.0",
+    "@fontsource/tajawal": "5.3.0",
+    "@types/node": "22.10.2",
+    "@types/pngjs": "6.0.5",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "esbuild": "0.24.2",
+    "fontkit": "2.0.4",
+    "pixelmatch": "6.0.0",
+    "pngjs": "7.0.0",
+    "sharp": "0.33.5",
+    "tsx": "4.19.2",
+    "typescript": "5.6.3",
+    "vitest": "2.1.8",
+    "zod-to-json-schema": "3.24.1"
+  },
+  "bin": {
+    "amd": "./bin/amd.mjs"
+  },
+  "scripts": {
+    "setup": "npm install && npm run fonts:sync && npm run preflight",
+    "fonts:sync": "tsx cli/sync-fonts.ts",
+    "preflight": "tsx cli/amd.ts preflight",
+    "create": "tsx cli/amd.ts create",
+    "direct": "tsx cli/amd.ts direct",
+    "validate": "tsx cli/amd.ts validate",
+    "preview": "tsx cli/amd.ts render --profile preview",
+    "render": "tsx cli/amd.ts produce --profile production",
+    "quality": "tsx cli/amd.ts quality",
+    "studio": "tsx studio/server.ts",
+    "gallery": "tsx cli/gallery.ts",
+    "schema:export": "tsx cli/amd.ts schema-export",
+    "demo-assets": "tsx cli/make-demo-assets.ts",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run test/unit",
+    "test:visual": "vitest run test/visual"
+  }
+}

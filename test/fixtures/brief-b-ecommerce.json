@@ -1,0 +1,27 @@
+{
+  "request": "أبغى إعلان موشن لمنتج في متجري الإلكتروني مع موسيقى ومؤثرات",
+  "title": "test-b-ecommerce",
+  "language": "ar",
+  "dialect": "saudi",
+  "objective": "sell",
+  "industry": "e-commerce store",
+  "platform": "instagram-reels",
+  "aspect": "9:16",
+  "duration": 16,
+  "tone": ["جذاب", "سريع"],
+  "brand": { "name": "ندى", "colors": ["#0E7C66", "#F2C14E"] },
+  "audio": { "mode": "none", "music": "music-bed.mp3", "musicLicense": "original synthesized test track (CC0)", "sfx": true },
+  "content": {
+    "hook": "بشرتك تستاهل ترطيب حقيقي",
+    "emphasis": ["ترطيب", "30%"],
+    "product": { "name": "مرطّب ندى", "tagline": "ترطيب يدوم طول اليوم", "price": "89 ر.س", "oldPrice": "129 ر.س", "image": "product.png" },
+    "features": [
+      { "title": "مكونات طبيعية" },
+      { "title": "خفيف وسريع الامتصاص" },
+      { "title": "مناسب لكل أنواع البشرة" }
+    ],
+    "offer": "خصم 30% لفترة محدودة",
+    "offerBadge": "عرض خاص",
+    "cta": { "text": "اطلبه الحين من متجر ندى", "button": "اطلب الآن", "contacts": [{ "kind": "store", "value": "nada.store" }] }
+  }
+}

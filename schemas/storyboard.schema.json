@@ -1,0 +1,129 @@
+{
+  "$ref": "#/definitions/storyboard",
+  "definitions": {
+    "storyboard": {
+      "type": "object",
+      "properties": {
+        "totalDuration": {
+          "type": "number"
+        },
+        "scenes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "beat": {
+                "type": "string",
+                "enum": [
+                  "hook",
+                  "problem",
+                  "solution",
+                  "demo",
+                  "feature",
+                  "product",
+                  "offer",
+                  "proof",
+                  "data",
+                  "social",
+                  "process",
+                  "comparison",
+                  "brand",
+                  "bridge",
+                  "cta"
+                ]
+              },
+              "purpose": {
+                "type": "string"
+              },
+              "start": {
+                "type": "number"
+              },
+              "duration": {
+                "type": "number"
+              },
+              "visibleMessage": {
+                "type": "string"
+              },
+              "supportingVisual": {
+                "type": "string"
+              },
+              "family": {
+                "type": "string"
+              },
+              "variant": {
+                "type": "string"
+              },
+              "composition": {
+                "type": "string"
+              },
+              "movement": {
+                "type": "string"
+              },
+              "transition": {
+                "type": "string"
+              },
+              "soundEvents": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "narration": {
+                "type": "object",
+                "properties": {
+                  "start": {
+                    "type": "number"
+                  },
+                  "end": {
+                    "type": "number"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "start",
+                  "end"
+                ],
+                "additionalProperties": false
+              },
+              "emphasis": {
+                "type": "string"
+              },
+              "ctaRelation": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "beat",
+              "purpose",
+              "start",
+              "duration",
+              "visibleMessage",
+              "supportingVisual",
+              "family",
+              "variant",
+              "composition",
+              "movement",
+              "transition",
+              "soundEvents",
+              "emphasis",
+              "ctaRelation"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "totalDuration",
+        "scenes"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

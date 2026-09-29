@@ -1,0 +1,3310 @@
+{
+  "kinetic-title": {
+    "variants": [
+      "stack",
+      "impact",
+      "slam",
+      "side"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "word-impact": {
+    "variants": [
+      "single",
+      "echo",
+      "zoom"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "word": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "line": {
+          "type": "string",
+          "maxLength": 90
+        },
+        "kicker": {
+          "type": "string",
+          "maxLength": 40
+        }
+      },
+      "required": [
+        "word"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "line-reveal": {
+    "variants": [
+      "mask",
+      "blur",
+      "stagger",
+      "tracking"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90
+          },
+          "minItems": 1,
+          "maxItems": 5
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "align": {
+          "type": "string",
+          "enum": [
+            "start",
+            "center",
+            "end"
+          ]
+        }
+      },
+      "required": [
+        "lines"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "highlight-text": {
+    "variants": [
+      "marker",
+      "underline",
+      "box",
+      "color"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        }
+      },
+      "required": [
+        "title",
+        "highlight"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "numeric-typography": {
+    "variants": [
+      "giant",
+      "ring",
+      "ticker"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "from": {
+          "type": "number"
+        },
+        "prefix": {
+          "type": "string",
+          "maxLength": 8
+        },
+        "suffix": {
+          "type": "string",
+          "maxLength": 12
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Where the number comes from — required, never invented"
+        }
+      },
+      "required": [
+        "value",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "perspective-text": {
+    "variants": [
+      "tilt",
+      "floor",
+      "tunnel"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "quote-typography": {
+    "variants": [
+      "editorial",
+      "centered",
+      "bar"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "quote": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 220
+        },
+        "author": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "role": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "quote"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "split-typography": {
+    "variants": [
+      "halves",
+      "diagonal",
+      "stacked"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "first": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "second": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 40
+        }
+      },
+      "required": [
+        "first",
+        "second"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "type-on": {
+    "variants": [
+      "search",
+      "prompt",
+      "terminal"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 90
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "result": {
+          "type": "string",
+          "maxLength": 90
+        },
+        "icon": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "brand-intro": {
+    "variants": [
+      "lockup",
+      "stacked",
+      "wordmark"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "tagline": {
+          "type": "string",
+          "maxLength": 90
+        },
+        "logo": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "brand-outro": {
+    "variants": [
+      "lockup",
+      "minimal"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "line": {
+          "type": "string",
+          "maxLength": 90
+        },
+        "contact": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "logo": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "color-transition": {
+    "variants": [
+      "sweep",
+      "circles",
+      "bars"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "word": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "sub": {
+          "type": "string",
+          "maxLength": 80
+        }
+      },
+      "required": [
+        "word"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "logo-reveal": {
+    "variants": [
+      "mask",
+      "scale-glow",
+      "lines",
+      "ring"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "logo": {
+          "type": "string"
+        },
+        "tagline": {
+          "type": "string",
+          "maxLength": 80
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "logo-spotlight": {
+    "variants": [
+      "spotlight",
+      "orbit"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "logo": {
+          "type": "string"
+        },
+        "tagline": {
+          "type": "string",
+          "maxLength": 80
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "browser-scene": {
+    "variants": [
+      "focus",
+      "scroll",
+      "zoom",
+      "navigate"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "screenshot": {
+          "type": "string"
+        },
+        "pageTitle": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "pageSubtitle": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "menu": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "maxItems": 5
+        },
+        "pageCta": {
+          "type": "string",
+          "maxLength": 24
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "checkout-flow": {
+    "variants": [
+      "card",
+      "steps",
+      "receipt"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "price": {
+                "type": "string",
+                "maxLength": 20
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 4
+        },
+        "total": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "button": {
+          "type": "string",
+          "maxLength": 24,
+          "default": "ادفع الآن"
+        },
+        "success": {
+          "type": "string",
+          "maxLength": 40,
+          "default": "تم الدفع بنجاح"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "dashboard": {
+    "variants": [
+      "analytics",
+      "kpi-grid",
+      "sales"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "appName": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "menu": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 24
+          },
+          "maxItems": 6
+        },
+        "kpis": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "value": {
+                "type": "number"
+              },
+              "prefix": {
+                "type": "string"
+              },
+              "suffix": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "label",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 4
+        },
+        "series": {
+          "type": "object",
+          "properties": {
+            "labels": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 2
+            },
+            "values": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2
+            }
+          },
+          "required": [
+            "labels",
+            "values"
+          ],
+          "additionalProperties": false
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "login-screen": {
+    "variants": [
+      "card",
+      "split"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "appName": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "button": {
+          "type": "string",
+          "maxLength": 24,
+          "default": "تسجيل الدخول"
+        },
+        "success": {
+          "type": "string",
+          "maxLength": 40
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "order-notification": {
+    "variants": [
+      "stack",
+      "single",
+      "cascade"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "detail": {
+                "type": "string",
+                "maxLength": 40
+              }
+            },
+            "required": [
+              "title"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 5
+        },
+        "appLabel": {
+          "type": "string",
+          "maxLength": 24
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "saas-interface": {
+    "variants": [
+      "tasks",
+      "kanban",
+      "toggles"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "appName": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "minItems": 2,
+          "maxItems": 6
+        },
+        "action": {
+          "type": "string",
+          "maxLength": 24
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "screenshot-focus": {
+    "variants": [
+      "spotlight",
+      "zoom-region",
+      "callouts"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "screenshot": {
+          "type": "string",
+          "minLength": 1
+        },
+        "focus": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "y": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "w": {
+              "type": "number",
+              "minimum": 0.05,
+              "maximum": 1
+            },
+            "h": {
+              "type": "number",
+              "minimum": 0.05,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "w",
+            "h"
+          ],
+          "additionalProperties": false
+        },
+        "callouts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "text",
+              "x",
+              "y"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 3
+        }
+      },
+      "required": [
+        "screenshot"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "search-interface": {
+    "variants": [
+      "results",
+      "command"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "maxItems": 5
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "app-walkthrough": {
+    "variants": [
+      "sequence",
+      "carousel"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "screens": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "screenshot": {
+                "type": "string"
+              },
+              "appName": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "headline": {
+                "type": "string",
+                "maxLength": 60
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                "maxItems": 5
+              },
+              "button": {
+                "type": "string",
+                "maxLength": 24
+              },
+              "caption": {
+                "type": "string",
+                "maxLength": 50
+              }
+            },
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 4
+        }
+      },
+      "required": [
+        "screens"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "multi-phone": {
+    "variants": [
+      "fan",
+      "row",
+      "staggered"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "screens": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "screenshot": {
+                "type": "string"
+              },
+              "appName": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "headline": {
+                "type": "string",
+                "maxLength": 60
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                "maxItems": 5
+              },
+              "button": {
+                "type": "string",
+                "maxLength": 24
+              }
+            },
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 3
+        }
+      },
+      "required": [
+        "screens"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "notification-stack": {
+    "variants": [
+      "lockscreen",
+      "banners"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "notifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "app": {
+                "type": "string",
+                "maxLength": 24
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 70
+              },
+              "icon": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "app",
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 4
+        },
+        "time": {
+          "type": "string",
+          "maxLength": 10
+        }
+      },
+      "required": [
+        "notifications"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "phone-mockup": {
+    "variants": [
+      "float",
+      "tilt",
+      "scroll",
+      "hero"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "screen": {
+          "type": "object",
+          "properties": {
+            "screenshot": {
+              "type": "string"
+            },
+            "appName": {
+              "type": "string",
+              "maxLength": 30
+            },
+            "headline": {
+              "type": "string",
+              "maxLength": 60
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "maxItems": 5
+            },
+            "button": {
+              "type": "string",
+              "maxLength": 24
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "screen"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "category-showcase": {
+    "variants": [
+      "tiles",
+      "strip",
+      "circles"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "icon": {
+                "type": "string"
+              },
+              "image": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 6
+        }
+      },
+      "required": [
+        "categories"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "price-offer": {
+    "variants": [
+      "tag",
+      "badge",
+      "slash"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "headline": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "price": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "oldPrice": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "badge": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "image": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "headline"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "product-grid": {
+    "variants": [
+      "grid",
+      "masonry",
+      "carousel"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "products": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "image": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "price": {
+                "type": "string",
+                "maxLength": 20
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 6
+        }
+      },
+      "required": [
+        "products"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "product-showcase": {
+    "variants": [
+      "hero",
+      "spotlight",
+      "split",
+      "orbit"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "price": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "maxItems": 4
+        }
+      },
+      "required": [
+        "image"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "shopping-cart": {
+    "variants": [
+      "add",
+      "summary"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "image": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "price": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "button": {
+          "type": "string",
+          "maxLength": 24
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "bar-chart": {
+    "variants": [
+      "vertical",
+      "horizontal",
+      "race"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 16
+          },
+          "minItems": 2,
+          "maxItems": 12
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 12
+        },
+        "prefix": {
+          "type": "string",
+          "maxLength": 6
+        },
+        "suffix": {
+          "type": "string",
+          "maxLength": 8
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "highlightIndex": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "labels",
+        "values",
+        "source"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "comparison-table": {
+    "variants": [
+      "table",
+      "versus"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "leftTitle": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "rightTitle": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "left": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "string",
+                    "maxLength": 24
+                  }
+                ]
+              },
+              "right": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "string",
+                    "maxLength": 24
+                  }
+                ]
+              }
+            },
+            "required": [
+              "label",
+              "left",
+              "right"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 6
+        }
+      },
+      "required": [
+        "leftTitle",
+        "rightTitle",
+        "rows"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "donut-chart": {
+    "variants": [
+      "donut",
+      "gauge"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "maxLength": 24
+              },
+              "value": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "label",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 5
+        },
+        "centerLabel": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "suffix": {
+          "type": "string",
+          "maxLength": 6
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "segments",
+        "source"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "kpi-counter": {
+    "variants": [
+      "row",
+      "grid",
+      "cards"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "kpis": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "prefix": {
+                "type": "string",
+                "maxLength": 6
+              },
+              "suffix": {
+                "type": "string",
+                "maxLength": 8
+              },
+              "icon": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 4
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "kpis",
+        "source"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "line-chart": {
+    "variants": [
+      "line",
+      "area",
+      "glow"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 16
+          },
+          "minItems": 2,
+          "maxItems": 12
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 12
+        },
+        "prefix": {
+          "type": "string",
+          "maxLength": 6
+        },
+        "suffix": {
+          "type": "string",
+          "maxLength": 8
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "labels",
+        "values",
+        "source"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "progress-bars": {
+    "variants": [
+      "bars",
+      "rings"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "value": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "label",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 5
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "items",
+        "source"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "ranking": {
+    "variants": [
+      "list",
+      "podium"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 40
+              }
+            },
+            "required": [
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 3,
+          "maxItems": 5
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "timeline": {
+    "variants": [
+      "horizontal",
+      "vertical",
+      "milestones"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "maxLength": 20
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 60
+              }
+            },
+            "required": [
+              "label",
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 6
+        }
+      },
+      "required": [
+        "events"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "before-after": {
+    "variants": [
+      "slider",
+      "side",
+      "flip"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "before": {
+          "type": "string",
+          "minLength": 1
+        },
+        "after": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "image",
+            "product",
+            "screenshot",
+            "logo"
+          ],
+          "default": "image"
+        },
+        "beforeLabel": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "afterLabel": {
+          "type": "string",
+          "maxLength": 20
+        }
+      },
+      "required": [
+        "before",
+        "after"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "image-collage": {
+    "variants": [
+      "grid",
+      "polaroid",
+      "stack"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 2,
+          "maxItems": 6
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "image",
+            "product",
+            "screenshot",
+            "logo"
+          ],
+          "default": "image"
+        }
+      },
+      "required": [
+        "images"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "image-parallax": {
+    "variants": [
+      "kenburns",
+      "layers",
+      "pan"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "image",
+            "product",
+            "screenshot",
+            "logo"
+          ],
+          "default": "image"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        }
+      },
+      "required": [
+        "image"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "image-reveal": {
+    "variants": [
+      "mask",
+      "wipe",
+      "zoom",
+      "frame"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "image",
+            "product",
+            "screenshot",
+            "logo"
+          ],
+          "default": "image"
+        },
+        "caption": {
+          "type": "string",
+          "maxLength": 80
+        }
+      },
+      "required": [
+        "image"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "feature-set": {
+    "variants": [
+      "grid",
+      "stack",
+      "orbit",
+      "carousel",
+      "split",
+      "floating",
+      "perspective",
+      "spotlight",
+      "staggered",
+      "masonry"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 50
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 110
+              },
+              "icon": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "title"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 6
+        }
+      },
+      "required": [
+        "features"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "icon-list": {
+    "variants": [
+      "checklist",
+      "bullets",
+      "chips"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 70
+              },
+              "icon": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 6
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "problem-solution": {
+    "variants": [
+      "flip",
+      "split",
+      "strike"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "problem": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "solution": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "problemIcon": {
+          "type": "string"
+        },
+        "solutionIcon": {
+          "type": "string"
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "problem",
+        "solution"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "process-steps": {
+    "variants": [
+      "path",
+      "cards",
+      "numbered"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 50
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 110
+              },
+              "icon": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "title"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 5
+        }
+      },
+      "required": [
+        "steps"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "pros-cons": {
+    "variants": [
+      "columns",
+      "cards"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "prosTitle": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "consTitle": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "pros": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "minItems": 1,
+          "maxItems": 5
+        },
+        "cons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "minItems": 1,
+          "maxItems": 5
+        }
+      },
+      "required": [
+        "pros",
+        "cons"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "cinematic-title": {
+    "variants": [
+      "letterbox",
+      "epic",
+      "minimal"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "depth-layers": {
+    "variants": [
+      "tunnel",
+      "stack"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "layers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "minItems": 2,
+          "maxItems": 5
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "layers"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "light-sweep-title": {
+    "variants": [
+      "sweep",
+      "shine",
+      "glint"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "speed-transition": {
+    "variants": [
+      "streaks",
+      "burst"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "spotlight-reveal": {
+    "variants": [
+      "circle",
+      "beam"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "image": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "image",
+            "product",
+            "logo",
+            "screenshot"
+          ],
+          "default": "product"
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "chat-message": {
+    "variants": [
+      "messenger",
+      "dm",
+      "support"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "enum": [
+                  "me",
+                  "them"
+                ]
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              }
+            },
+            "required": [
+              "from",
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 6
+        },
+        "contact": {
+          "type": "string",
+          "maxLength": 30
+        }
+      },
+      "required": [
+        "messages"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "comment": {
+    "variants": [
+      "bubbles",
+      "reply"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "comments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 140
+              },
+              "likes": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "name",
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 4
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "comments",
+        "source"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "social-proof": {
+    "variants": [
+      "avatars",
+      "rating",
+      "badge"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "value": {
+          "type": "number",
+          "minimum": 0
+        },
+        "prefix": {
+          "type": "string",
+          "maxLength": 6
+        },
+        "suffix": {
+          "type": "string",
+          "maxLength": 8
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "rating": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "maxItems": 5
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "value",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "stat-highlight": {
+    "variants": [
+      "center",
+      "split",
+      "ring"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "value": {
+          "type": "number"
+        },
+        "prefix": {
+          "type": "string",
+          "maxLength": 6
+        },
+        "suffix": {
+          "type": "string",
+          "maxLength": 8
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 90
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "icon": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "value",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "testimonial": {
+    "variants": [
+      "card",
+      "quote",
+      "rating"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "quote": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 220
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "role": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "rating": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "quote",
+        "name",
+        "source"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "cta-button": {
+    "variants": [
+      "press",
+      "pulse",
+      "tap"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "button": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "buttonIcon": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "button"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "cta-clean": {
+    "variants": [
+      "center",
+      "stacked",
+      "underline"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "button": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "buttonIcon": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "cta-contact": {
+    "variants": [
+      "card",
+      "list"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "button": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "buttonIcon": {
+          "type": "string"
+        },
+        "contacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "phone",
+                  "whatsapp",
+                  "website",
+                  "email",
+                  "handle",
+                  "location",
+                  "store"
+                ]
+              },
+              "value": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60
+              }
+            },
+            "required": [
+              "kind",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 4
+        },
+        "logo": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "contacts"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "cta-logo": {
+    "variants": [
+      "lockup",
+      "reveal"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "button": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "buttonIcon": {
+          "type": "string"
+        },
+        "logo": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "cta-qr": {
+    "variants": [
+      "card",
+      "side"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "button": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "buttonIcon": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "caption": {
+          "type": "string",
+          "maxLength": 60
+        }
+      },
+      "required": [
+        "title",
+        "url"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  }
+}

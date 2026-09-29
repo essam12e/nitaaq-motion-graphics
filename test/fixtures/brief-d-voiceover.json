@@ -1,0 +1,26 @@
+{
+  "request": "سوي لي فيديو موشن على تسجيلي الصوتي",
+  "title": "test-d-voiceover",
+  "language": "ar",
+  "dialect": "msa",
+  "objective": "promote",
+  "industry": "education courses",
+  "platform": "tiktok",
+  "aspect": "9:16",
+  "tone": ["ملهم"],
+  "brand": null,
+  "audio": {
+    "mode": "user-voice",
+    "voice": "simulated-voice.wav",
+    "sfx": true,
+    "transcript": ["هل تريد تعلم التصميم؟", "الدورات الطويلة مملة ومكلفة", "تعلّم بخطوات قصيرة وواضحة", "مشاريع حقيقية ومتابعة أسبوعية", "سجّل الآن"]
+  },
+  "content": {
+    "hook": "هل تريد تعلم التصميم؟",
+    "emphasis": ["التصميم", "الآن"],
+    "problem": "الدورات الطويلة مملة ومكلفة",
+    "solution": "تعلّم بخطوات قصيرة وواضحة",
+    "features": [{ "title": "مشاريع حقيقية" }, { "title": "متابعة أسبوعية" }, { "title": "شهادة إتمام" }],
+    "cta": { "text": "سجّل الآن", "button": "سجّل مجاناً" }
+  }
+}

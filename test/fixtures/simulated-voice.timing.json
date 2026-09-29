@@ -1,0 +1,26 @@
+{
+  "note": "Ground-truth phrase timing of the simulated voice (seconds).",
+  "duration": 16.98,
+  "phrases": [
+    {
+      "start": 0.3,
+      "end": 2.7
+    },
+    {
+      "start": 3.32,
+      "end": 6.42
+    },
+    {
+      "start": 7.04,
+      "end": 9.74
+    },
+    {
+      "start": 10.36,
+      "end": 13.66
+    },
+    {
+      "start": 14.28,
+      "end": 16.48
+    }
+  ]
+}

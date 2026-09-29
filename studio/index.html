@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Motion Studio</title>
+    <style>
+      @font-face { font-family: 'IBM Plex Sans Arabic'; src: url('/fonts/ibm-plex-sans-arabic/ibm-plex-sans-arabic-arabic-400-normal.woff2') format('woff2'); font-weight: 400; }
+      :root { --bg: #0f1115; --panel: #161a21; --line: #262c36; --text: #e8ebf1; --muted: #8a93a3; --accent: #3d7bfd; }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 'IBM Plex Sans Arabic', system-ui, sans-serif; }
+      button, select, input, textarea { font: inherit; color: var(--text); background: #1e232c; border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; }
+      button { cursor: pointer; }
+      button:disabled { opacity: .45; cursor: default; }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+      .muted { color: var(--muted); font-size: 12px; }
+      .chip { font-size: 12px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 99px; color: var(--muted); }
+      .field { display: flex; flex-direction: column; gap: 3px; margin: 0 0 10px; font-size: 12px; color: var(--muted); flex: 1; }
+      .field input, .field select, .field textarea { width: 100%; color: var(--text); }
+      .row { display: flex; gap: 10px; }
+      .check { display: flex; gap: 6px; align-items: center; margin: 4px 0 10px; font-size: 13px; }
+      h3 { margin: 0 0 12px; font-size: 15px; } h4 { margin: 16px 0 8px; font-size: 13px; color: var(--muted); }
+      .timeline { display: flex; gap: 6px; align-items: stretch; min-height: 120px; }
+      .clip { flex: none; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: #1b2029; cursor: pointer; display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
+      .clip.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+      .clip-title { font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .clip-tools { margin-top: auto; display: flex; gap: 4px; } .clip-tools button { padding: 1px 6px; font-size: 12px; }
+      .issues { width: 100%; max-width: 900px; font-size: 12px; max-height: 120px; overflow: auto; background: #12151b; border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+      .sev-critical, .sev-error { color: #ff7b7b; } .sev-warning { color: #ffd37b; } .sev-info { color: var(--muted); }
+      a { color: #8fb3ff; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

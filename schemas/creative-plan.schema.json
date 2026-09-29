@@ -1,0 +1,170 @@
+{
+  "$ref": "#/definitions/creative-plan",
+  "definitions": {
+    "creative-plan": {
+      "type": "object",
+      "properties": {
+        "objective": {
+          "type": "string"
+        },
+        "audience": {
+          "type": "string"
+        },
+        "platform": {
+          "type": "string"
+        },
+        "aspect": {
+          "type": "string"
+        },
+        "duration": {
+          "type": "number"
+        },
+        "pace": {
+          "type": "string",
+          "enum": [
+            "slow",
+            "medium",
+            "fast"
+          ]
+        },
+        "tone": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "visualStyle": {
+          "type": "string"
+        },
+        "styleReason": {
+          "type": "string"
+        },
+        "energyCurve": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "narrativeArc": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "beat": {
+                "type": "string",
+                "enum": [
+                  "hook",
+                  "problem",
+                  "solution",
+                  "demo",
+                  "feature",
+                  "product",
+                  "offer",
+                  "proof",
+                  "data",
+                  "social",
+                  "process",
+                  "comparison",
+                  "brand",
+                  "bridge",
+                  "cta"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "weight": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "beat",
+              "message",
+              "weight"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "sceneStrategy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "audioStrategy": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string"
+            },
+            "music": {
+              "type": "string"
+            },
+            "sfx": {
+              "type": "string"
+            },
+            "voice": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mode",
+            "music",
+            "sfx",
+            "voice"
+          ],
+          "additionalProperties": false
+        },
+        "brandStrategy": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string"
+            },
+            "logoUsage": {
+              "type": "string"
+            },
+            "palette": {
+              "type": "string"
+            },
+            "font": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "logoUsage",
+            "palette",
+            "font"
+          ],
+          "additionalProperties": false
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "objective",
+        "audience",
+        "platform",
+        "aspect",
+        "duration",
+        "pace",
+        "tone",
+        "visualStyle",
+        "styleReason",
+        "energyCurve",
+        "narrativeArc",
+        "sceneStrategy",
+        "audioStrategy",
+        "brandStrategy",
+        "constraints"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

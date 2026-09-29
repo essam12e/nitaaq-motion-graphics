@@ -1,0 +1,11 @@
+{
+  "project": { "id": "demo", "title": "Demo", "language": "ar" },
+  "canvas": { "aspect": "9:16", "width": 1080, "height": 1920, "fps": 30 },
+  "platform": "tiktok",
+  "style": { "preset": "saudi-modern" },
+  "scenes": [
+    { "id": "s1", "type": "kinetic-title", "duration": 3, "content": { "eyebrow": "جديد", "title": "فكرتك تستاهل فيديو يليق فيها", "highlight": ["فيديو"], "subtitle": "موشن جرافيك احترافي خلال دقائق" }, "transition": { "type": "push", "duration": 0.5 } },
+    { "id": "s2", "type": "word-impact", "duration": 2, "content": { "word": "أسرع", "line": "من الفكرة إلى الفيديو" }, "transition": { "type": "zoom-in", "duration": 0.4 } },
+    { "id": "s3", "type": "line-reveal", "duration": 3, "content": { "lines": ["كل يوم بدون محتوى", "هو فرصة ضايعة"], "highlight": ["فرصة"] } }
+  ]
+}
