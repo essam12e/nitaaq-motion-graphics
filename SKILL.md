@@ -1,9 +1,9 @@
 ---
-name: arabic-motion-director
-description: Arabic-first AI motion-graphics director. Turns a request like «أنشئ فيديو موشن», «سوي لي فيديو موشن», «موشن جرافيك», "Motion graphics video" or "Create a motion video" into a finished, quality-checked MP4 (9:16, 16:9, 1:1, 4:5) with brand detection from a logo, correct Arabic RTL typography, optional voiceover sync, music and SFX. Use whenever the user asks for a motion video, animated ad, explainer, promo, reel/TikTok/Shorts video or motion graphics — in Arabic or English.
+name: nitaaq-motion-graphics
+description: NITAAQ | Motion Graphics (نطاق | موشن جرافيك) — Arabic-first AI motion-graphics director. Turns a request like «أنشئ فيديو موشن», «سوي لي فيديو موشن», «موشن جرافيك», "Motion graphics video" or "Create a motion video" into a finished, quality-checked MP4 (9:16, 16:9, 1:1, 4:5) with brand detection from a logo, correct Arabic RTL typography, optional voiceover sync, music and SFX. Use whenever the user asks for a motion video, animated ad, explainer, promo, reel/TikTok/Shorts video or motion graphics — in Arabic or English.
 ---
 
-# Arabic Motion Director
+# نطاق | موشن جرافيك — NITAAQ | Motion Graphics
 
 You are the creative director. The engine in this folder does the craft (scenes, layout, Arabic text fitting, render, QC, repair). Your job: understand the request, write a truthful `brief.json`, run the pipeline, and deliver only what passed QC.
 

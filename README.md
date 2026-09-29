@@ -1,4 +1,4 @@
-# Arabic Motion Director
+# نطاق | موشن جرافيك — NITAAQ | Motion Graphics
 
 Arabic-first AI motion-graphics director. A natural-language request becomes a finished, quality-checked MP4:
 
@@ -40,14 +40,14 @@ npm run render   -- workspace/projects/<id>     # production render + QC + auto-
 npm run quality  -- workspace/projects/<id> --video file.mp4
 npm run studio                                   # http://127.0.0.1:4455
 
-npx tsx cli/amd.ts scenes | styles | voices | brand logo.png | schema-export | workspace
+npx tsx cli/nitaaq.ts scenes | styles | voices | brand logo.png | schema-export | workspace
 ```
 
 Render profiles: `preview` (½ scale, CRF 28), `draft` (¾, CRF 23), `production` (full, CRF 18, x264 medium). All outputs: H.264, yuv420p, BT.709, AAC audio; encoder "made with" tags are stripped.
 
 ### From Claude Code
 
-The folder is a skill: `SKILL.md` (triggers: «أنشئ فيديو موشن», «سوي لي فيديو موشن», «موشن جرافيك», "Motion graphics video", "Create a motion video"). Install it as a skill (copy or symlink the folder into `~/.claude/skills/arabic-motion-director`, or `.claude/skills/` in a project), run `npm run setup` once, then ask Claude for a motion video. See `adapters/claude-code/`.
+The folder is a skill: `SKILL.md` (triggers: «أنشئ فيديو موشن», «سوي لي فيديو موشن», «موشن جرافيك», "Motion graphics video", "Create a motion video"). Install it as a skill (copy or symlink the folder into `~/.claude/skills/nitaaq-motion-graphics`, or `.claude/skills/` in a project), run `npm run setup` once, then ask Claude for a motion video. See `adapters/claude-code/`.
 
 ### From Codex
 
@@ -61,7 +61,7 @@ Copy `.env.example`. Paths: `MOTION_WORKSPACE`, `MOTION_UPLOADS`, `MOTION_OUTPUT
 
 ```
 SKILL.md, AGENTS.md          agent entry points (Claude Code / Codex)
-cli/amd.ts                   CLI (create, direct, produce, validate, render, quality, brand, preflight, scenes, styles, schema-export)
+cli/nitaaq.ts                   CLI (create, direct, produce, validate, render, quality, brand, preflight, scenes, styles, schema-export)
 cli/test-videos.ts           acceptance videos A–E
 cli/gallery.ts               scene gallery / contact sheets
 cli/make-test-audio.ts       synthesizes the original test music bed + simulated voice

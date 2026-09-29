@@ -7,7 +7,7 @@
 3. `derivePalette` builds `brand.json`-style fields: `primary`, `secondary`, `accent`, `background`, `surface`, `textPrimary`, `textSecondary`, `mode` (dark/light), `personality`, `dominantColors`, and `contrastRules` (text ≥ 4.5:1, large text ≥ 3:1). Colours are adjusted in lightness only as much as needed to pass contrast; hue identity is kept.
 4. The logo is shown as supplied (`object-fit: contain`, never recoloured, cropped, redrawn or regenerated).
 
-CLI: `npx tsx cli/amd.ts brand path/to/logo.png --name "اسم العلامة"` prints the profile.
+CLI: `npx tsx cli/nitaaq.ts brand path/to/logo.png --name "اسم العلامة"` prints the profile.
 
 ## Without a logo
 

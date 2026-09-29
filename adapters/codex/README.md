@@ -9,5 +9,5 @@ Codex reads `AGENTS.md` at the repository root — no extra wiring is needed.
 To use it from another repository, add a line to that repository's `AGENTS.md`:
 
 ```
-For motion-graphics videos use the Arabic Motion Director at <path>: follow <path>/AGENTS.md and run its npm scripts from that folder.
+For motion-graphics videos use the NITAAQ | Motion Graphics at <path>: follow <path>/AGENTS.md and run its npm scripts from that folder.
 ```

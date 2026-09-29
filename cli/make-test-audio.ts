@@ -26,7 +26,7 @@ const seg = 8;
 const parts = chords.map((c, i) => `aevalsrc='0.16*(sin(2*PI*${c[0]}*t)+0.8*sin(2*PI*${c[1]}*t)+0.7*sin(2*PI*${c[2]}*t)+0.25*sin(2*PI*${c[0] / 2}*t))*(0.85+0.15*sin(2*PI*0.5*t))':s=44100:d=${seg}[c${i}]`);
 const pulse = `aevalsrc='0.35*sin(2*PI*55*t)*exp(-9*mod(t,0.6))':s=44100:d=${seg * 4}[p]`;
 const filter = `${parts.join(';')};${pulse};[c0][c1][c2][c3]concat=n=4:v=0:a=1,afade=t=in:d=1.5,lowpass=f=2400[pad];[pad][p]amix=inputs=2:weights='1 0.6':normalize=0,afade=t=out:st=${seg * 4 - 2}:d=2,alimiter=limit=0.8[out]`;
-ffmpegRun(['-filter_complex', filter, '-map', '[out]', '-ac', '2', '-ar', '44100', '-b:a', '160k', '-metadata', 'title=AMD test music bed (synthesized, CC0)', join(dir, 'music-bed.mp3')], 'music bed synthesis');
+ffmpegRun(['-filter_complex', filter, '-map', '[out]', '-ac', '2', '-ar', '44100', '-b:a', '160k', '-metadata', 'title=test music bed (synthesized, CC0)', join(dir, 'music-bed.mp3')], 'music bed synthesis');
 
 // ── simulated voiceover: 5 phrases with pauses (phrase lengths match the D brief transcript)
 const phrases = [2.4, 3.1, 2.7, 3.3, 2.2];

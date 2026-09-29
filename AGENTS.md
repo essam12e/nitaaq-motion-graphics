@@ -1,4 +1,4 @@
-# AGENTS.md — Arabic Motion Director (Codex and other coding agents)
+# AGENTS.md — نطاق | موشن جرافيك (NITAAQ | Motion Graphics) (Codex and other coding agents)
 
 This repository is a skill/tool that turns a natural-language request into a quality-checked motion-graphics MP4. Claude Code reads `SKILL.md`; Codex reads this file. Both drive the **same engine** through the same CLI.
 

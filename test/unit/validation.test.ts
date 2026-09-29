@@ -16,7 +16,7 @@ describe('video.json validation', () => {
   });
   it('rejects developer signatures / watermarks as critical', () => {
     const s = demo();
-    (s.scenes[0].content as Record<string, unknown>).subtitle = 'Made with Arabic Motion Director';
+    (s.scenes[0].content as Record<string, unknown>).subtitle = 'Made with NITAAQ | Motion Graphics';
     expect(codes(s)).toContain('critical:DEVELOPER_SIGNATURE');
     const s2 = demo();
     (s2.scenes[0].content as Record<string, unknown>).subtitle = 'تابعونا @med3bbas';

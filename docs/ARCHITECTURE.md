@@ -1,6 +1,6 @@
 # Architecture
 
-One shared engine, thin adapters. Everything below runs from `cli/amd.ts` (Claude Code and Codex call the same commands).
+One shared engine, thin adapters. Everything below runs from `cli/nitaaq.ts` (Claude Code and Codex call the same commands).
 
 ```
 brief.json ─► INTAKE ─► BRAND ─► DIRECTOR ─► STORYBOARD ─► video.json ─► VALIDATION+REPAIR

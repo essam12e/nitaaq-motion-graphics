@@ -1,5 +1,5 @@
 {
-  "name": "arabic-motion-director",
+  "name": "nitaaq-motion-graphics",
   "version": "1.0.0",
   "private": true,
   "description": "Arabic-first AI motion graphics director: brief -> creative plan -> storyboard -> video.json -> Remotion render -> automated QC -> auto repair -> MP4.",
@@ -50,21 +50,21 @@
     "zod-to-json-schema": "3.24.1"
   },
   "bin": {
-    "amd": "./bin/amd.mjs"
+    "nitaaq": "./bin/nitaaq.mjs"
   },
   "scripts": {
     "setup": "npm install && npm run fonts:sync && npm run preflight",
     "fonts:sync": "tsx cli/sync-fonts.ts",
-    "preflight": "tsx cli/amd.ts preflight",
-    "create": "tsx cli/amd.ts create",
-    "direct": "tsx cli/amd.ts direct",
-    "validate": "tsx cli/amd.ts validate",
-    "preview": "tsx cli/amd.ts render --profile preview",
-    "render": "tsx cli/amd.ts produce --profile production",
-    "quality": "tsx cli/amd.ts quality",
+    "preflight": "tsx cli/nitaaq.ts preflight",
+    "create": "tsx cli/nitaaq.ts create",
+    "direct": "tsx cli/nitaaq.ts direct",
+    "validate": "tsx cli/nitaaq.ts validate",
+    "preview": "tsx cli/nitaaq.ts render --profile preview",
+    "render": "tsx cli/nitaaq.ts produce --profile production",
+    "quality": "tsx cli/nitaaq.ts quality",
     "studio": "tsx studio/server.ts",
     "gallery": "tsx cli/gallery.ts",
-    "schema:export": "tsx cli/amd.ts schema-export",
+    "schema:export": "tsx cli/nitaaq.ts schema-export",
     "demo-assets": "tsx cli/make-demo-assets.ts",
     "typecheck": "tsc --noEmit -p .",
     "test": "vitest run test/unit",

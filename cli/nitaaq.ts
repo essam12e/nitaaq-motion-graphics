@@ -1,14 +1,14 @@
 /**
- * amd — Arabic Motion Director CLI (shared by the Claude Code and Codex adapters).
+ * nitaaq — NITAAQ | Motion Graphics CLI (shared by the Claude Code and Codex adapters).
  *
- *   amd create   <brief.json> [--profile production] [--no-logo] [--out dir] [--name file] [--clean-voice]
- *   amd direct   <brief.json> [--project dir] [--no-logo]          → plan.json, storyboard.json, video.json
- *   amd produce  <projectDir|video.json> [--profile …]             → render + QC + repair loop
- *   amd validate <video.json> [--fix]
- *   amd render   <projectDir|video.json> [--profile preview|draft|production] [--out file.mp4]
- *   amd quality  <projectDir|video.json> [--video file.mp4]
- *   amd brand    <logo> [--name …]
- *   amd preflight | scenes [--json] | styles | schema-export [--out dir] | voices
+ *   nitaaq create   <brief.json> [--profile production] [--no-logo] [--out dir] [--name file] [--clean-voice]
+ *   nitaaq direct   <brief.json> [--project dir] [--no-logo]          → plan.json, storyboard.json, video.json
+ *   nitaaq produce  <projectDir|video.json> [--profile …]             → render + QC + repair loop
+ *   nitaaq validate <video.json> [--fix]
+ *   nitaaq render   <projectDir|video.json> [--profile preview|draft|production] [--out file.mp4]
+ *   nitaaq quality  <projectDir|video.json> [--video file.mp4]
+ *   nitaaq brand    <logo> [--name …]
+ *   nitaaq preflight | scenes [--json] | styles | schema-export [--out dir] | voices
  *
  * Exit codes: 0 ok · 1 failed · 2 needs user input (questions printed as JSON).
  */
@@ -71,7 +71,7 @@ async function main(): Promise<number> {
     case 'create':
     case 'direct': {
       const file = pos[0];
-      if (!file) throw new Error(`Usage: amd ${cmd} <brief.json>`);
+      if (!file) throw new Error(`Usage: nitaaq ${cmd} <brief.json>`);
       const brief = JSON.parse(readFileSync(file, 'utf8'));
       const r = await direct({ brief, baseDir: dirname(resolve(file)), projectDir: flag('project') ? resolve(flag('project')!) : undefined, assumeNoLogo: flag('no-logo') === 'true', cleanVoice: flag('clean-voice') === 'true' });
       if (r.status === 'needs-input') {
@@ -115,7 +115,7 @@ async function main(): Promise<number> {
       const file = flag('out') ? resolve(flag('out')!) : join(p.dir, 'renders', `${spec.project.id}-${profile}.mp4`);
       mkdirSync(dirname(file), { recursive: true });
       const r = await renderVideo({ spec, projectDir: p.dir, output: file, profile });
-      log.info('RENDER', `${file} (${(r.bytes / 1e6).toFixed(2)} MB). Not QC'd — run \`amd quality\` or use \`amd produce\` for a checked delivery.`);
+      log.info('RENDER', `${file} (${(r.bytes / 1e6).toFixed(2)} MB). Not QC'd — run \`nitaaq quality\` or use \`nitaaq produce\` for a checked delivery.`);
       return 0;
     }
     case 'quality': {
@@ -129,7 +129,7 @@ async function main(): Promise<number> {
     }
     case 'brand': {
       const logo = pos[0];
-      if (!logo) throw new Error('Usage: amd brand <logo.png|svg|jpg|webp> [--name …]');
+      if (!logo) throw new Error('Usage: nitaaq brand <logo.png|svg|jpg|webp> [--name …]');
       const r = await brandFromLogo(resolve(logo), { projectRelativeLogo: basename(logo), name: flag('name') });
       out({ brand: r.brand, analysis: { width: r.analysis.width, height: r.analysis.height, hasAlpha: r.analysis.hasAlpha, dominant: r.analysis.dominant.slice(0, 6) } });
       return 0;

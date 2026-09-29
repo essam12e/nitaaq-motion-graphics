@@ -33,7 +33,7 @@ export interface ValidateOptions {
 }
 
 /** Text that would identify the tool/developer rather than the user's brand. */
-export const DEVELOPER_SIGNATURES: RegExp[] = [/made\s+(with|by)\s+(arabic motion director|remotion|claude|ai)/i, /created\s+with\s+(arabic motion director|claude)/i, /arabic\s+motion\s+director/i, /@med3bbas/i, /\bwatermark\b/i, /صنع بواسطة/, /تم إنشاؤه بواسطة/];
+export const DEVELOPER_SIGNATURES: RegExp[] = [/made\s+(with|by)\s+(nitaaq|remotion|claude|ai)/i, /created\s+with\s+(nitaaq|claude)/i, /nitaaq\s*\|?\s*motion\s+graphics/i, /نطاق\s*\|\s*موشن/, /@med3bbas/i, /\bwatermark\b/i, /صنع بواسطة/, /تم إنشاؤه بواسطة/];
 
 function walkStrings(v: unknown, path: string, out: { path: string; text: string }[]) {
   if (typeof v === 'string') out.push({ path, text: v });

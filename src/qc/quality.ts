@@ -316,7 +316,7 @@ export async function runQuality(opts: { spec: VideoSpec; projectDir: string; vi
     if (Math.abs(pr.duration - tl.totalSec) > 0.15) add({ severity: 'error', code: 'MP4_DURATION', message: `duration ${pr.duration.toFixed(2)}s, expected ${tl.totalSec.toFixed(2)}s` });
     if (v?.fps && Math.abs(v.fps - fps) > 0.5) add({ severity: 'error', code: 'MP4_FPS', message: `fps ${v.fps}, expected ${fps}` });
     for (const [k, val] of Object.entries(pr.tags)) {
-      if (/made with|remotion|arabic motion director|claude/i.test(val) && !/^(handler_name|vendor_id|major_brand|compatible_brands|minor_version|language)$/i.test(k)) add({ severity: 'critical', code: 'MP4_SIGNATURE', message: `tool signature in MP4 metadata (${k}=${val.slice(0, 40)})` });
+      if (/made with|remotion|nitaaq|claude/i.test(val) && !/^(handler_name|vendor_id|major_brand|compatible_brands|minor_version|language)$/i.test(k)) add({ severity: 'critical', code: 'MP4_SIGNATURE', message: `tool signature in MP4 metadata (${k}=${val.slice(0, 40)})` });
     }
     if (issues.some((i) => i.code.startsWith('MP4_'))) checks.container = 'fail';
     const sfxPlanned = planSfx(spec, tl, (sc) => SceneRegistry.get(sc.type)?.manifest.sfx ?? []).length > 0;
