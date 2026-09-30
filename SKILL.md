@@ -14,6 +14,8 @@ cd <this skill folder>
 npm run setup          # installs deps, syncs fonts, runs preflight
 ```
 
+If the skill folder is read-only (for example a claude.ai upload under `/mnt/skills/...`), copy it to a writable place first and work from there: `cp -r <this skill folder> /tmp/nitaaq && cd /tmp/nitaaq && npm run setup`. Fonts are copied from the npm packages during setup, so a folder without `public/fonts` is expected.
+
 `npm run preflight` must end with `ready`. Premium TTS is optional (`ELEVENLABS_API_KEY` or `OPENAI_API_KEY` in the environment — never in files).
 
 ## 1. Understand the request
