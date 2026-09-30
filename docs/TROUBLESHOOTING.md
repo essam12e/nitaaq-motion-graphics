@@ -25,6 +25,7 @@ Every error prints **what** failed, **where**, **why**, whether it was **repaire
 | `TTS_UNAVAILABLE` | no premium voice provider | Produce without voice, upload a recording, or set `ELEVENLABS_API_KEY` / `OPENAI_API_KEY` |
 | `AUDIO_CLIPPING` / `AUDIO_QUIET` | levels | Auto-repair lowers music/SFX; check the source recording |
 | `MP4_BITRATE_HIGH` (warning) | the file is unusually heavy (> 30 Mbit/s) | Lower texture/grain in the style or use the `draft` profile |
+| `ENCODER_STRING` (warning) | an encoder name (x264/Lavf) survived in the MP4 | The cleanup remux failed; check the `[RENDER]` warning and that ffmpeg supports `filter_units` |
 | `MP4_SIGNATURE` | encoder tag found | Should not happen (tags are stripped); report it |
 | `QC_FAILED` (not delivered) | a critical issue without a safe automatic fix | Read `qc/final/quality-report.json` and the contact sheet; fix the named asset/copy |
 | Studio: port in use | another process on 4455 | `STUDIO_PORT=4466 npm run studio` |

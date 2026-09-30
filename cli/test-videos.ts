@@ -25,6 +25,7 @@ const TESTS = [
   { key: 'c', brief: 'brief-c-saas.json', what: 'SaaS explainer, 16:9, dashboard + browser, mixed Arabic/English' },
   { key: 'd', brief: 'brief-d-voiceover.json', what: 'Simulated user voiceover, 9:16, scenes synced to phrases' },
   { key: 'e', brief: 'brief-e-long-arabic.json', what: 'Long Arabic text stress test, 4:5' },
+  { key: 'f', brief: 'brief-f-square.json', what: 'Brief A re-targeted to 1:1 (Instagram feed)' },
 ];
 
 mkdirSync(out, { recursive: true });

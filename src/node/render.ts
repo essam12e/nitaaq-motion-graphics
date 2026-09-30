@@ -5,7 +5,7 @@
  */
 import { renderMedia, selectComposition, renderStill, openBrowser } from '@remotion/renderer';
 import { cpus } from 'node:os';
-import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { VideoSchema, type VideoSpec } from '../schema/video';
 import { MotionError } from '../core/errors';
@@ -14,6 +14,7 @@ import { getBundle, findBrowser, stageProjectAssets } from './bundle';
 import { referencedFiles, assertInsideProject } from './assets';
 import { validateSpec } from '../validation/validate';
 import { checkFontFile } from './fonts';
+import { ffmpegRun } from './audio';
 
 export type RenderProfile = 'preview' | 'draft' | 'production';
 
@@ -141,6 +142,7 @@ export async function renderVideo(opts: { spec: VideoSpec; projectDir: string; o
         }
       },
     });
+    stripEncoderStrings(opts.output);
     const bytes = statSync(opts.output).size;
     return { output: opts.output, profile, frames: composition.durationInFrames, seconds: composition.durationInFrames / composition.fps, width: Math.round(composition.width * P.scale), height: Math.round(composition.height * P.scale), bytes, renderMs: Date.now() - t0 };
   } catch (e) {
@@ -148,6 +150,22 @@ export async function renderVideo(opts: { spec: VideoSpec; projectDir: string; o
     throw new MotionError({ code: 'RENDER_FAILED', what: 'Remotion render failed', why: String((e as Error).message).slice(0, 500), action: 'Check the scene named in the error; run `npm run quality` on a preview render for details.', cause: e });
   } finally {
     await browser.close({ silent: true });
+  }
+}
+
+/**
+ * Zero-watermark policy, container level: a lossless remux that drops every metadata tag, the muxer's
+ * "Lavf" encoder tag and the H.264 SEI message where x264 writes its name and settings. Video/audio
+ * samples are copied untouched (SEI carries nothing needed for playback).
+ */
+export function stripEncoderStrings(file: string): void {
+  const tmp = `${file}.clean.mp4`;
+  try {
+    ffmpegRun(['-i', file, '-map', '0', '-c', 'copy', '-bsf:v', 'filter_units=remove_types=6', '-map_metadata', '-1', '-fflags', '+bitexact', '-flags:v', '+bitexact', '-flags:a', '+bitexact', '-movflags', '+faststart', tmp], 'MP4 metadata cleanup');
+    renameSync(tmp, file);
+  } catch (e) {
+    rmSync(tmp, { force: true });
+    log.warn('RENDER', `could not remove encoder strings from ${file}: ${(e as Error).message}`);
   }
 }
 

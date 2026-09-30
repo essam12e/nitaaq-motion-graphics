@@ -43,7 +43,7 @@ npm run studio                                   # http://127.0.0.1:4455
 npx tsx cli/nitaaq.ts scenes | styles | voices | brand logo.png | schema-export | workspace
 ```
 
-Render profiles: `preview` (½ scale, CRF 28), `draft` (¾, CRF 23), `production` (full, CRF 18, x264 medium). All outputs: H.264, yuv420p, BT.709, AAC audio; encoder "made with" tags are stripped.
+Render profiles: `preview` (½ scale, CRF 28), `draft` (¾, CRF 23), `production` (full, CRF 18, x264 medium). All outputs: H.264, yuv420p, BT.709, AAC audio. A final lossless remux removes all metadata tags, the muxer tag and the x264 settings string, so the file carries no tool identity.
 
 ### From Claude Code
 

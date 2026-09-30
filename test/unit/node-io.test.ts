@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { mkdtempSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { detectSpeechSegments, probe } from '../../src/node/audio';
+import { detectSpeechSegments, ffmpegRun, probe } from '../../src/node/audio';
+import { stripEncoderStrings } from '../../src/node/render';
 import { ingestAsset, sha1File } from '../../src/node/assets';
 import { brandFromLogo } from '../../src/brand/logo-analyzer';
 import { contrastRatio } from '../../src/brand/color';
@@ -61,6 +62,22 @@ describe('fonts', () => {
     expect(latin.arabicCapable).toBe(false);
   });
 });
+describe('zero watermark at container level', () => {
+  it('removes encoder tags and x264 settings from an MP4 without re-encoding', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'nitaaq-'));
+    const f = join(dir, 'v.mp4');
+    ffmpegRun(['-f', 'lavfi', '-i', 'color=c=0x204060:s=160x90:d=1', '-f', 'lavfi', '-i', 'sine=d=1', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', '-metadata', 'comment=Made with test', f], 'test clip');
+    expect(readFileSync(f).toString('latin1')).toMatch(/x264 - core|Lavf/);
+    stripEncoderStrings(f);
+    const raw = readFileSync(f).toString('latin1');
+    expect(raw).not.toMatch(/x264 - core|Lavf\d|Made with/);
+    const p = probe(f);
+    expect(p.streams.some((s) => s.type === 'video')).toBe(true);
+    expect(p.streams.some((s) => s.type === 'audio')).toBe(true);
+    expect(p.duration).toBeGreaterThan(0.9);
+  });
+});
+
 function readdir(id: string): string {
   // first woff2 of the family that covers the relevant script
   const files = readdirSync(join(__dirname, '../../public/fonts', id)).filter((f: string) => f.endsWith('.woff2'));

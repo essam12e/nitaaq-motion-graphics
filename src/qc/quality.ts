@@ -8,7 +8,7 @@
  */
 import { openBrowser, renderStill, selectComposition } from '@remotion/renderer';
 import sharp from 'sharp';
-import { mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, rmSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { VideoSpec } from '../schema/video';
 import { buildTimeline, holdWindow } from '../core/timeline';
@@ -322,6 +322,11 @@ export async function runQuality(opts: { spec: VideoSpec; projectDir: string; vi
     if (mbps > 30) add({ severity: 'warning', code: 'MP4_BITRATE_HIGH', message: `${mbps.toFixed(0)} Mbit/s — heavy for social upload (usually per-frame noise or texture)` });
     for (const [k, val] of Object.entries(pr.tags)) {
       if (/made with|remotion|nitaaq|claude/i.test(val) && !/^(handler_name|vendor_id|major_brand|compatible_brands|minor_version|language)$/i.test(k)) add({ severity: 'critical', code: 'MP4_SIGNATURE', message: `tool signature in MP4 metadata (${k}=${val.slice(0, 40)})` });
+    }
+    {
+      const head = readFileSync(opts.video).subarray(0, 4 << 20).toString('latin1');
+      const found = /x264 - core|Lavf\d|Lavc\d|remotion/i.exec(head);
+      if (found) add({ severity: 'warning', code: 'ENCODER_STRING', message: `encoder string "${found[0]}" left in the file` });
     }
     if (issues.some((i) => i.code.startsWith('MP4_'))) checks.container = 'fail';
     const sfxPlanned = planSfx(spec, tl, (sc) => SceneRegistry.get(sc.type)?.manifest.sfx ?? []).length > 0;

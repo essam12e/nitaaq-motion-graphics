@@ -7,14 +7,14 @@ Last full run: 2026-09-30, Linux container (4 cores, Node 22.22, system ffmpeg, 
 | Suite | Command | Result |
 |---|---|---|
 | Typecheck | `npm run typecheck` | pass (0 errors) |
-| Unit tests | `npm test` | **130 / 130 passed** (schemas, registry, Arabic shaping/bidi/numerals, text fitting, director, voice sync, audio planning, brand, validation + repair, security/secret scrubbing, workspace I/O) |
+| Unit tests | `npm test` | **131 / 131 passed** (schemas, registry, Arabic shaping/bidi/numerals, text fitting, director, voice sync, audio planning, brand, validation + repair, security/secret scrubbing, workspace I/O, MP4 encoder-string removal) |
 | Visual regression | `npm run test:visual` | **126 / 126 passed** — every scene family rendered at 9:16 and 16:9 and compared with `test/visual/baseline` (≤ 1 % differing pixels); run three times, including after the last engine changes |
 | Studio end-to-end | `node test/e2e/studio.e2e.mjs` (Playwright + Chromium) | pass — scene clips mount, edit, undo/redo, validate, save, API-key scrubbing on save |
 | Preflight | `npm run preflight` | `ready` (TTS reported as optional/not configured) |
 
 ## Acceptance videos (production profile: full resolution, CRF 18, x264 medium)
 
-Each video ran the whole pipeline: brief → intake → brand → plan → storyboard → video.json → validation → render → QC → auto-repair (≤ 3 passes) → re-render → final QC.
+All six videos come from one final run (`npx tsx cli/test-videos.ts --profile production`) on the committed code. Each ran the whole pipeline: brief → intake → brand → plan → storyboard → video.json → validation → render → QC → auto-repair (≤ 3 passes) → re-render → final QC.
 
 | Test | What | Output | Scenes chosen by the Director | Auto-repairs | Final QC |
 |---|---|---|---|---|---|
@@ -27,7 +27,9 @@ Each video ran the whole pipeline: brief → intake → brand → plan → story
 
 Audio loudness measured on the final MP4s (ffmpeg ebur128): A −23.5 LUFS (SFX only), B −21.3, C −22.2, D −17.9 (voice-led, music ducked under the voice). No clipping (true peak ≤ −9 dBTP).
 
-MP4s, QC reports and contact sheets are in `renders/` next to this repository (not committed to git).
+Every MP4 was checked for leftover encoder strings (`x264 - core`, `Lavf`): none found.
+
+MP4s, QC reports and contact sheets are in `renders/` (not committed to git).
 
 ### Problems the runs found, and what was changed
 
@@ -35,6 +37,7 @@ MP4s, QC reports and contact sheets are in `renders/` next to this repository (n
 - **A was 195 MB for 19 s** — the film-grain layer moved every frame, which H.264 cannot compress. Grain is now static (A: 15 MB), and QC warns (`MP4_BITRATE_HIGH`) above 30 Mbit/s.
 - **D reported VOICE_DRIFT of up to 4.4 s although scenes were in sync** — QC compared the scene with the wrong phrase (group index used as phrase index). It now uses the phrase's absolute time and accepts a phrase that starts while its scene is entering.
 - **E had a 24-word paragraph squeezed into a list heading** (TEXT_FIT_FAIL that shrinking could not fix). A list heading now only takes a short line; a long problem paragraph is carried by its points. Regression test added.
+- **x264/Lavf strings inside the MP4** — the files carried the encoder's name and settings. A lossless remux after every render now removes all tags and the x264 SEI; QC warns (`ENCODER_STRING`) if any survive.
 - **B's "عرض خاص" badge measured 3.4:1 contrast** — a mid-tone accent passes 4.5:1 with neither white nor black text; the badge background is now shifted just enough in lightness.
 
 ## Limitations
@@ -45,4 +48,5 @@ MP4s, QC reports and contact sheets are in `renders/` next to this repository (n
 - **Browsers:** rendering and the Studio were tested only in Chromium (headless shell 1194 and Chromium via Playwright). Other browsers are not claimed.
 - **Music:** only the synthesized CC0 test bed ships; no licensed library is bundled or downloaded. Use your own track or configure a licensed library folder.
 - **Video clips as assets** are accepted by the schema/asset manager but were not part of the acceptance videos.
+- **Files copied into a shared storage that adds provenance data:** in this project's shared folder the storage layer itself embeds a C2PA "content credentials" manifest into media files it stores (the PNG/MP4/MP3 copies there are a few KB larger than the originals). That is added by the platform, not by the skill; files rendered locally by the skill contain no such data.
 - Visual regression covers 9:16 and 16:9; 1:1 and 4:5 are covered by acceptance videos F and E.
