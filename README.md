@@ -31,6 +31,14 @@ curl -fsSL https://raw.githubusercontent.com/essam12e/nitaaq-motion-graphics/mai
 
 وإذا تحب، تقدر ببساطة تعطي Claude Code أو Codex رابط المستودع وتقول له: «ثبّت هذا السكيل».
 
+## التثبيت في claude.ai (رفع ملف)
+
+1. نزّل الملف من هذا الرابط: [nitaaq-motion-graphics-claude-ai.zip](https://github.com/essam12e/nitaaq-motion-graphics/raw/main/dist/nitaaq-motion-graphics-claude-ai.zip)
+2. افتح claude.ai، وروح **Settings ← Capabilities ← Skills**، واضغط **Upload skill**، وارفع الملف.
+3. فعّل **تنفيذ الأكواد** وخلّه يوصل للإنترنت، لأنه يحتاج يثبّت الحزم أول مرة.
+
+هذي نسخة مخففة فيها أقل من ٢٠٠ ملف، وهو الحد اللي يقبله claude.ai. الخطوط تنزل تلقائياً وقت التجهيز. وإذا عدّلت على الكود، تقدر تعيد بناء الملف بالأمر `./cli/pack-claude-ai.sh`.
+
 ## المميزات
 
 - **٦٣ عائلة مشاهد فيها ١٨٥ تنويعة.** تغطي الطباعة الحركية والهوية والواجهات والجوال والمتاجر والبيانات والصور والإنفوجرافيك والمشاهد السينمائية والسوشال والدعوة للإجراء. كل عائلة إضافة مستقلة في سجل المشاهد (`SceneRegistry`)، وتفاصيلها في [docs/SCENE_LIBRARY.md](docs/SCENE_LIBRARY.md).
