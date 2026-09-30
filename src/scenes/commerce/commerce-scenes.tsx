@@ -11,7 +11,7 @@ import { Surface } from '../../components/Surface';
 import { Icon } from '../../components/Icon';
 import { Cursor } from '../../components/Cursor';
 import { clamp, progress, EASE, float, overshoot } from '../../motion/primitives';
-import { alpha } from '../../brand/color';
+import { alpha, bestTextOn, contrastRatio, ensureContrast } from '../../brand/color';
 import { useLabel } from '../i18n';
 
 const Heading = z.object({ eyebrow: HeadingFields.eyebrow, title: z.string().max(160).optional(), highlight: HeadingFields.highlight, subtitle: HeadingFields.subtitle });
@@ -278,8 +278,8 @@ export const priceOffer = defineScene<OC>(
         <Stage gap={u * 3}>
           {c.badge ? (
             <Reveal family="pop" delay={0.05}>
-              <div style={{ padding: `${u * 1}px ${u * 3}px`, borderRadius: 999, background: t.palette.accent, transform: variant === 'badge' ? 'rotate(-4deg)' : undefined }}>
-                <Text text={c.badge} role="label" size={3.6} color={bestOn(t.palette.accent)} animate="none" maxLines={1} />
+              <div style={{ padding: `${u * 1}px ${u * 3}px`, borderRadius: 999, background: badgeBg(t.palette.accent), transform: variant === 'badge' ? 'rotate(-4deg)' : undefined }}>
+                <Text text={c.badge} role="label" size={3.6} color={bestOn(badgeBg(t.palette.accent))} animate="none" maxLines={1} />
               </div>
             </Reveal>
           ) : null}
@@ -318,11 +318,13 @@ export const priceOffer = defineScene<OC>(
 );
 
 function bestOn(bg: string) {
-  const hex = bg.replace('#', '');
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  return r * 0.299 + g * 0.587 + b * 0.114 > 150 ? '#111111' : '#FFFFFF';
+  return bestTextOn(bg);
+}
+
+/** A mid-tone accent passes 4.5:1 with neither white nor black text: shift its lightness just enough. */
+function badgeBg(accent: string) {
+  const fg = bestTextOn(accent);
+  return contrastRatio(fg, accent) >= 4.5 ? accent : ensureContrast(accent, fg, 4.6);
 }
 
 // ───────────────────────── shopping-cart

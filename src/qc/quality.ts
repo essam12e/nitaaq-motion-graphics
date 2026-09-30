@@ -290,12 +290,15 @@ export async function runQuality(opts: { spec: VideoSpec; projectDir: string; vi
     const need = words ? 0.5 + words / 4.5 : 0;
     const have = (e.durationInFrames - (e.transitionIn + e.transitionOut) / 2) / fps;
     if (need > have + 0.2) add({ severity: 'warning', code: 'HOLD_TOO_SHORT', scene: s.id, sceneIndex: i, message: `on screen ${have.toFixed(1)}s but its text needs ≈${need.toFixed(1)}s to read`, repair: { action: 'extend', value: Math.round((need - have + 0.3) * 10) / 10 } });
-    if (s.voice?.segment !== undefined && spec.audio.voice) {
-      const seg = spec.audio.voice.segments[s.voice.segment];
-      if (seg) {
-        const drift = e.startSec + e.transitionIn / fps - (spec.audio.voice.offset + seg.start);
-        if (Math.abs(drift) > 0.25) add({ severity: 'warning', code: 'VOICE_DRIFT', scene: s.id, sceneIndex: i, message: `scene starts ${drift.toFixed(2)}s away from its voice phrase` });
-      }
+    if (s.voice && spec.audio.voice) {
+      // s.voice.start is the phrase's absolute time in the video. The phrase should begin while the
+      // scene is arriving: between its first frame and the end of its entrance transition.
+      const from = e.startSec;
+      const to = e.startSec + e.transitionIn / fps;
+      const seg = s.voice.segment !== undefined ? spec.audio.voice.segments[s.voice.segment] : undefined;
+      const at = s.voice.start ?? (seg ? spec.audio.voice.offset + seg.start : undefined);
+      const drift = at === undefined ? 0 : at < from ? at - from : at > to ? at - to : 0;
+      if (i > 0 && Math.abs(drift) > 0.25) add({ severity: 'warning', code: 'VOICE_DRIFT', scene: s.id, sceneIndex: i, message: `its voice phrase starts ${Math.abs(drift).toFixed(2)}s ${drift < 0 ? 'before the scene appears' : 'after the scene has fully arrived'}` });
     }
   });
   checks.timing = issues.some((i) => i.code === 'HOLD_TOO_SHORT' || i.code === 'VOICE_DRIFT') ? 'fail' : 'pass';
@@ -315,6 +318,8 @@ export async function runQuality(opts: { spec: VideoSpec; projectDir: string; vi
     if (v?.width && v.height && Math.abs(v.width / v.height - spec.canvas.width / spec.canvas.height) > 0.01) add({ severity: 'critical', code: 'MP4_ASPECT', message: `output ${v.width}×${v.height} does not match ${spec.canvas.aspect}` });
     if (Math.abs(pr.duration - tl.totalSec) > 0.15) add({ severity: 'error', code: 'MP4_DURATION', message: `duration ${pr.duration.toFixed(2)}s, expected ${tl.totalSec.toFixed(2)}s` });
     if (v?.fps && Math.abs(v.fps - fps) > 0.5) add({ severity: 'error', code: 'MP4_FPS', message: `fps ${v.fps}, expected ${fps}` });
+    const mbps = pr.duration > 0 && pr.size ? (pr.size * 8) / pr.duration / 1e6 : 0;
+    if (mbps > 30) add({ severity: 'warning', code: 'MP4_BITRATE_HIGH', message: `${mbps.toFixed(0)} Mbit/s — heavy for social upload (usually per-frame noise or texture)` });
     for (const [k, val] of Object.entries(pr.tags)) {
       if (/made with|remotion|nitaaq|claude/i.test(val) && !/^(handler_name|vendor_id|major_brand|compatible_brands|minor_version|language)$/i.test(k)) add({ severity: 'critical', code: 'MP4_SIGNATURE', message: `tool signature in MP4 metadata (${k}=${val.slice(0, 40)})` });
     }

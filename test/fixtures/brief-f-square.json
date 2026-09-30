@@ -1,0 +1,61 @@
+{
+  "request": "سوي لي فيديو موشن إعلاني لتطبيق تقني سعودي لإدارة المواعيد",
+  "title": "test-f-square",
+  "language": "ar",
+  "dialect": "saudi",
+  "objective": "promote",
+  "industry": "tech app",
+  "platform": "instagram-feed",
+  "aspect": "1:1",
+  "duration": 18,
+  "tone": [
+    "حديث",
+    "واثق"
+  ],
+  "brand": {
+    "name": "موعد",
+    "logo": "test-logo.png"
+  },
+  "audio": {
+    "mode": "none",
+    "sfx": true
+  },
+  "content": {
+    "hook": "مواعيدك صارت فوضى؟",
+    "emphasis": [
+      "فوضى",
+      "دقيقة",
+      "اليوم"
+    ],
+    "bridge": "الحل؟",
+    "problem": "اتصالات ورسائل ومواعيد تضيع بين الجداول",
+    "solution": "موعد ينظّم حجوزاتك في مكان واحد",
+    "features": [
+      {
+        "title": "حجز خلال دقيقة",
+        "description": "رابط حجز جاهز لعملائك"
+      },
+      {
+        "title": "تذكير تلقائي",
+        "description": "رسائل تذكير قبل الموعد"
+      },
+      {
+        "title": "تقارير واضحة",
+        "description": "تعرف أوقات الذروة"
+      }
+    ],
+    "ui": {
+      "appName": "موعد",
+      "headline": "مواعيد اليوم",
+      "items": [
+        "10:00 سارة",
+        "11:30 فهد",
+        "1:00 نورة"
+      ]
+    },
+    "cta": {
+      "text": "حمّل موعد وابدأ اليوم",
+      "button": "حمّل التطبيق"
+    }
+  }
+}

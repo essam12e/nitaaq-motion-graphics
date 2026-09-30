@@ -241,7 +241,7 @@ export function Background({ frame, kind: kindOverride, color, accent }: { frame
   );
 }
 
-export function TextureOverlay({ frame }: { frame: number }) {
+export function TextureOverlay() {
   const { tokens: t } = useVideo();
   return (
     <>
@@ -253,7 +253,7 @@ export function TextureOverlay({ frame }: { frame: number }) {
           style={{
             backgroundImage: `url(${staticFile('tex/grain.png')})`,
             backgroundSize: '400px 400px',
-            backgroundPosition: `${(frame * 37) % 400}px ${(frame * 53) % 400}px`,
+            // Static grain: a per-frame shifting noise layer multiplies the H.264 bitrate ~40× for no readable gain.
             opacity: t.texture.grain,
             mixBlendMode: t.mode === 'dark' ? 'screen' : 'multiply',
             pointerEvents: 'none',

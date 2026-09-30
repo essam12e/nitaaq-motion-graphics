@@ -80,6 +80,14 @@ describe('director', () => {
     expect(brand.logo).toBeUndefined();
     expect(generatedBrand({ ...b, brand: null }, 'minimal')).toBeNull();
   });
+  it('never puts a long paragraph in a list heading', () => {
+    for (let seed = 1; seed <= 12; seed++) {
+      for (const s of direct(fx('brief-e-long-arabic.json'), seed).sb.scenes) {
+        const title = (s.content as { title?: string }).title;
+        if (s.family === 'icon-list' && title) expect(title.split(/\s+/).length).toBeLessThanOrEqual(12);
+      }
+    }
+  });
 });
 
 describe('voice sync', () => {

@@ -67,6 +67,9 @@ const splitClauses = (t: string): string[] => {
   return [t];
 };
 
+/** A list's heading must stay a heading: a long problem paragraph is left to its points (which restate it). */
+const listHeading = (t?: string) => (t && t.trim().split(/\s+/).length <= 12 ? t : undefined);
+
 export const RECIPES: Recipe[] = [
   // ───────── hook
   { family: 'kinetic-title', beats: ['hook', 'solution'], weight: 1.2, visual: 'kinetic headline', when: () => true, message: (c) => c.brief.content.hook, build: (c) => ({ title: c.brief.content.hook, highlight: emph(c, c.brief.content.hook), subtitle: c.brief.content.subhook }), variants: (c) => (c.orientation === 'landscape' ? ['side', 'stack', 'impact'] : ['stack', 'impact', 'slam']) },
@@ -80,7 +83,7 @@ export const RECIPES: Recipe[] = [
   // ───────── problem
   { family: 'problem-solution', beats: ['problem'], weight: 1.3, visual: 'problem crossed out, solution rises', when: (c) => Boolean(c.brief.content.problem && c.brief.content.solution), message: (c) => `${c.brief.content.problem} → ${c.brief.content.solution}`, build: (c) => ({ problem: c.brief.content.problem, solution: c.brief.content.solution, highlight: emph(c, c.brief.content.solution) }) },
   { family: 'line-reveal', beats: ['problem'], weight: 1, visual: 'pain points as lines', when: (c) => Boolean(c.brief.content.problem), message: (c) => c.brief.content.problem!, build: (c) => ({ lines: splitClauses(c.brief.content.problem!), highlight: emph(c, c.brief.content.problem) }) },
-  { family: 'icon-list', beats: ['problem'], weight: 1.1, visual: 'list of pain points', when: (c) => (c.brief.content.problemPoints?.length ?? 0) >= 2, message: (c) => c.brief.content.problem ?? c.brief.content.problemPoints!.join('، '), build: (c) => ({ title: c.brief.content.problem, items: clip(c.brief.content.problemPoints, 5).map((t) => ({ text: t, icon: 'X' })) }), variants: () => ['bullets', 'checklist'] },
+  { family: 'icon-list', beats: ['problem'], weight: 1.1, visual: 'list of pain points', when: (c) => (c.brief.content.problemPoints?.length ?? 0) >= 2, message: (c) => [listHeading(c.brief.content.problem), ...c.brief.content.problemPoints!].filter(Boolean).join('، '), build: (c) => ({ title: listHeading(c.brief.content.problem), items: clip(c.brief.content.problemPoints, 5).map((t) => ({ text: t, icon: 'X' })) }), variants: () => ['bullets', 'checklist'] },
   { family: 'chat-message', beats: ['problem', 'demo', 'social'], weight: 1.2, visual: 'messaging conversation', when: (c) => (c.brief.content.messages?.length ?? 0) >= 2, message: (c) => c.brief.content.messages!.join(' / '), build: (c) => ({ title: c.brief.content.problem, messages: clip(c.brief.content.messages, 6).map((t, i) => ({ from: i % 2 === 0 ? 'me' : 'them', text: t })), contact: c.brandName }) },
 
   // ───────── bridge

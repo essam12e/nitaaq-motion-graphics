@@ -149,7 +149,7 @@ function GlobalLayer({ children }: { children: React.ReactNode }) {
     <>
       <Background frame={frame} />
       {children}
-      <TextureOverlay frame={frame} />
+      <TextureOverlay />
     </>
   );
 }
