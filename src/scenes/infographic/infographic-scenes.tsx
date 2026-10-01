@@ -24,7 +24,9 @@ function FeatureCard({ f, w, h, delay, compact, active = 1, horizontal, tone = '
   const t = v.tokens;
   const u = v.canvas.u;
   const p = progress(m, delay, 0.7);
-  const iconSize = compact ? u * 3.6 : u * 4.4;
+  // tall rows (few features on a portrait canvas) carry bigger type instead of empty card space
+  const big = !compact && (h ?? 0) >= u * (horizontal ? 18 : 26);
+  const iconSize = compact ? u * 3.6 : big ? u * 5.6 : u * 4.4;
   const fg = tone === 'primary' ? t.palette.textOnPrimary : t.palette.textOnSurface;
   const pad = compact ? u * 1.8 : u * 2.4;
   const textW = horizontal ? w - pad * 2 - iconSize * 1.9 - u * 2 : w - pad * 2;
@@ -33,8 +35,8 @@ function FeatureCard({ f, w, h, delay, compact, active = 1, horizontal, tone = '
       <Surface tone={tone} style={{ width: w, height: h, padding: pad, display: 'flex', flexDirection: horizontal ? 'row' : 'column', alignItems: horizontal ? 'center' : 'flex-start', gap: u * (horizontal ? 2 : 1.4), justifyContent: horizontal ? 'flex-start' : 'center' }}>
         <Icon name={f.icon} size={iconSize} color={tone === 'primary' ? t.palette.textOnPrimary : undefined} />
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: u * 0.6, minWidth: 0 }}>
-          <Text text={f.title} role="label" size={compact ? 3.8 : 4.4} minSize={2.6} weight={700} animate="none" align="start" maxLines={2} maxWidth={textW} color={fg} />
-          {f.text && !compact ? <Text text={f.text} role="body" size={3} minSize={2.4} animate="none" align="start" maxLines={3} maxWidth={textW} color={tone === 'primary' ? t.palette.textOnPrimary : t.palette.textSecondary} /> : null}
+          <Text text={f.title} role="label" size={compact ? 3.8 : big ? 5.6 : 4.4} minSize={2.6} weight={700} animate="none" align="start" maxLines={2} maxWidth={textW} color={fg} />
+          {f.text && !compact ? <Text text={f.text} role="body" size={big ? 3.8 : 3} minSize={2.4} animate="none" align="start" maxLines={3} maxWidth={textW} color={tone === 'primary' ? t.palette.textOnPrimary : t.palette.textSecondary} /> : null}
         </div>
       </Surface>
     </div>
@@ -100,7 +102,7 @@ export const featureSet = defineScene<FSC>(
           switch (variant) {
             case 'stack': {
               const gap = u * 1.6;
-              const rowH = Math.min(u * 15, (h - gap * (n - 1)) / n);
+              const rowH = Math.min(u * (v.canvas.orientation === 'portrait' && n <= 4 ? 21 : 15), (h - gap * (n - 1)) / n); // few rows on a tall canvas: fill it
               const W = Math.min(w, u * 100);
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap }}>

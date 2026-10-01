@@ -9,6 +9,14 @@
 
 CLI: `npx tsx cli/nitaaq.ts brand path/to/logo.png --name "اسم العلامة"` prints the profile.
 
+## brand.json (written for every project)
+
+`primary`, `secondary`, `accent`, `background`, `surface`, `textPrimary`, `textSecondary`, **`contrastSafeColors`** (for `onBackground`, `onSurface`, `onPrimary`: which brand colours pass WCAG for normal text ≥ 4.5:1 and for large text ≥ 3:1), `contrast` (the key pairs with their measured ratios), `logoAsset` (the untouched file or `null`), `fontPreferences` (Arabic, Latin, whether a user font is used), `visualPersonality`, `motionPersonality`, `style`, `mode`, `dominantColors`, `note`. QC's contrast fix points at `contrastSafeColors`.
+
+## From a reference
+
+With no logo and no colours, a supplied reference provides the colour family (see REFERENCE_SYSTEM.md). A logo or user colours always win over a reference.
+
 ## Without a logo
 
 The Director never creates a fake logo. It:

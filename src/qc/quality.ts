@@ -170,6 +170,7 @@ function acceptanceOf(issues: QcIssue[], stage: 'structure' | 'final', checks: Q
     { rule: 'no dot / particle / grid background', ok: none((i) => PATTERN_CODES.has(i.code) && i.severity !== 'info') },
     { rule: 'no watermark or developer signature', ok: none((i) => i.code === 'DEVELOPER_SIGNATURE' || i.code === 'MP4_SIGNATURE') },
     { rule: 'no clipped or off-canvas text', ok: none((i) => (i.code === 'TEXT_FIT_FAIL' || i.code === 'TEXT_OFF_CANVAS' || i.code === 'TEXT_OVERFLOW') && severityRank(i.severity) >= 2) },
+    { rule: 'text readable (no contrast / phone-size errors)', ok: none((i) => ['TEXT_CONTRAST_LOW', 'PHONE_UNREADABLE'].includes(i.code) && severityRank(i.severity) >= 2) },
     { rule: 'all fonts loaded', ok: checks.fonts !== 'fail' },
     { rule: 'user media intact (no distortion / broken assets)', ok: none((i) => i.code === 'MEDIA_DISTORTED' || i.code === 'MEDIA_BROKEN') },
     { rule: 'CTA readable when the film ends on one', ok: checks.cta !== 'fail' },
@@ -494,7 +495,8 @@ export async function finalQc(opts: { spec: VideoSpec; projectDir: string; video
   }
   {
     const head = readFileSync(video).subarray(0, 4 << 20).toString('latin1');
-    const found = /x264 - core|Lavf\d|Lavc\d|remotion/i.exec(head);
+    // exact, case-sensitive encoder banners (random bytes in compressed data can spell "lavc4")
+    const found = /x264 - core \d+|Lavf\d+\.\d+\.\d+|Lavc\d+\.\d+\.\d+|[Mm]ade with Remotion|Remotion \d/.exec(head);
     if (found) add({ severity: 'warning', code: 'ENCODER_STRING', message: `encoder string "${found[0]}" left in the file` });
   }
   checks.container = issues.some((i) => i.code.startsWith('MP4_') && i.pass === 'technical' && severityRank(i.severity) >= 2) ? 'fail' : 'pass';

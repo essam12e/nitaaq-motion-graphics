@@ -53,7 +53,7 @@
     "nitaaq": "./bin/nitaaq.mjs"
   },
   "scripts": {
-    "setup": "npm install && npm run fonts:sync && npm run preflight",
+    "setup": "(test -d node_modules && test node_modules/.package-lock.json -nt package-lock.json || npm ci --no-audit --no-fund) && npm run fonts:sync && npm run preflight",
     "fonts:sync": "tsx cli/sync-fonts.ts",
     "preflight": "tsx cli/nitaaq.ts preflight",
     "create": "tsx cli/nitaaq.ts create",

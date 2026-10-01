@@ -8,21 +8,25 @@ Use this tool when the user asks for: «أنشئ فيديو موشن», «سوي
 
 ## Workflow
 
-1. `npm run setup` once (installs, syncs fonts, preflight). `npm run preflight` must say `ready`.
+1. `npm run setup` once (`npm ci` only when the lockfile changed, fonts, preflight). `npm run preflight` must say `ready` (cached; `--full` to force). Never `npm install` per video.
 2. Ask what is missing (objective, platform/aspect, copy, CTA, files). If the brand is unknown ask exactly once:
-   «هل لديك شعار أو هوية بصرية تريد استخدامها في الفيديو؟ إذا كان لديك شعار، ارفعه وسأستخرج منه ألوان الهوية تلقائياً. إذا لم يكن لديك شعار، سأصمم لك اتجاهاً بصرياً مناسباً بدون إضافة شعار وهمي.»
+   «هل عندك شعار أو هوية بصرية تبغى نعتمدها في الفيديو؟ إذا عندك أرسل الشعار، وإذا ما عندك أكمل لك بهوية بصرية مناسبة للمحتوى.»
 3. Write `brief.json` (schema `schemas/brief.schema.json`, examples in `examples/`). Copy in the user's language/dialect (default MSA). Only real numbers/quotes with a real `source`.
 4. `npm run create -- brief.json --out <folder> --name <file>`
    - exit 2 → print/ask the JSON `questions`, update the brief, rerun
-   - exit 0 → deliver `<folder>/<file>.mp4` + `<file>.quality-report.json`
+   - add `--animatic true` for a fast low-res timing check before the final render (automatic for ADVANCED/LONG_FORM briefs)
+   - exit 0 → deliver `<folder>/<file>.mp4` + `<file>.quality-report.json` (+ one MP4 per extra `formats` entry)
    - exit 1 → show the readable error; fix; never hide it
-5. Report honestly: QC summary, warnings, repairs applied.
+5. Report honestly: QC scores, warnings, repairs applied, time taken (`performance_report.json`).
+
+Optional brief fields: `reference` (style principles from an image/video/site, never copied), `formats` (recomposed, not cropped), `loop`, `motion` personality, `content.flow|form|table|integrations`, `capture` + `content.ui.url`, `chapters`. Per-project memory files (`project_brief.md`, `brand.json`, `motion_spec.json`, `shotlist.json`, `beats.json`, …) record every decision: read them before editing a video.
 
 ## Hard rules
 
 - No developer/tool identity, @handles, watermarks or "made with" text in any output.
 - Never invent a logo, statistics, testimonials, reviews or claims.
 - Never alter the user's logo, product photos or screenshots.
+- No dot/grid/particle/halftone backgrounds unless the user asks (`design/banned-patterns.json`, enforced in generation and QC).
 - No robotic TTS fallback; voice cloning is not enabled.
 - Never download copyrighted music.
 - API keys only from environment variables; never write them to files or logs; never commit `.env`.
@@ -36,7 +40,8 @@ npm run typecheck        # tsc
 npm test                 # vitest unit tests
 npm run test:visual      # visual regression (renders stills, compares to test/visual/baseline)
 npm run gallery -- --aspect 9:16 --style saudi-modern --variants all
-npx tsx cli/test-videos.ts --profile production   # acceptance videos A–E
+npx tsx cli/test-videos.ts --profile production   # the 8 acceptance videos (+ animatic, recompose)
+npx tsx cli/nitaaq.ts cache summary              # content-addressed cache in .cache/nitaaq-motion/
 npm run studio           # local editor on http://127.0.0.1:4455
 npx tsx cli/gen-docs.ts  # regenerate docs/SCENE_LIBRARY.md and STYLE_LIBRARY.md
 ```

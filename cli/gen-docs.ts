@@ -6,7 +6,7 @@
  */
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { SceneRegistry, type SceneCategory } from '../src/scenes/registry';
+import { SceneRegistry, costOf, motionOf, type SceneCategory } from '../src/scenes/registry';
 import '../src/scenes';
 import { STYLE_PRESETS } from '../src/styles/presets';
 import { TRANSITIONS } from '../src/transitions/presentations';
@@ -14,21 +14,22 @@ import { SFX, SFX_CATEGORIES } from '../src/audio/sfx-library';
 import { ROOT } from '../src/node/workspace';
 
 const docs = join(ROOT, 'docs');
+const fmtMotion = (m: unknown) => (m && typeof m === 'object' ? Object.entries(m as Record<string, unknown>).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join('/') : v}`).join('; ') : '—');
 mkdirSync(docs, { recursive: true });
 const mods = SceneRegistry.list();
 const cats = [...new Set(mods.map((m) => m.manifest.category))] as SceneCategory[];
 const variants = mods.reduce((s, m) => s + m.manifest.variants.length, 0);
 
-let md = `# Scene library\n\n_Generated from the SceneRegistry by \`npx tsx cli/gen-docs.ts\` — do not edit by hand._\n\n**${mods.length} families · ${variants} variants · ${cats.length} categories.** Every family works in 9:16, 16:9, 1:1 and 4:5 unless noted, validates its \`content\` with Zod, and ships an example used by the Studio and the visual-regression gallery.\n\n`;
+let md = `# Scene library\n\n_Generated from the SceneRegistry by \`npx tsx cli/gen-docs.ts\` — do not edit by hand._\n\n**${mods.length} families · ${variants} variants · ${cats.length} categories.** Every family works in 9:16, 16:9, 1:1 and 4:5 unless noted, validates its \`content\` with Zod, and ships an example used by the Studio and the visual-regression gallery. **Cost** is the render-cost class used by the effect budget (LOW/MEDIUM/HIGH, see PERFORMANCE.md); **Motion** is the recommended physics and camera use.\n\n`;
 md += `## Friendly aliases\n\n${SceneRegistry.aliasList().map(([a, id]) => `\`${a}\` → \`${id}\``).join(' · ')}\n\n`;
 for (const c of cats) {
   const list = mods.filter((m) => m.manifest.category === c);
-  md += `## ${c} (${list.length})\n\n| Family | Variants | Beats | Duration (s) | Content (required*) |\n|---|---|---|---|---|\n`;
+  md += `## ${c} (${list.length})\n\n| Family | Variants | Beats | Duration (s) | Cost | Motion | Content (required*) |\n|---|---|---|---|---|---|---|\n`;
   for (const m of list) {
     const x = m.manifest;
     const shape = (x.content as unknown as { shape?: Record<string, { isOptional?: () => boolean }> }).shape ?? (x.content as unknown as { _def?: { schema?: { shape?: Record<string, { isOptional?: () => boolean }> } } })._def?.schema?.shape;
     const fields = shape ? Object.entries(shape).map(([k, v]) => (v.isOptional?.() ? k : `${k}*`)).join(', ') : '—';
-    md += `| **${x.id}**<br>${x.description} | ${x.variants.map((v) => (v === x.defaultVariant ? `**${v}**` : v)).join(', ')} | ${x.beats.join(', ')} | ${x.minDuration}–${x.maxDuration} (default ${x.defaultDuration}) | ${fields} |\n`;
+    md += `| **${x.id}**<br>${x.description} | ${x.variants.map((v) => (v === x.defaultVariant ? `**${v}**` : v)).join(', ')} | ${x.beats.join(', ')} | ${x.minDuration}–${x.maxDuration} (default ${x.defaultDuration}) | ${costOf(x)} | ${fmtMotion(motionOf(x))} | ${fields} |\n`;
   }
   md += '\n';
 }

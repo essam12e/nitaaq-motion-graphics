@@ -21,7 +21,7 @@ import { Cursor } from '../../components/Cursor';
 import { Icon } from '../../components/Icon';
 import { Surface } from '../../components/Surface';
 import { clamp, lerp, motionFor, EASE } from '../../motion/primitives';
-import { alpha, mix } from '../../brand/color';
+import { alpha, bestTextOn, mix } from '../../brand/color';
 
 const Heading = z.object({ eyebrow: HeadingFields.eyebrow, title: z.string().max(160).optional(), highlight: HeadingFields.highlight, subtitle: HeadingFields.subtitle });
 const heading = (c: { eyebrow?: string; title?: string; highlight?: string[]; subtitle?: string }) => (c.title ? { eyebrow: c.eyebrow, title: c.title, highlight: c.highlight, subtitle: c.subtitle } : undefined);
@@ -530,7 +530,7 @@ export const orderSuccess = defineScene<OC>(
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: size * 4 }}>
         <div style={{ width: size * 30, height: size * 30, borderRadius: '50%', background: t.palette.positive ?? t.palette.primary, transform: `scale(${ring})`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 0 ${size * 3 * ring}px ${alpha(t.palette.positive ?? t.palette.primary, 0.18)}` }}>
           <svg width={size * 16} height={size * 16} viewBox="0 0 24 24">
-            <path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#fff" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={24} strokeDashoffset={24 * (1 - draw)} />
+            <path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke={bestTextOn(t.palette.positive ?? t.palette.primary)} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={24} strokeDashoffset={24 * (1 - draw)} />
           </svg>
         </div>
         <div style={{ opacity: text, transform: `translateY(${(1 - text) * u * 2}px)`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: size * 2 }}>
@@ -693,6 +693,8 @@ export const formFill = defineScene<FC>(
           const k = fw / 100;
           const card = motionFor(m, 'panel', 0.05, 0.6);
           const done = clamp((s - press - 0.35) / 0.4);
+          const btnBg = done > 0.5 ? t.palette.positive ?? ui.primary : ui.primary;
+          const btnFg = btnBg === ui.primary ? ui.onPrimary : bestTextOn(btnBg);
           return (
             <div style={{ position: 'relative' }}>
               <Surface qc="form" radius={3.5} style={{ width: fw, padding: k * 6, display: 'flex', flexDirection: 'column', gap: k * 4, opacity: card, transform: `translateY(${(1 - card) * k * 5}px)` }}>
@@ -709,9 +711,9 @@ export const formFill = defineScene<FC>(
                     </div>
                   );
                 })}
-                <div data-qc-cta="1" style={{ height: k * 12, borderRadius: k * 6, background: done > 0.5 ? t.palette.positive ?? ui.primary : ui.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: k * 2, transform: `scale(${1 - 0.05 * clamp(1 - Math.abs(s - press) / 0.15)})` }}>
-                  {done > 0.5 ? <Icon name="Check" size={k * 5} color={ui.onPrimary} treatment="plain" /> : null}
-                  <Text text={done > 0.5 && c.done ? c.done : c.button} role="cta" size={(k * 4.6) / canvas.u} maxWidth={fw * 0.7} maxLines={1} animate="none" color={ui.onPrimary} critical />
+                <div data-qc-cta="1" style={{ height: k * 12, borderRadius: k * 6, background: btnBg, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: k * 2, transform: `scale(${1 - 0.05 * clamp(1 - Math.abs(s - press) / 0.15)})` }}>
+                  {done > 0.5 ? <Icon name="Check" size={k * 5} color={btnFg} treatment="plain" /> : null}
+                  <Text text={done > 0.5 && c.done ? c.done : c.button} role="cta" size={(k * 4.6) / canvas.u} maxWidth={fw * 0.7} maxLines={1} animate="none" color={btnFg} critical />
                 </div>
               </Surface>
               <div style={{ position: 'absolute', inset: 0 }}>

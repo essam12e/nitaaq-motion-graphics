@@ -21,11 +21,28 @@ API keys are read from the environment only, never logged (logger redaction), ne
 - With a voice, music ducks smoothly under speech (default to 30 % of its volume).
 - `test/fixtures/music-bed.mp3` is an original synthesized bed made by `cli/make-test-audio.ts` (CC0).
 
+## Beat engine (`src/audio/beats.ts`, `beats.json`)
+
+Runs only when there is music (and `audio.beatSync` is not `false`). The track is decoded once to mono 22.05 kHz; then:
+
+- onset envelope: spectral flux (window 1024, hop 512), half-wave rectified, normalised;
+- tempo: autocorrelation of the envelope weighted by a log-normal prior around 120 BPM (range 60–200);
+- beats: dynamic-programming beat tracking (Ellis) on the envelope; downbeats: 4/4 phase with the most low-band energy;
+- onsets (peak picking), an RMS energy curve (0.25 s hop) and energy peaks.
+
+Measured on synthetic click tracks: 90 → 89.3, 120 → 119.5, 128 → 129, 150 → 151.5 BPM; `test/fixtures/music-bed.mp3` → 99.6 BPM in 477 ms (1 ms when cached by audio hash). CLI: `npx tsx cli/nitaaq.ts beats <audio>`.
+
+The Creative Director snaps cut points to beats/downbeats within ±0.18 s **only when there is no voice** (a voice-led film follows the voice).
+
+## Audio master timeline (`audio_cues.json`)
+
+Every project writes one file with the whole sound plan: settings (music/SFX volume and intensity), per-scene start/end, the voice phrases, the music envelope (fade in/out, ducking windows under speech with attack/release), every SFX cue with its category, and the beat grid. Ducking is smooth (attack/release ramps, never a hard cut) and defaults to 30 % of the music volume under speech.
+
 ## SFX
 
 26 CC0 sounds in `public/sfx` (credits in `public/sfx/CREDITS.md`), categories: whoosh, impact, click, pop, tick, success, notification, glitch, riser, sweep, shutter, transition, ui, typing, digital, cinematic.
 
-Scenes suggest cues (category, time, weight); the planner keeps cues by `sfx.intensity`, avoids pile-ups, and picks concrete sounds deterministically. Controls: `audio.sfx.enabled`, `audio.sfx.intensity` (0–1, how many cues), `audio.sfx.volume` (0–1), `audio.sfx.overrides` (map a sound id to a user file). Per scene: `"sfx": "auto" | "none" | [{ "sound", "at", "volume" }]`.
+Scenes suggest cues (category, time, weight); the planner keeps cues by `sfx.intensity`, avoids pile-ups, and picks concrete sounds deterministically. With a voice the intensity drops (0.35) so SFX never compete with speech. Brief controls: `audio.sfxIntensity`, `audio.sfxVolume`, `audio.musicVolume`, `audio.beatSync`. Controls: `audio.sfx.enabled`, `audio.sfx.intensity` (0–1, how many cues), `audio.sfx.volume` (0–1), `audio.sfx.overrides` (map a sound id to a user file). Per scene: `"sfx": "auto" | "none" | [{ "sound", "at", "volume" }]`.
 
 ## QC audio checks
 

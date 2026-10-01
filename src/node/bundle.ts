@@ -1,7 +1,7 @@
 /** Cached Remotion bundle + browser discovery (node only). */
 import { bundle } from '@remotion/bundler';
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync, statSync, mkdirSync, writeFileSync, cpSync, rmSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, mkdirSync, writeFileSync, cpSync, rmSync, renameSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { ROOT, workspace } from './workspace';
 import { log } from '../core/logger';
@@ -40,7 +40,7 @@ export function bundleKey(): string {
 /** Returns a serve directory for the composition. Rebuilds only when src/ or public/ changed. */
 export async function getBundle(opts: { force?: boolean } = {}): Promise<string> {
   const key = bundleKey();
-  if (!opts.force && memo?.key === key) return memo.url;
+  if (!opts.force && memo?.key === key && existsSync(join(memo.url, 'index.html'))) return memo.url;
   const cacheDir = join(workspace().cache, 'bundles');
   const target = join(cacheDir, key);
   if (!opts.force && existsSync(join(target, 'index.html'))) {
@@ -48,14 +48,37 @@ export async function getBundle(opts: { force?: boolean } = {}): Promise<string>
     return target;
   }
   mkdirSync(cacheDir, { recursive: true });
-  for (const old of readdirSync(cacheDir)) if (old !== key) rmSync(join(cacheDir, old), { recursive: true, force: true });
+  pruneBundles(cacheDir, key);
   const t = Date.now();
   log.info('RENDER', 'Building composition bundle (cached afterwards)…');
-  await bundle({ entryPoint: join(ROOT, 'src', 'remotion', 'index.ts'), publicDir: join(ROOT, 'public'), outDir: target, enableCaching: true });
-  writeFileSync(join(target, '.amd-bundle'), key);
+  // Build into a private folder and rename it into place: another process that is
+  // rendering from an existing bundle (or building the same one) is never disturbed.
+  const tmp = join(cacheDir, `.tmp-${key}-${process.pid}-${Date.now()}`);
+  await bundle({ entryPoint: join(ROOT, 'src', 'remotion', 'index.ts'), publicDir: join(ROOT, 'public'), outDir: tmp, enableCaching: true });
+  writeFileSync(join(tmp, '.amd-bundle'), key);
+  if (opts.force && existsSync(target)) rmSync(target, { recursive: true, force: true });
+  try {
+    renameSync(tmp, target);
+  } catch {
+    // another process finished the same bundle first: use theirs
+    rmSync(tmp, { recursive: true, force: true });
+  }
   log.info('RENDER', `Bundle ready in ${((Date.now() - t) / 1000).toFixed(1)}s`);
   memo = { key, url: target };
   return target;
+}
+
+/** Keeps the newest few bundles; an older one may still be served by a running process. */
+function pruneBundles(cacheDir: string, keep: string) {
+  const now = Date.now();
+  const dirs = readdirSync(cacheDir)
+    .filter((n) => n !== keep)
+    .map((n) => ({ n, t: statSync(join(cacheDir, n)).mtimeMs }))
+    .sort((a, b) => b.t - a.t);
+  dirs.forEach((d, i) => {
+    const stale = now - d.t > (d.n.startsWith('.tmp-') ? 6 : 2) * 3600_000;
+    if (i >= 3 || stale) rmSync(join(cacheDir, d.n), { recursive: true, force: true });
+  });
 }
 
 /**
