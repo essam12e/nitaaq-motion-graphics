@@ -79,8 +79,17 @@ export function detectPatterns(grey: Uint8Array | Uint8ClampedArray, w: number, 
   // Bright marks on dark and dark marks on light are scanned separately: with
   // high-contrast dots the halo around each dot also differs from the local mean,
   // and an unsigned test would merge dot + halo into one large blob.
-  const pos = scanSign(L, blur, masked, w, h, T, 1);
-  const neg = scanSign(L, blur, masked, w, h, T, -1);
+  // Film grain (allowed up to 0.15) and codec noise raise the residual everywhere; a designed
+  // dot/particle pattern stands well above that floor. Threshold = max(T, 4.5 σ) with σ from the
+  // median absolute residual (robust: text edges and patterns are a small minority of pixels).
+  const res: number[] = [];
+  const step = Math.max(1, Math.floor((w * h) / 60000));
+  for (let i = 0; i < w * h; i += step) if (!masked[i]) res.push(Math.abs(L[i] - blur[i]));
+  res.sort((a, b) => a - b);
+  const sigma = res.length ? res[Math.floor(res.length / 2)] * 1.4826 : 0;
+  const thr = Math.max(T, 4.5 * sigma);
+  const pos = scanSign(L, blur, masked, w, h, thr, 1);
+  const neg = scanSign(L, blur, masked, w, h, thr, -1);
   const score = (r: SignScan) => r.findings.length * 1000 + r.centroids;
   const best = score(neg) > score(pos) ? neg : pos;
   return { findings: best.findings, blobs: best.centroids, lattice: best.lattice, gridLines: best.gridLines };

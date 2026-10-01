@@ -254,8 +254,8 @@ export const featureSet = defineScene<FSC>(
             }
             case 'staggered': {
               const gap = u * 1.8;
-              const W = Math.min(w * 0.78, u * 80);
-              const rowH = Math.min(u * 15, (h - gap * (n - 1)) / n);
+              const W = Math.min(w * 0.84, u * 86);
+              const rowH = Math.min(u * (v.canvas.orientation === 'portrait' && n <= 4 ? 19 : 15), (h - gap * (n - 1)) / n);
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap, width: w }}>
                   {c.features.map((f, i) => (
@@ -350,7 +350,8 @@ export const processSteps = defineScene<StC>(
           if (variant === 'cards' || (variant === 'path' && horizontal)) {
             const gap = u * (variant === 'path' ? 5 : 2.4);
             const cw = horizontal ? (w - gap * (n - 1)) / n : Math.min(w, u * 90);
-            const ch = horizontal ? Math.min(h * 0.8, cw * 1.25) : Math.min(u * 16, (h - gap * (n - 1)) / n);
+            const tall = !horizontal && v.canvas.orientation === 'portrait' && n <= 4; // few steps on a tall canvas: bigger cards and type
+            const ch = horizontal ? Math.min(h * 0.8, cw * 1.25) : Math.min(u * (tall ? 21 : 16), (h - gap * (n - 1)) / n);
             return (
               <div style={{ position: 'relative', display: 'flex', flexDirection: horizontal ? 'row' : 'column', gap, direction: v.dir }}>
                 {c.steps.map((st, i) => {
@@ -360,7 +361,7 @@ export const processSteps = defineScene<StC>(
                       <Surface style={{ width: cw, height: ch, padding: u * 2.4, display: 'flex', flexDirection: horizontal ? 'column' : 'row', alignItems: 'center', justifyContent: 'center', gap: u * 2 }}>
                         <div style={{ width: u * 8, height: u * 8, borderRadius: 99, background: t.palette.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: v.fonts.latin, fontWeight: 800, fontSize: u * 3.8, color: t.palette.textOnPrimary }}>{i + 1}</div>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: horizontal ? 'center' : 'flex-start', gap: u * 0.6 }}>
-                          <Text text={st.title} role="label" size={4.4} minSize={2.6} weight={700} animate="none" align={horizontal ? 'center' : 'start'} maxLines={2} maxWidth={horizontal ? cw - u * 4.8 : cw - u * 15} color={t.palette.textOnSurface} />
+                          <Text text={st.title} role="label" size={tall ? 5.6 : 4.4} minSize={2.6} weight={700} animate="none" align={horizontal ? 'center' : 'start'} maxLines={2} maxWidth={horizontal ? cw - u * 4.8 : cw - u * 15} color={t.palette.textOnSurface} />
                           {st.text ? <Text text={st.text} role="body" size={3} animate="none" align={horizontal ? 'center' : 'start'} maxLines={3} maxWidth={horizontal ? cw - u * 4.8 : cw - u * 15} color={t.palette.textSecondary} /> : null}
                         </div>
                       </Surface>

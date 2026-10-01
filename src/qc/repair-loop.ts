@@ -51,7 +51,7 @@ export function applyQcRepairs(input: VideoSpec, report: QualityReport, pass: nu
     }
     if (actions.has('grow-layout') && !actions.has('shrink-layout') && !actions.has('shrink-text')) {
       const k = Math.max(...list.filter((i) => i.repair!.action === 'grow-layout').map((i) => i.repair!.value ?? 1.1));
-      const next = Math.min(1.45, Math.round(s.layout.scale * k * 100) / 100);
+      const next = Math.min(1.3, Math.round(s.layout.scale * k * 100) / 100); // one measured step; never compound past the measured limit
       if (next > s.layout.scale) {
         log(`${p}.layout.scale`, reason, `${s.layout.scale} → ${next}`);
         s.layout.scale = next;

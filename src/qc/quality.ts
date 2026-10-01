@@ -138,10 +138,16 @@ function patternMasks(p: DomProbe | undefined, scale: number): Rect[] {
 
 /** Pixel pattern scan of one PNG, cached by image bytes + masks. */
 async function scanPatterns(png: string, masks: Rect[]) {
-  return cached('patterns', hashOf('pat-v1', fileHash(png), masks), async () => {
+  return cached('patterns', hashOf('pat-v2', fileHash(png), masks), async () => {
     const { data, info } = await sharp(png).greyscale().raw().toBuffer({ resolveWithObject: true });
     return detectPatterns(data, info.width, info.height, masks);
   });
+}
+
+/** A detected pattern the user explicitly asked for (design.allowPatterns) is reported, not blocked. */
+const PATTERN_ALLOW: Record<string, string[]> = { 'dot-lattice': ['dots', 'halftone'], 'particle-field': ['particles', 'bokeh', 'dots'], 'line-grid': ['grid', 'lines'] };
+function patternAllowed(spec: VideoSpec, kind: string): boolean {
+  return (PATTERN_ALLOW[kind] ?? []).some((k) => (spec.design.allowPatterns as string[]).includes(k));
 }
 
 // ── phone readability ──────────────────────────────────────────────────────────
@@ -342,9 +348,15 @@ export async function structuralQc(opts: { spec: VideoSpec; projectDir: string; 
       const y0 = Math.min(...rects.map((r) => r.y));
       const x1 = Math.max(...rects.map((r) => r.x + r.width));
       const y1 = Math.max(...rects.map((r) => r.y + r.height));
-      const box = { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+      // union over every sampled hold frame: content that appears later in the scene (a solution
+      // card under a problem line) must fit too, so scaling is measured on the full extent
+      const prev = best as { cov: number; box: Rect; frame: number } | null;
+      const u0 = prev?.box;
+      const ux0 = Math.min(x0, u0?.x ?? x0), uy0 = Math.min(y0, u0?.y ?? y0);
+      const ux1 = Math.max(x1, u0 ? u0.x + u0.width : x1), uy1 = Math.max(y1, u0 ? u0.y + u0.height : y1);
+      const box = { x: ux0, y: uy0, width: ux1 - ux0, height: uy1 - uy0 };
       const cov = (box.width * box.height) / (canvas.safe.width * canvas.safe.height);
-      if (!best || cov > best.cov) best = { cov, box, frame: smp.frame };
+      best = { cov, box, frame: prev?.frame ?? smp.frame };
     }
     if (!best || best.cov >= 0.2) return;
     const s0 = canvas.safe;
@@ -369,7 +381,8 @@ export async function structuralQc(opts: { spec: VideoSpec; projectDir: string; 
         const scan = await scanPatterns(png, patternMasks(p, stillScale));
         for (const f of scan.findings) {
           patternHits++;
-          add('design', { severity: 'critical', code: 'PATTERN_IN_FRAME', frame: s.frame, time: s.time, scene: s.scene, sceneIndex: s.sceneIndex, element: f.kind, message: `banned ${f.kind} visible: ${f.message}`, repair: { action: 'clean-background' } });
+          const ok = patternAllowed(spec, f.kind);
+          add('design', { severity: ok ? 'info' : 'critical', code: 'PATTERN_IN_FRAME', frame: s.frame, time: s.time, scene: s.scene, sceneIndex: s.sceneIndex, element: f.kind, message: ok ? `${f.kind} visible (requested: design.allowPatterns): ${f.message}` : `banned ${f.kind} visible: ${f.message}`, repair: ok ? undefined : { action: 'clean-background' } });
         }
         if (!p) return;
         const meta = await sharp(png).metadata();
@@ -548,7 +561,8 @@ export async function finalQc(opts: { spec: VideoSpec; projectDir: string; video
       const scan = await scanPatterns(png, patternMasks(p, outScale));
       for (const f of scan.findings) {
         patternHits++;
-        add({ severity: 'critical', code: 'PATTERN_IN_FRAME', frame: s.frame, time: s.time, scene: s.scene, sceneIndex: s.sceneIndex, element: f.kind, message: `banned ${f.kind} in the rendered MP4: ${f.message}`, repair: { action: 'clean-background' } });
+        const ok = patternAllowed(spec, f.kind);
+        add({ severity: ok ? 'info' : 'critical', code: 'PATTERN_IN_FRAME', frame: s.frame, time: s.time, scene: s.scene, sceneIndex: s.sceneIndex, element: f.kind, message: ok ? `${f.kind} in the MP4 (requested: design.allowPatterns): ${f.message}` : `banned ${f.kind} in the rendered MP4: ${f.message}`, repair: ok ? undefined : { action: 'clean-background' } });
       }
       if (!p) return;
       const meta = await sharp(png).metadata();

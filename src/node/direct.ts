@@ -28,6 +28,7 @@ import type { CreativePlan } from '../schema/plan';
 import { classifyBrief, type Classification } from '../director/classify';
 import { directFilm, type MotionSpec } from '../director/creative';
 import { requestedPatterns } from '../design/patterns';
+import { ensureContrast, isDark } from '../brand/color';
 import { analyzeReference, type ReferenceStyle } from '../reference/analyze';
 import { captureWebsite } from './capture';
 import { beatsFor } from './beats';
@@ -127,6 +128,7 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
     });
   })();
   const reference = await referenceJob;
+  const userStyle = Boolean(brief.style);
   if (reference) {
     if (!brief.style) {
       brief.style = reference.mapping.style;
@@ -151,7 +153,14 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
       // no brand at all: the reference's colour family (principle, not a copy) drives the palette
       const colours = [reference.palette.accent, ...reference.palette.dominant.map((d) => d.hex)].filter((x, i, a) => a.indexOf(x) === i).slice(0, 3);
       brand = generatedBrand({ ...brief, brand: { name: brief.brand?.name, colors: colours } } as Brief, styleId);
-      if (brand) assumptions.push(`palette derived from the reference colour family (${colours.join(', ')})`);
+      if (brand) {
+        // keep the reference's canvas tone (e.g. warm cream vs. cool white) when it is the same light/dark family
+        const bg = reference.palette.background;
+        if (isDark(bg) === isDark(brand.background)) {
+          brand = { ...brand, background: bg, textPrimary: ensureContrast(brand.textPrimary, bg, 7), textSecondary: ensureContrast(brand.textSecondary, bg, 4.5) };
+        }
+        assumptions.push(`palette derived from the reference colour family (${colours.join(', ')}), canvas tone ${brand.background}`);
+      }
     }
     log.stage('BRAND', brand ? `generated direction (${brand.source}) ${brand.primary}` : `style palette only (${styleId}); no logo is created`);
   }
@@ -252,6 +261,11 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
     beatSync: film.motion.beatSync && beats ? { bpm: beats.bpm, offset: beats.beats[0] ?? 0, aligned: film.motion.beatSync.aligned } : null,
     reference: reference ? { source: reference.source, kind: reference.kind === 'ui' ? 'image' : reference.kind, motionEnergy: reference.motion?.energy, visualDensity: reference.mapping.density, appliedTo: ['style', 'pace', 'motion personality', ...(brand?.source === 'generated' || brand?.source === 'user' ? [] : [])] } : undefined,
   });
+  // the reference's background principle (one or few large forms vs. a quiet gradient) — unless the user chose a style
+  if (reference && !userStyle) {
+    const base = STYLE_PRESETS[spec.style.preset]?.background;
+    if (base && base.kind !== reference.mapping.background) spec.style.overrides = { ...spec.style.overrides, background: { ...base, kind: reference.mapping.background, intensity: Math.max(base.intensity, 0.45), animate: true } };
+  }
   if (chapters.length) spec.timeline.chapters = chapters.map((ch, i) => ({ id: `chapter-${i + 1}`, title: ch.title, startScene: ch.scenes[0] }));
   perf.mark('director', Date.now() - tDir);
 

@@ -179,7 +179,8 @@ export function deriveReferenceStyle(source: string, kind: ReferenceKind, hash: 
   const energy = mot?.energy ?? (base.saturation > 0.6 ? 0.6 : base.whitespace > 0.6 ? 0.3 : 0.5);
   const personality: MotionPersonalityId = energy > 0.72 ? 'energetic' : energy < 0.3 ? 'premium' : STYLE_PERSONALITY[rule.style] ?? 'tech';
   const density = base.density > 0.55 ? 'dense' : base.whitespace > 0.6 ? 'sparse' : 'balanced';
-  const background_ = mode === 'dark' ? (base.saturation > 0.5 ? 'radial-light' : 'atmosphere') : base.whitespace > 0.6 ? 'soft-gradient' : 'brand-shapes';
+  // one or a few large forms carry a sparse light reference better than an empty gradient
+  const background_ = mode === 'dark' ? (base.saturation > 0.5 ? 'radial-light' : 'atmosphere') : colourful.length && base.whitespace > 0.45 ? 'brand-shapes' : 'soft-gradient';
   const pattern = frames.some((f) => f.pattern);
   const principles = [
     `${mode} canvas; background family around ${background}, accent ${accent}`,
@@ -206,7 +207,7 @@ export async function analyzeReference(file: string, kind?: ReferenceKind, label
   const k: ReferenceKind = kind ?? (VIDEO_EXT.includes(ext) ? 'video' : 'image');
   if (k !== 'video' && !IMAGE_EXT.includes(ext)) throw new MotionError({ code: 'REFERENCE_UNREADABLE', what: `Unsupported reference format ${ext}`, where: file, action: `Use an image (${IMAGE_EXT.join(', ')}) or a video (${VIDEO_EXT.join(', ')}).` });
   const hash = await fileHashAsync(file);
-  return cached('reference', hashOf('ref-v1', hash, k), async () => {
+  return cached('reference', hashOf('ref-v2', hash, k), async () => {
     if (k === 'video') {
       const dir = join(file + '.ref-frames');
       const frames = videoFrames(file, dir);

@@ -18,7 +18,7 @@ Content-addressed (SHA-256 of a stable JSON of the inputs + `CACHE_VERSION`). Na
 | `bundle` | source tree hash | Remotion webpack bundle |
 | `preflight` | node version, lockfile, ffmpeg, browser, fonts, voice providers | preflight (≈25 ms when unchanged) |
 | `brand` | logo file hash | logo analysis + palette |
-| `ref-v1` | reference file hash | reference analysis |
+| `reference` | reference file hash (ref-v2) | reference analysis |
 | `beats` | audio file hash | beat/onset/energy analysis |
 | `probe` | spec slice + frame + bundle | QC DOM probes per frame |
 | `pattern` | still hash + masks | dot/grid detector |

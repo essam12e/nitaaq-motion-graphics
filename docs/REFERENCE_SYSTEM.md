@@ -36,4 +36,4 @@ Dominant palette (k-means), background and accent colour, neutral share, mean lu
 - **palette** only when the user gave no brand at all (no logo, no colours): the reference colour family, contrast-enforced. A user logo or user colours always win.
 - **patterns**: if the reference uses dots/grid, that is listed in `principles` and `notCopied`; it is not enabled unless the user explicitly asks.
 
-Nothing from the reference is copied: no layout, text, image, logo or brand mark. Results are cached by file hash (`.cache/nitaaq-motion/ref-v1`).
+Nothing from the reference is copied: no layout, text, image, logo or brand mark. Results are cached by file hash (`.cache/nitaaq-motion/reference`, key `ref-v2`).
