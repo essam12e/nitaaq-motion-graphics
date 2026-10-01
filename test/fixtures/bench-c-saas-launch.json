@@ -1,0 +1,27 @@
+{
+  "request": "Launch film for our SaaS analytics product, 30 seconds, Arabic with English terms",
+  "title": "bench-c-saas-launch",
+  "language": "mixed",
+  "dialect": "msa",
+  "objective": "announce",
+  "industry": "SaaS analytics",
+  "platform": "youtube",
+  "aspect": "16:9",
+  "duration": 30,
+  "tone": ["tech", "confident"],
+  "brand": { "name": "Insightly" },
+  "audio": { "mode": "none", "sfx": true },
+  "content": {
+    "hook": "قراراتك تستاهل بيانات أوضح",
+    "emphasis": ["أوضح", "Dashboard"],
+    "solution": "Dashboard واحد لكل مؤشراتك",
+    "features": [
+      { "title": "Real-time Dashboard", "description": "تحديث لحظي" },
+      { "title": "تنبيهات ذكية", "description": "قبل ما تتأخر" },
+      { "title": "تكامل مع Slack", "description": "التقارير تصل لفريقك" }
+    ],
+    "stats": [{ "value": 12, "suffix": " دقيقة", "label": "لإعداد التقرير", "source": "قياس داخلي — بيانات اختبار" }],
+    "ui": { "appName": "Insightly", "screenshot": "dashboard-screenshot.png", "headline": "Overview" },
+    "cta": { "text": "ابدأ تجربتك المجانية اليوم", "button": "Start free trial" }
+  }
+}

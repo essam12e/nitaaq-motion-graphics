@@ -8,6 +8,7 @@ import type { z } from 'zod';
 import type { Aspect } from '../layout/canvas';
 import type { Beat } from '../schema/plan';
 import type { ElementKind } from '../motion/physics';
+import type { MotionEventDecl } from '../audio/events';
 
 export type PerformanceCost = 'LOW' | 'MEDIUM' | 'HIGH';
 export interface MotionRecommendation {
@@ -17,7 +18,7 @@ export interface MotionRecommendation {
   jobs: string[];
 }
 
-export type SceneCategory = 'typography' | 'brand' | 'ui' | 'mobile' | 'commerce' | 'data' | 'media' | 'infographic' | 'cinematic' | 'social' | 'cta';
+export type SceneCategory = 'typography' | 'brand' | 'ui' | 'mobile' | 'commerce' | 'data' | 'media' | 'infographic' | 'cinematic' | 'social' | 'cta' | 'illustration' | 'map';
 
 export interface SfxSuggestion {
   /** Seconds after scene start (scaled by motion speed). */
@@ -76,9 +77,16 @@ export interface SceneManifest<P = Record<string, unknown>> {
   cost?: PerformanceCost;
   /** Motion recommendation. Defaults by category when omitted. */
   motion?: MotionRecommendation;
+  /**
+   * Semantic motion events (product lands, button pressed, counter final…) for the
+   * Sound Director. Omitted → derived from `sfx` suggestions by category.
+   */
+  events?: (content: P, variant: string, durationSec: number) => MotionEventDecl[];
+  /** Module this family belongs to (lazy modules: map, gsap, whiteboard…). Core families omit it. */
+  module?: string;
 }
 
-const DEFAULT_COST: Record<SceneCategory, PerformanceCost> = { typography: 'LOW', brand: 'LOW', cta: 'LOW', social: 'LOW', infographic: 'LOW', data: 'MEDIUM', ui: 'MEDIUM', mobile: 'MEDIUM', commerce: 'MEDIUM', media: 'HIGH', cinematic: 'HIGH' };
+const DEFAULT_COST: Record<SceneCategory, PerformanceCost> = { typography: 'LOW', brand: 'LOW', cta: 'LOW', social: 'LOW', infographic: 'LOW', data: 'MEDIUM', ui: 'MEDIUM', mobile: 'MEDIUM', commerce: 'MEDIUM', media: 'HIGH', cinematic: 'HIGH', illustration: 'MEDIUM', map: 'MEDIUM' };
 const DEFAULT_MOTION: Record<SceneCategory, MotionRecommendation> = {
   typography: { elements: ['hero-title', 'text'], jobs: ['establish-hierarchy', 'stop-the-scroll'] },
   brand: { elements: ['logo', 'hero-title'], jobs: ['brand-recall'] },
@@ -91,6 +99,8 @@ const DEFAULT_MOTION: Record<SceneCategory, MotionRecommendation> = {
   cinematic: { elements: ['hero-title', 'camera'], jobs: ['create-tension', 'hero-moment'] },
   social: { elements: ['card', 'notification'], jobs: ['build-trust'] },
   cta: { elements: ['button', 'logo'], jobs: ['direct-action', 'resolve'] },
+  illustration: { elements: ['icon', 'card', 'chart'], jobs: ['explain-the-idea', 'show-how-it-works'] },
+  map: { elements: ['chart', 'icon', 'camera'], jobs: ['locate-the-story', 'connect-places'] },
 };
 
 /** Family cost, defaulted by category. */

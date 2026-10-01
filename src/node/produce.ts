@@ -27,6 +27,10 @@ import { estimateEffectCost } from '../perf/effect-budget';
 import { Perf } from '../perf/timer';
 import { renderConcurrency } from './render';
 import { writeAssetsManifest } from './manifest';
+import { ensureSoundtrack, planSound } from './sound';
+import { audioQc, motionVarietyQc } from '../qc/audio-qc';
+import type { QcIssue } from '../qc/quality';
+import type { BeatAnalysis } from '../audio/beats';
 
 export interface ProduceResult {
   ok: boolean;
@@ -131,6 +135,10 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
     passes++;
   }
 
+  // 2b. sound on the final timeline: soundtrack (no user music only) → Sound Director → audio QC + repair
+  let soundIssues = await soundStage(spec, opts.projectDir, perf, allRepairs);
+  save(specFile, spec);
+
   // 3. optional animatic (timing/story review at a fraction of the cost)
   let animatic: string | null = null;
   if (opts.animatic ?? (opts.stopAfterAnimatic || budget.animatic)) {
@@ -154,7 +162,7 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
     render = await perf.stage('render', () => renderVideo({ spec, projectDir: opts.projectDir, output: out, profile }), profile);
     perf.meta.renderCached = Boolean(render.cached);
     log.stage('RENDER', `${(render.bytes / 1e6).toFixed(2)} MB in ${(render.renderMs / 1000).toFixed(1)}s${render.cached ? ' (cached)' : ''} → ${out}`);
-    report = await perf.stage('qc-final', () => finalQc({ spec, projectDir: opts.projectDir, video: out, outDir: join(qcDir, 'final'), structural: st!, profile, pass: passes + 1 }));
+    report = await perf.stage('qc-final', () => finalQc({ spec, projectDir: opts.projectDir, video: out, outDir: join(qcDir, 'final'), structural: st!, profile, pass: passes + 1, extraIssues: soundIssues }));
     if (report.passed && report.summary.error === 0) break;
     if (blockingUnrepairable(report).length || passes >= hardCap) break;
     const { spec: next, repairs } = applyQcRepairs(spec, report, passes + 1);
@@ -165,6 +173,8 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
     save(specFile, spec);
     passes++;
     st = await structural(passes + 1);
+    soundIssues = await soundStage(spec, opts.projectDir, perf, allRepairs);
+    save(specFile, spec);
   }
 
   const ok = Boolean(report?.passed);
@@ -183,6 +193,42 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
   writeAssetsManifest(opts.projectDir, spec);
   writeProjectMemory(opts.projectDir, spec, report, perf, allRepairs, passes, profile, delivered);
   return { ok, video: render?.output ?? null, delivered, animatic, report, render, repairs: allRepairs, validation: rep.remaining, passes, specFile, perf: perf.report() };
+}
+
+/**
+ * Sound stage: re-composes the procedural soundtrack when the timeline moved,
+ * re-plans every SFX on the final timeline, then audits the plan. Repairs:
+ * another variation (seed salt) for repetition/sync/silent key moments, thinner
+ * density, lower SFX under the voice. Max 3 rounds; findings go to final QC.
+ */
+async function soundStage(spec: VideoSpec, projectDir: string, perf: Perf, repairs: RepairEntry[]): Promise<QcIssue[]> {
+  return perf.stage('sound', async () => {
+    let beats: BeatAnalysis | null = null;
+    try {
+      beats = JSON.parse(readFileSync(join(projectDir, 'beats.json'), 'utf8'));
+    } catch {
+      beats = null;
+    }
+    const st = await ensureSoundtrack(spec, projectDir, { heroSceneId: spec.motion.heroScene });
+    if (st.composed) log.stage('SOUND', `soundtrack ${st.reason}`);
+    let issues: QcIssue[] = [];
+    for (let round = 0; round < 3; round++) {
+      const plan = await planSound(spec, projectDir, { beats, salt: round });
+      const qc = audioQc(spec, plan.peaks, plan.keyMoments);
+      issues = [...qc.issues, ...motionVarietyQc(spec)];
+      writeFileSync(join(projectDir, 'audio-qc.json'), JSON.stringify({ round, stats: qc.stats, report: plan.report, issues }, null, 2));
+      log.stage('SOUND', `round ${round + 1}: ${qc.stats.cues} cues, ${qc.stats.uniqueFiles} files, max ${qc.stats.maxPer10s}/10s, sync ≤${qc.stats.syncErrorMaxMs} ms, ${qc.issues.length} audio finding(s)`);
+      const todo = qc.issues.filter((i) => i.repair && i.severity !== 'info');
+      if (!todo.length) break;
+      for (const i of todo) {
+        const a = i.repair!;
+        if (a.action === 'thin-sfx') spec.audio.sfx.intensity = Math.max(0.2, Math.round((spec.audio.sfx.intensity - (a.value ?? 0.15)) * 100) / 100);
+        if (a.action === 'lower-sfx') spec.audio.sfx.volume = Math.max(0.3, Math.round(spec.audio.sfx.volume * (a.value ?? 0.8) * 100) / 100);
+      }
+      repairs.push({ path: 'audio.sfx', issue: [...new Set(todo.map((i) => i.code))].join(', '), fix: `re-planned sound (variation ${round + 1}, intensity ${spec.audio.sfx.intensity}, volume ${spec.audio.sfx.volume})`, stage: 'quality', pass: round + 1 });
+    }
+    return issues;
+  });
 }
 
 /** quality_report.json, performance_report.json and an appended review_log.md entry. */

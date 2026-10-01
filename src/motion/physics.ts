@@ -9,7 +9,7 @@
  */
 import { Easing, interpolate, spring } from 'remotion';
 
-export type PhysicsId = 'snappy' | 'responsive' | 'soft' | 'heavy' | 'premium' | 'playful' | 'elastic' | 'cinematic' | 'mechanical' | 'sport';
+export type PhysicsId = 'snappy' | 'responsive' | 'soft' | 'heavy' | 'premium' | 'playful' | 'elastic' | 'cinematic' | 'mechanical' | 'sport' | 'corporate' | 'tech';
 
 export interface PhysicsPreset {
   id: PhysicsId;
@@ -43,6 +43,8 @@ export const PHYSICS: Record<PhysicsId, PhysicsPreset> = {
   cinematic: { id: 'cinematic', description: 'Slow in-out for camera and atmospheric reveals.', stiffness: 70, damping: 20, mass: 1.4, overshootClamping: true, overshoot: 0, duration: 1.4, bezier: [0.65, 0, 0.35, 1], drive: 'curve', settle: 'soft' },
   mechanical: { id: 'mechanical', description: 'Linear-ish precise moves — data, tickers, tech UI.', stiffness: 400, damping: 40, mass: 0.5, overshootClamping: true, overshoot: 0, duration: 0.4, bezier: [0.4, 0, 0.2, 1], drive: 'curve', settle: 'hard' },
   sport: { id: 'sport', description: 'Aggressive impact with a short hit — sports and hype.', stiffness: 380, damping: 18, mass: 0.6, overshootClamping: false, overshoot: 0.12, duration: 0.32, bezier: [0.1, 0.9, 0.05, 1], drive: 'spring', settle: 'hard' },
+  corporate: { id: 'corporate', description: 'Measured ease-out, no overshoot — institutional, trustworthy.', stiffness: 150, damping: 28, mass: 1, overshootClamping: true, overshoot: 0, duration: 0.65, bezier: [0.25, 0.8, 0.3, 1], drive: 'curve', settle: 'soft' },
+  tech: { id: 'tech', description: 'Crisp, exact, a hair of overshoot — product UI and SaaS.', stiffness: 300, damping: 30, mass: 0.7, overshootClamping: false, overshoot: 0.02, duration: 0.42, bezier: [0.3, 1, 0.3, 1], drive: 'spring', settle: 'hard' },
 };
 
 export const PHYSICS_IDS = Object.keys(PHYSICS) as PhysicsId[];

@@ -1,0 +1,19 @@
+{
+  "request": "فيديو موشن تايبوغرافي قصير ١٠ ثواني لإطلاق حملة",
+  "title": "bench-a-typography",
+  "language": "ar",
+  "dialect": "saudi",
+  "objective": "announce",
+  "platform": "tiktok",
+  "aspect": "9:16",
+  "duration": 10,
+  "tone": ["جريء", "حديث"],
+  "brand": null,
+  "audio": { "mode": "none", "sfx": true },
+  "content": {
+    "hook": "الفكرة تبدأ بكلمة",
+    "subhook": "والكلمة تصنع الحركة",
+    "emphasis": ["بكلمة", "الحركة"],
+    "cta": { "text": "تابعنا للمزيد", "button": "تابع" }
+  }
+}

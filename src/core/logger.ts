@@ -22,6 +22,11 @@ export type Stage =
   | 'BEATS'
   | 'CAPTURE'
   | 'RECOMPOSE'
+  | 'MODULES'
+  | 'LOGO'
+  | 'MAP'
+  | 'SOUND'
+  | 'VARIANTS'
   | 'COMPLETE';
 
 export type Level = 'debug' | 'info' | 'warn' | 'error';

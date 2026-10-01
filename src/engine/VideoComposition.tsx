@@ -12,7 +12,11 @@ import { buildRuntime } from './runtime';
 import { FontGate } from '../typography/FontGate';
 import { SceneRegistry } from '../scenes/registry';
 import { Background, TextureOverlay } from '../components/Background';
-import { TRANSITIONS } from '../transitions/presentations';
+import { TRANSITIONS, type OverlayKind } from '../transitions/presentations';
+import { Img } from 'remotion';
+import { presetEasing, PHYSICS } from '../motion/physics';
+import { arcPoint } from '../motion/principles';
+import { useAsset } from './context';
 import { AudioLayer } from './AudioLayer';
 import { QCProbe } from './QCProbe';
 import { alpha } from '../brand/color';
@@ -48,7 +52,7 @@ function SceneShell({ entry, prevTransition, dirSign }: { entry: TimelineEntry; 
   const mod = SceneRegistry.get(scene.type);
   const variant = mod ? (scene.variant && mod.manifest.variants.includes(scene.variant) ? scene.variant : mod.manifest.defaultVariant) : '';
   let style: React.CSSProperties = {};
-  let overlay: { kind: 'light-sweep' | 'color-sweep'; p: number } | undefined;
+  let overlay: { kind: OverlayKind; p: number } | undefined;
   if (entry.transitionIn > 0 && frame < entry.transitionIn && prevTransition) {
     const tr = TRANSITIONS[prevTransition] ?? TRANSITIONS.crossfade;
     const f = tr.frame(frame / entry.transitionIn, dirSign);
@@ -100,7 +104,7 @@ function SceneShell({ entry, prevTransition, dirSign }: { entry: TimelineEntry; 
           </SceneBoundary>
         </AbsoluteFill>
       </AbsoluteFill>
-      {overlay ? <TransitionOverlay kind={overlay.kind} p={overlay.p} dirSign={dirSign} /> : null}
+      {overlay ? <TransitionOverlay kind={overlay.kind} p={overlay.p} dirSign={dirSign} word={sweepWord(scene.content)} /> : null}
     </SceneCtx.Provider>
   );
 }
@@ -119,8 +123,45 @@ function SceneBackground({ frame, kind, color, image, accent }: { frame: number;
   return <Background frame={frame} kind={kind} color={color} accent={accent} />;
 }
 
-function TransitionOverlay({ kind, p, dirSign }: { kind: 'light-sweep' | 'color-sweep'; p: number; dirSign: 1 | -1 }) {
+/** Word a text-driven transition carries: the entering scene's emphasis, else its first headline word. */
+function sweepWord(content: Record<string, unknown>): string | undefined {
+  const hl = Array.isArray(content.highlight) ? (content.highlight as string[])[0] : undefined;
+  const main = [content.word, content.title, content.headline, content.text].find((x) => typeof x === 'string') as string | undefined;
+  const w = hl ?? main?.split(/\s+/).sort((a, b) => b.length - a.length)[0];
+  return w && w.length <= 14 ? w : undefined;
+}
+
+function TransitionOverlay({ kind, p, dirSign, word }: { kind: OverlayKind; p: number; dirSign: 1 | -1; word?: string }) {
   const v = useVideo();
+  const resolve = useAsset();
+  if (kind === 'color-dip') {
+    const k = Math.max(0, 1 - Math.abs(p * 2 - 1) * 1.15);
+    return <AbsoluteFill style={{ pointerEvents: 'none', background: v.tokens.palette.primary, opacity: Math.min(1, k * 1.6) }} />;
+  }
+  if (kind === 'object-sweep' || kind === 'text-sweep') {
+    // reading direction: RTL sweeps right → left
+    const x = (dirSign === -1 ? 1 : -1) * (1 - p * 2) * 120;
+    const product = Object.entries(v.spec.assets).find(([, a]) => a.kind === 'product')?.[0];
+    if (kind === 'object-sweep' && product) {
+      const h = v.canvas.height * 1.15;
+      return (
+        <AbsoluteFill style={{ pointerEvents: 'none', alignItems: 'center', justifyContent: 'center' }}>
+          <Img src={resolve(product)!} style={{ height: h, width: h, objectFit: 'contain', transform: `translateX(${x}%) scale(${1.1 - 0.1 * Math.abs(1 - p * 2)})` }} />
+        </AbsoluteFill>
+      );
+    }
+    if (kind === 'text-sweep' && word) {
+      return (
+        <AbsoluteFill style={{ pointerEvents: 'none', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+          <div dir={v.dir} style={{ fontFamily: v.fonts.display, fontWeight: v.fonts.displayWeight, fontSize: v.canvas.u * 42, color: v.tokens.palette.primary, whiteSpace: 'nowrap', transform: `translateX(${x}%)`, lineHeight: 1 }}>
+            {word}
+          </div>
+        </AbsoluteFill>
+      );
+    }
+    const k = Math.max(0, 1 - Math.abs(p * 2 - 1) * 1.15);
+    return <AbsoluteFill style={{ pointerEvents: 'none', background: v.tokens.palette.primary, opacity: Math.min(1, k * 1.6) }} />;
+  }
   if (kind === 'light-sweep') {
     const x = -60 + p * 220;
     return (
@@ -152,12 +193,49 @@ function SafeAreaOverlay() {
   );
 }
 
+/**
+ * Shared-element continuity: during the transition window between two scenes that
+ * show the same identity asset, the asset glides from its measured place in the
+ * outgoing scene to its measured place in the incoming one (both scenes hide their
+ * own copy meanwhile — useSharedHidden). Never scaled non-uniformly (object-fit contain).
+ */
+function SharedLayer() {
+  const v = useVideo();
+  const frame = useCurrentFrame();
+  const resolve = useAsset();
+  const items = v.spec.timeline?.shared?.filter((s) => s.fromRect && s.toRect) ?? [];
+  if (!items.length) return null;
+  const ease = presetEasing(PHYSICS.heavy);
+  return (
+    <>
+      {items.map((sh) => {
+        const to = v.timeline.entries.find((e) => e.id === sh.toScene);
+        if (!to || to.transitionIn <= 0) return null;
+        const k = (frame - to.from) / to.transitionIn;
+        if (k < 0 || k >= 1) return null;
+        const e = ease(Math.min(1, Math.max(0, k)));
+        const a = sh.fromRect!;
+        const b = sh.toRect!;
+        const W = v.canvas.width;
+        const H = v.canvas.height;
+        const c = arcPoint({ x: (a.x + a.w / 2) * W, y: (a.y + a.h / 2) * H }, { x: (b.x + b.w / 2) * W, y: (b.y + b.h / 2) * H }, e, sh.kind === 'product' ? 0.08 : 0);
+        const w = (a.w + (b.w - a.w) * e) * W;
+        const h = (a.h + (b.h - a.h) * e) * H;
+        const url = resolve(sh.asset);
+        if (!url) return null;
+        return <Img key={sh.id} data-qc="shared" src={url} style={{ position: 'absolute', left: c.x - w / 2, top: c.y - h / 2, width: w, height: h, objectFit: 'contain', pointerEvents: 'none' }} />;
+      })}
+    </>
+  );
+}
+
 function GlobalLayer({ children }: { children: React.ReactNode }) {
   const frame = useCurrentFrame();
   return (
     <>
       <Background frame={frame} />
       {children}
+      <SharedLayer />
       <TextureOverlay />
     </>
   );

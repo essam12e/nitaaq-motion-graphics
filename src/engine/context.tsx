@@ -113,6 +113,29 @@ export function useAssetMeta() {
 
 export { highlightColor };
 
+/**
+ * Shared-element handoff: while a shared element glides between two scenes (the
+ * film-level SharedLayer draws it), both scenes hide their own copy of that asset.
+ */
+export function useSharedHidden(src?: string): boolean {
+  const v = useContext(VideoCtx);
+  const s = useContext(SceneCtx);
+  const frame = useCurrentFrame();
+  if (!v || !s || !src) return false;
+  const shared = v.spec.timeline?.shared;
+  if (!shared?.length) return false;
+  const abs = s.entry.from + frame;
+  for (const sh of shared) {
+    if (!sh.fromRect || !sh.toRect) continue;
+    if (sh.asset !== src && v.spec.assets[sh.asset]?.src !== src) continue;
+    const to = v.timeline.entries.find((e) => e.id === sh.toScene);
+    if (!to || to.transitionIn <= 0) continue;
+    if (s.scene.id === sh.fromScene && abs >= to.from) return true;
+    if (s.scene.id === sh.toScene && abs < to.from + to.transitionIn) return true;
+  }
+  return false;
+}
+
 export function VideoProvider({ value, children }: { value: VideoCtxValue; children: React.ReactNode }) {
   return <VideoCtx.Provider value={value}>{children}</VideoCtx.Provider>;
 }

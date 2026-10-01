@@ -69,5 +69,8 @@
     "typecheck": "tsc --noEmit -p .",
     "test": "vitest run test/unit",
     "test:visual": "vitest run test/visual"
+  },
+  "optionalDependencies": {
+    "gsap": "^3.15.0"
   }
 }

@@ -1,0 +1,18 @@
+{
+  "request": "سوي لي أنيميشن للشعار، ٦ ثواني، فخم",
+  "title": "test-i-logo-sting",
+  "language": "ar",
+  "dialect": "saudi",
+  "objective": "brand",
+  "industry": "specialty coffee",
+  "platform": "youtube",
+  "aspect": "16:9",
+  "duration": 6,
+  "tone": ["فاخر"],
+  "brand": { "name": "بُن", "logo": "brand-logo-bun.png" },
+  "audio": { "mode": "none", "sfx": true },
+  "content": {
+    "hook": "بُن",
+    "cta": { "text": "قهوة مختصة تحمّص كل أسبوع" }
+  }
+}

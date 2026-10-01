@@ -7,7 +7,7 @@
  */
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = '2.0';
+export const SCHEMA_VERSION = '3.0';
 
 export const AspectSchema = z.enum(['9:16', '16:9', '1:1', '4:5']);
 export const PlatformSchema = z.enum(['tiktok', 'instagram-reels', 'instagram-feed', 'youtube-shorts', 'youtube', 'generic']);
@@ -141,10 +141,40 @@ export const VoiceSchema = z.object({
   processed: z.boolean().default(false),
 });
 
+/** One planned sound (Sound Director output): exact file, time, gain and why. */
+export const SfxCueSchema = z.object({
+  sceneId: z.string(),
+  sound: z.string(),
+  family: z.string(),
+  file: z.string(),
+  /** Absolute seconds where the file starts (already shifted so its peak lands on the anchor). */
+  atSec: z.number().min(0),
+  volume: z.number().min(0).max(1.5),
+  duration: z.number().positive(),
+  /** Semantic event that caused it (product_land, logo_reveal, …) and the anchor used. */
+  event: z.string().optional(),
+  anchor: z.string().optional(),
+  /** Absolute seconds of the visual moment the sound is synced to. */
+  anchorSec: z.number().optional(),
+  layer: z.enum(['movement', 'impact', 'detail', 'single']).default('single'),
+  pan: z.number().min(-1).max(1).default(0),
+});
+
+/** Procedurally generated soundtrack (only when no user/licensed music exists). */
+export const SoundtrackSchema = z.object({
+  style: z.enum(['tech', 'premium', 'cinematic', 'sport', 'playful', 'corporate', 'minimal', 'futuristic']),
+  bpm: z.number().positive(),
+  seed: z.union([z.string(), z.number()]),
+  /** Absolute seconds of the soundtrack's own strong hits (drops, accents) — the Sound Director avoids doubling them. */
+  hits: z.array(z.number()).default([]),
+  sections: z.array(z.object({ name: z.string(), start: z.number(), end: z.number(), energy: Unit })).default([]),
+});
+
 export const AudioSchema = z.object({
   mode: z.enum(['none', 'user-voice', 'tts']).default('none'),
   voice: VoiceSchema.optional(),
   music: MusicSchema.optional(),
+  soundtrack: SoundtrackSchema.optional(),
   sfx: z
     .object({
       enabled: z.boolean().default(true),
@@ -152,6 +182,10 @@ export const AudioSchema = z.object({
       volume: Unit.default(0.6),
       /** Map a library sound id to a user-provided file. */
       overrides: z.record(z.string()).default({}),
+      /** Sound personality (luxury, tech, sport, playful, cinematic, corporate…) — from brand motion / film personality. */
+      personality: z.string().optional(),
+      /** Planned cues from the Sound Director. When present the engine plays exactly these. */
+      cues: z.array(SfxCueSchema).optional(),
     })
     .default({}),
 });
@@ -160,6 +194,8 @@ export const TransitionSchema = z.object({
   type: z.string().min(1),
   duration: z.number().min(0).max(3).default(0.5),
   direction: z.enum(['left', 'right', 'up', 'down']).optional(),
+  /** Why the Transition Engine chose it (continuity, contrast, beat, …). Not rendered. */
+  reason: z.string().optional(),
 });
 
 export const SfxEventSchema = z.object({
@@ -190,6 +226,8 @@ export const SceneMotionSchema = z.object({
   speed: z.number().min(0.4).max(2.5).default(1),
   /** What the motion in this scene is for (direct attention, reveal, connect states, …). */
   jobs: z.array(z.string()).optional(),
+  /** Text Motion Engine families per text role group (headline, support, cta, number, label). */
+  text: z.record(z.string()).optional(),
 });
 
 export const SceneBackgroundSchema = z.object({
@@ -259,6 +297,21 @@ export const FilmMotionSchema = z.object({
   personality: MotionPersonalitySchema.optional(),
   /** Seed for any procedural variation (geometry placement, stagger jitter). */
   seed: z.union([z.string(), z.number()]).optional(),
+  /** The director's hero scene id: the soundtrack drop and the biggest hit land here. */
+  heroScene: z.string().optional(),
+});
+
+const RectFraction = z.object({ x: z.number(), y: z.number(), w: z.number().positive(), h: z.number().positive() });
+export const SharedElementSchema = z.object({
+  id: z.string(),
+  /** Asset id (logo, product, screenshot …) that is the same object in both scenes. */
+  asset: z.string(),
+  kind: z.enum(['logo', 'product', 'phone', 'browser', 'card', 'text', 'shape', 'icon', 'chart', 'screenshot']).default('product'),
+  fromScene: z.string(),
+  toScene: z.string(),
+  /** Measured rects (fractions of the canvas) at the start / end of the transition window. Filled by the probe pass. */
+  fromRect: RectFraction.optional(),
+  toRect: RectFraction.optional(),
 });
 
 export const TimelineOptionsSchema = z.object({
@@ -268,6 +321,8 @@ export const TimelineOptionsSchema = z.object({
   chapters: z.array(z.object({ id: z.string(), title: z.string().optional(), startScene: z.string() })).default([]),
   /** Beat grid used by the Director (filled from beats.json when music exists). */
   beatSync: z.object({ bpm: z.number().positive(), offset: z.number(), aligned: z.number().int().min(0) }).optional(),
+  /** Shared-element continuity across cuts: the same asset glides from its place in one scene to its place in the next. */
+  shared: z.array(SharedElementSchema).default([]),
 });
 
 /** Design language inferred from a user reference (summary of reference_style.json). */
@@ -280,9 +335,23 @@ export const ReferenceSummarySchema = z.object({
   appliedTo: z.array(z.string()).default([]),
 });
 
+/** Summary of the persistent brand-motion.json the film was directed with. */
+export const BrandMotionRefSchema = z.object({
+  key: z.string(),
+  personality: z.string(),
+  soundPersonality: z.string().optional(),
+  logoReveal: z.string().optional(),
+  ctaStyle: z.string().optional(),
+});
+
 export const VideoSchema = z.object({
   version: z.string().default(SCHEMA_VERSION),
   project: ProjectSchema,
+  /** Production genre the Master Director recognised (product, launch, kinetic, data, map, whiteboard, …). */
+  genre: z.string().optional(),
+  /** Specialised modules this film needs (lazy-loaded; nothing else is initialised). */
+  modules: z.array(z.string()).default([]),
+  brandMotion: BrandMotionRefSchema.optional(),
   canvas: CanvasSchema,
   platform: PlatformSchema.default('generic'),
   safeArea: SafeAreaSchema.default({}),
@@ -311,3 +380,6 @@ export type SfxEvent = z.infer<typeof SfxEventSchema>;
 export type Direction = z.infer<typeof DirectionSchema>;
 export type RepairLogEntry = z.infer<typeof RepairLogEntrySchema>;
 export type Quality = z.infer<typeof QualitySchema>;
+export type SfxCue = z.infer<typeof SfxCueSchema>;
+export type SharedElement = z.infer<typeof SharedElementSchema>;
+export type SoundtrackSpec = z.infer<typeof SoundtrackSchema>;

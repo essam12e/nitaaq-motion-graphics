@@ -12,7 +12,7 @@ import { STYLE_PRESETS } from '../styles/presets';
 import { TRANSITIONS } from '../transitions/presentations';
 import { createRng, hashString } from '../core/rng';
 import { buildTimeline } from '../core/timeline';
-import { RECIPES, type Recipe, type RecipeCtx } from './recipes';
+import { RECIPES, GENRE_PREFER, type Recipe, type RecipeCtx } from './recipes';
 import { BEAT_ENERGY } from './plan';
 
 type Aspect = '9:16' | '16:9' | '1:1' | '4:5';
@@ -144,12 +144,20 @@ export function buildStoryboard(plan: CreativePlan, ctx: RecipeCtx, opts: { seed
   };
   const beats = plan.narrativeArc.map((a) => a.beat);
   const skip = new Set<number>();
+  const prefer = [...(opts.prefer ?? []), ...(ctx.genre ? GENRE_PREFER[ctx.genre] ?? [] : [])];
+  // lazy modules: a family that belongs to an unselected module is never used
+  const moduleOk = (family: string) => {
+    const mod = SceneRegistry.get(family)?.manifest.module;
+    return !mod || !ctx.modules || ctx.modules.includes(mod);
+  };
+  // the structure-aware logo engine replaces the generic logo reveal when it ran
+  const avoid = [...(opts.avoid ?? []), ...(ctx.logo ? ['logo-reveal'] : [])];
 
   beats.forEach((beat, bi) => {
     if (skip.has(bi)) return;
     const prev = picked[picked.length - 1];
     const prevCat = prev ? SceneRegistry.get(prev.r.family)!.manifest.category : undefined;
-    let cands = RECIPES.filter((r) => r.beats.includes(beat) && SceneRegistry.has(r.family) && SceneRegistry.get(r.family)!.manifest.aspectRatios.includes(aspect) && !opts.avoid?.includes(r.family) && r.when(ctx));
+    let cands = RECIPES.filter((r) => r.beats.includes(beat) && SceneRegistry.has(r.family) && SceneRegistry.get(r.family)!.manifest.aspectRatios.includes(aspect) && !avoid.includes(r.family) && moduleOk(r.family) && r.when(ctx));
     // after problem-solution, the "solution" beat must add something new (a brand moment), not repeat the line
     if (beat === 'solution' && picked.some((p) => p.r.family === 'problem-solution')) cands = cands.filter((r) => r.family === 'logo-reveal' || r.family === 'brand-intro');
     if (!cands.length) return;
@@ -161,7 +169,7 @@ export function buildStoryboard(plan: CreativePlan, ctx: RecipeCtx, opts: { seed
         const uses = usedFamilies.get(r.family) ?? 0;
         if (uses) w *= 0.25 / uses;
         if (m.category === prevCat) w *= 0.6;
-        if (opts.prefer?.includes(r.family)) w *= 2.2;
+        if (prefer.includes(r.family)) w *= 2.2;
         const pay = payloadOf(r.family);
         if (pay) w *= shown.has(pay) ? 0.4 : pay === 'screenshot' ? 1.8 : 1.5; // the user's real screenshot first
         // match the beat's energy

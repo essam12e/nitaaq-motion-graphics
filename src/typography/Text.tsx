@@ -14,6 +14,8 @@ import { entranceStyle, progress, clamp, type MotionCtx } from '../motion/primit
 import { useMotion } from '../engine/context';
 import type { EntranceFamily, StyleTokens } from '../styles/tokens';
 import { alpha } from '../brand/color';
+import { TextMotionRegistry, effectiveUnit, roleGroupOf, type TextMotionFamily, type UnitCtx } from '../text-motion/families';
+import { countText } from '../text-motion/count';
 
 export type TextRole = 'headline' | 'title' | 'subtitle' | 'body' | 'caption' | 'eyebrow' | 'number' | 'cta' | 'label';
 
@@ -54,6 +56,8 @@ export interface TextProps {
   style?: CSSProperties;
   lineHeight?: number;
   shadow?: boolean;
+  /** Text Motion Engine family id (overrides the scene's text-motion plan). */
+  motion?: string;
 }
 
 function groupRuns(line: Token[]): Token[][] {
@@ -124,8 +128,83 @@ export function Text(props: TextProps) {
   const letterSpacing = role === 'eyebrow' ? safeLetterSpacing(text, 0.14) : 0;
   const upper = role === 'eyebrow' && t.typography.eyebrowCase === 'upper' && !hasArabic(text);
   const blockP = animate === 'block' ? progress(m, delay, dur) : 1;
+  // Text Motion Engine: an explicit `motion`, or the scene's plan for this role when the scene left the entrance open
+  const planned = props.entrance === undefined && animate !== 'none' ? scene?.scene.motion?.text?.[roleGroupOf(role)] : undefined;
+  const fam: TextMotionFamily | undefined = TextMotionRegistry.get(props.motion ?? planned);
+  const arabicText = hasArabic(text);
+  const unit = fam ? (animate === 'block' && !props.motion ? 'block' : effectiveUnit(fam, arabicText)) : undefined;
+  const famDur = fam ? (props.duration ?? fam.duration) : dur;
+  const famGap = fam ? gap * fam.stagger : gap;
+  const famP = (d: number) => {
+    if (!fam) return 1;
+    if (fam.curve === 'step') return clamp((m.frame / m.fps - d) / Math.max(0.05, famDur));
+    return progress(m, d, famDur, fam.curve === 'spring' ? 'snappy' : 'smooth');
+  };
+  const famCtx = (i: number, n: number, ar: boolean): UnitCtx => ({ i, n, dir, u, intensity: m.intensity, arabic: ar });
+  const famHl = fam?.highlight && fam.highlight !== 'pulse' ? fam.highlight : undefined;
+  const numericCount = fam?.id === 'number-count' || (fam && role === 'number');
+  let unitTotal = 0;
+  if (fam && unit === 'word') unitTotal = fit.lines.reduce((a, l) => a + groupRuns(l).length, 0);
 
   let wordIndex = 0;
+  function renderFamilyLines() {
+    let wi = 0;
+    let gluePrev = false;
+    return fit.lines.map((line, li) => {
+      const lineStart = delay + li * famGap * 1.6;
+      const lp = unit === 'line' ? famP(lineStart) : 1;
+      const lineStyle = unit === 'line' ? fam!.unit_(lp, famCtx(li, fit.lines.length, hasArabic(line.map((x) => x.text).join(' ')))) : undefined;
+      const runs = groupRuns(line).map((run, ri) => {
+        // Arabic word groups: a particle glued to the next word animates with it
+        const idx = gluePrev ? Math.max(0, wi - 1) : wi++;
+        gluePrev = run[run.length - 1].glueNext;
+        const d = unit === 'word' || unit === 'char' ? delay + idx * famGap : unit === 'line' ? lineStart : delay;
+        const isLatin = run[0].script === 'latin' || run[0].script === 'neutral';
+        const content = run.map((x) => x.text).join(' ');
+        const runArabic = hasArabic(content);
+        const p = unit === 'word' || unit === 'char' ? famP(d) : unit === 'line' ? lp : famP(delay);
+        const wordStyle = unit === 'word' || (unit === 'char' && runArabic) ? fam!.unit_(p, famCtx(idx, unitTotal, runArabic)) : undefined;
+        const chars = unit === 'char' && !runArabic ? [...content] : null;
+        const settledFor = m.frame / m.fps - (d + famDur);
+        const pulse = fam!.highlight === 'pulse' && run[0].highlight && settledFor > 0 ? Math.sin(clamp(settledFor / 0.45) * Math.PI) * 0.09 : 0;
+        const word = (
+          <Word
+            text={content}
+            latin={isLatin && dir === 'rtl'}
+            latinFamily={v.fonts.latin}
+            highlight={run[0].highlight}
+            hlStyle={famHl ?? hlStyle}
+            hl={hl}
+            tokens={t}
+            p={p}
+            m={m}
+            hlDelay={d + famDur * 0.6}
+            count={numericCount ? clamp(p) : undefined}
+            numerals={v.spec.project.numerals}
+            chars={chars ? chars.map((ch, ci) => ({ ch, style: fam!.unit_(famP(d + ci * famGap * 0.35), famCtx(ci, chars.length, false)) })) : undefined}
+            style={{ ...(wordStyle ?? {}), ...(pulse ? { transform: `${wordStyle?.transform ?? ''} scale(${1 + pulse})` } : {}) }}
+          />
+        );
+        return (
+          <React.Fragment key={ri}>
+            {ri > 0 ? ' ' : null}
+            {fam!.mask && (unit === 'word' || unit === 'char') ? <MaskBox>{word}</MaskBox> : word}
+          </React.Fragment>
+        );
+      });
+      if (unit === 'line' && fam!.mask)
+        return (
+          <div key={li} style={{ whiteSpace: 'nowrap', overflow: 'hidden', padding: '0.2em 0.06em', margin: '-0.2em -0.06em' }}>
+            <div style={{ whiteSpace: 'nowrap', ...lineStyle }}>{runs}</div>
+          </div>
+        );
+      return (
+        <div key={li} style={{ whiteSpace: 'nowrap', ...(lineStyle ?? {}) }}>
+          {runs}
+        </div>
+      );
+    });
+  }
   const shadow = props.shadow ? `0 ${0.4 * u}px ${2 * u}px ${alpha('#000000', t.mode === 'dark' ? 0.45 : 0.12)}` : undefined;
 
   return (
@@ -156,11 +235,13 @@ export function Text(props: TextProps) {
         textShadow: shadow,
         fontFeatureSettings: '"kern" 1, "liga" 1, "calt" 1',
         ...(layout?.scrim && role !== 'number' && role !== 'eyebrow' ? { background: alpha(t.palette.background, 0.74), padding: '0.12em 0.42em', borderRadius: '0.28em', boxShadow: `0 0 ${2 * u}px ${alpha(t.palette.background, 0.5)}` } : {}),
-        ...(animate === 'block' ? entranceStyle(entrance, blockP, m.intensity, u, dir) : {}),
+        ...(!fam && animate === 'block' ? entranceStyle(entrance, blockP, m.intensity, u, dir) : {}),
+        ...(fam && unit === 'block' ? fam.unit_(famP(delay), famCtx(0, 1, arabicText)) : {}),
         ...props.style,
       }}
+      data-qc-motion={fam?.id}
     >
-      {fit.lines.map((line, li) => {
+      {fam ? renderFamilyLines() : fit.lines.map((line, li) => {
         const lineP = animate === 'lines' ? progress(m, delay + li * gap * 1.6, dur) : 1;
         return (
           <div key={li} style={{ whiteSpace: 'nowrap', ...(animate === 'lines' ? entranceStyle(entrance, lineP, m.intensity, u, dir) : {}) }}>
@@ -208,8 +289,34 @@ function Word(props: {
   m: MotionCtx;
   hlDelay: number;
   style?: CSSProperties;
+  /** Number-count progress (0..1): numeric tokens count up to their value. */
+  count?: number;
+  numerals?: 'latin' | 'arabic-indic';
+  /** Latin-only per-character units (never for Arabic: it would break the joins). */
+  chars?: { ch: string; style: CSSProperties }[];
 }) {
   const { highlight, hlStyle, hl, tokens: t } = props;
+  const counted = props.count !== undefined ? countText(props.text, props.count, props.numerals ?? 'latin') : null;
+  if (counted !== null) {
+    // the final value reserves the width; the counting value sits on top (no layout jitter)
+    return (
+      <span style={{ display: 'inline-block', position: 'relative', fontVariantNumeric: 'tabular-nums', ...props.style, ...(highlight ? { color: hl } : {}) }}>
+        <span style={{ visibility: 'hidden' }}>{props.text}</span>
+        <span style={{ position: 'absolute', inset: 0, textAlign: 'center', whiteSpace: 'nowrap' }}>{counted}</span>
+      </span>
+    );
+  }
+  if (props.chars && !hasArabic(props.text)) {
+    return (
+      <span dir="ltr" style={{ display: 'inline-block', unicodeBidi: 'isolate', ...(props.latin ? { fontFamily: props.latinFamily } : {}), ...(highlight ? { color: hl } : {}) }}>
+        {props.chars.map((c, i) => (
+          <span key={i} style={{ display: 'inline-block', whiteSpace: 'pre', ...c.style }}>
+            {c.ch}
+          </span>
+        ))}
+      </span>
+    );
+  }
   const base: CSSProperties = {
     display: 'inline-block',
     position: 'relative',
@@ -263,4 +370,9 @@ function Word(props: {
         </span>
       );
   }
+}
+
+/** Clip box for mask-style reveals (room for Arabic ascenders, dots and diacritics). */
+function MaskBox({ children }: { children: React.ReactNode }) {
+  return <span style={{ display: 'inline-block', overflow: 'hidden', verticalAlign: 'bottom', padding: '0.22em 0.05em', margin: '-0.22em -0.05em' }}>{children}</span>;
 }

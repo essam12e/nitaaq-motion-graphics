@@ -1,0 +1,23 @@
+{
+  "request": "فيديو موشن على موسيقى، ٣٠ ثانية، القطعات على الإيقاع",
+  "title": "bench-d-audio",
+  "language": "ar",
+  "dialect": "msa",
+  "objective": "promote",
+  "industry": "fitness app",
+  "platform": "tiktok",
+  "aspect": "9:16",
+  "duration": 30,
+  "tone": ["حماس", "سريع"],
+  "brand": { "name": "نبض", "colors": ["#E63946", "#F1FAEE"] },
+  "audio": { "mode": "none", "music": "music-bed.mp3", "musicLicense": "original synthesized test track (CC0)", "sfx": true, "beatSync": true },
+  "content": {
+    "hook": "جاهز تتحدى نفسك؟",
+    "emphasis": ["تتحدى", "يومياً"],
+    "problem": "التمارين العشوائية ما توصلك لهدفك",
+    "solution": "نبض يبني لك خطة تمرين يومياً",
+    "features": [{ "title": "خطة حسب مستواك" }, { "title": "تمارين ١٥ دقيقة" }, { "title": "متابعة تقدمك" }],
+    "steps": ["حدد هدفك", "ابدأ التمرين", "شوف النتيجة"],
+    "cta": { "text": "حمّل نبض وابدأ اليوم", "button": "حمّل التطبيق" }
+  }
+}

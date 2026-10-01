@@ -25,12 +25,34 @@ export const ARCS: Record<Brief['objective'], Beat[]> = {
   event: ['hook', 'brand', 'process', 'feature', 'offer', 'cta'],
 };
 
+/**
+ * Genre arcs: a launch film teases before it reveals, a product commercial
+ * earns the hero shot then the details, a map film travels, a logo film is
+ * the logo. social-ad / saas / web-ui keep the objective's arc.
+ */
+export const GENRE_ARCS: Partial<Record<string, Beat[]>> = {
+  launch: ['tease', 'reveal', 'montage', 'feature', 'product', 'offer', 'cta'],
+  product: ['hook', 'product', 'detail', 'feature', 'offer', 'social', 'proof', 'cta'],
+  kinetic: ['hook', 'problem', 'solution', 'feature', 'proof', 'cta'],
+  logo: ['brand', 'cta'],
+  map: ['hook', 'map', 'data', 'feature', 'proof', 'cta'],
+  data: ['hook', 'data', 'proof', 'comparison', 'solution', 'cta'],
+  whiteboard: ['hook', 'problem', 'solution', 'process', 'feature', 'cta'],
+  illustrated: ['hook', 'problem', 'solution', 'process', 'feature', 'cta'],
+  explainer: ['hook', 'problem', 'bridge', 'solution', 'process', 'feature', 'data', 'cta'],
+  procedural: ['hook', 'problem', 'solution', 'feature', 'cta'],
+  music: ['hook', 'montage', 'feature', 'product', 'offer', 'cta'],
+};
+/** Beats that may open a film instead of 'hook' (they do the hook's job). */
+const OPENERS: Beat[] = ['hook', 'tease', 'brand'];
+
 /** Which beats survive first when the duration can't fit them all (lower = kept first). */
-const PRIORITY: Beat[] = ['hook', 'cta', 'solution', 'product', 'offer', 'feature', 'demo', 'problem', 'proof', 'data', 'process', 'social', 'comparison', 'brand', 'bridge'];
+const PRIORITY: Beat[] = ['hook', 'cta', 'reveal', 'solution', 'product', 'map', 'offer', 'feature', 'demo', 'montage', 'problem', 'proof', 'data', 'process', 'tease', 'detail', 'social', 'comparison', 'brand', 'bridge'];
 
 export const BEAT_ENERGY: Record<Beat, number> = {
   hook: 0.92, problem: 0.5, bridge: 0.85, solution: 0.8, demo: 0.55, feature: 0.62, product: 0.72, offer: 0.86,
   proof: 0.6, data: 0.58, social: 0.55, process: 0.55, comparison: 0.56, brand: 0.75, cta: 0.9,
+  tease: 0.6, reveal: 0.98, montage: 0.88, detail: 0.5, map: 0.6,
 };
 
 const PLATFORM_DURATION: Record<Brief['platform'], number> = {
@@ -48,6 +70,10 @@ export interface PlanInput {
   /** Duration of the user's voiceover (seconds), when present. */
   voiceDuration?: number;
   voiceSegments?: number;
+  genre?: string;
+  modules?: string[];
+  logo?: RecipeCtx['logo'];
+  map?: RecipeCtx['map'];
 }
 
 export function recipeCtx(input: PlanInput, aspect: Aspect): RecipeCtx {
@@ -57,6 +83,10 @@ export function recipeCtx(input: PlanInput, aspect: Aspect): RecipeCtx {
     assets: input.assets,
     brandName: input.brand?.name ?? input.brief.brand?.name ?? undefined,
     lang: input.brief.language,
+    genre: input.genre,
+    modules: input.modules,
+    logo: input.logo,
+    map: input.map,
   };
 }
 
@@ -91,10 +121,15 @@ export function buildPlan(input: PlanInput): CreativePlan {
   const ctx = recipeCtx(input, aspect);
   const supported = supportedBeats(ctx, aspect);
 
-  let beats = ARCS[brief.objective].filter((b) => supported.has(b) || b === 'hook' || b === 'cta');
+  const arc: Beat[] = (brief.preferences.arc?.length ? (brief.preferences.arc.filter((b) => b in BEAT_ENERGY) as Beat[]) : undefined) ?? (input.genre ? GENRE_ARCS[input.genre] : undefined) ?? ARCS[brief.objective];
+  const opener = arc.find((b) => OPENERS.includes(b) && (b === 'hook' || supported.has(b)));
+  let beats = arc.filter((b) => supported.has(b) || b === 'cta' || (b === 'hook' && (!opener || opener === 'hook')));
+  // a genre opener the brief can't support (e.g. no tease material) falls back to a hook
+  // (an explicit arc — e.g. an ad variant's product-first / offer-first order — opens on its own first beat)
+  if (!beats.some((b) => OPENERS.includes(b)) && !(brief.preferences.arc?.length && beats[0] === brief.preferences.arc[0])) beats.unshift('hook');
   // comparison/data are strong when supplied even if the objective's arc omits them
   const c = brief.content;
-  const has: Partial<Record<Beat, boolean>> = { comparison: Boolean(c.comparison), data: Boolean(c.stats?.length || c.series || c.table), product: Boolean(input.assets.product || c.products?.length), demo: Boolean(c.flow?.length || c.form?.fields.length), process: Boolean(c.steps?.length) };
+  const has: Partial<Record<Beat, boolean>> = { comparison: Boolean(c.comparison), data: Boolean(c.stats?.length || c.series || c.table), product: Boolean(input.assets.product || c.products?.length), demo: Boolean(c.flow?.length || c.form?.fields.length || input.assets.screenshot || c.ui?.url), process: Boolean(c.steps?.length) };
   // content the user supplied is never silently lost because the objective's arc omits its beat
   for (const extra of ['comparison', 'data', 'product', 'demo', 'process'] as Beat[]) {
     if (has[extra] && supported.has(extra) && !beats.includes(extra)) beats.splice(Math.max(1, beats.length - 1), 0, extra);
@@ -107,6 +142,11 @@ export function buildPlan(input: PlanInput): CreativePlan {
   // problem-solution already covers solution when both exist
   const maxScenes = Math.max(3, Math.min(14, voiceLed && input.voiceSegments ? Math.max(3, Math.min(input.voiceSegments, Math.round(duration / 1.8))) : Math.round(duration / SCENE_SECONDS[pace])));
   const dropped: Beat[] = [];
+  // a short logo sting is one structure-aware reveal (tagline included), not a two-scene film
+  if (input.genre === 'logo' && duration <= 8 && beats.includes('brand') && supported.has('brand')) {
+    dropped.push(...beats.filter((b) => b !== 'brand'));
+    beats = ['brand'];
+  }
   while (beats.length > maxScenes) {
     const worst = [...beats].sort((a, b) => PRIORITY.indexOf(b) - PRIORITY.indexOf(a))[0];
     beats = beats.filter((b) => b !== worst);

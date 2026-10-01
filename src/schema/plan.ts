@@ -16,6 +16,12 @@ export const BeatSchema = z.enum([
   'comparison',
   'brand',
   'bridge',
+  // genre beats (launch / product / map films)
+  'tease',
+  'reveal',
+  'montage',
+  'detail',
+  'map',
   'cta',
 ]);
 export type Beat = z.infer<typeof BeatSchema>;

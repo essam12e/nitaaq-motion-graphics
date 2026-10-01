@@ -1,0 +1,22 @@
+{
+  "request": "إعلان منتج لمتجر إلكتروني مدته ٢٠ ثانية",
+  "title": "bench-b-product",
+  "language": "ar",
+  "dialect": "saudi",
+  "objective": "sell",
+  "industry": "e-commerce",
+  "platform": "instagram-reels",
+  "aspect": "9:16",
+  "duration": 20,
+  "tone": ["جذاب", "واثق"],
+  "brand": { "name": "ندى", "colors": ["#0E7C66", "#F2C14E"] },
+  "audio": { "mode": "none", "sfx": true },
+  "content": {
+    "hook": "ترطيب يدوم من الصبح لين الليل",
+    "emphasis": ["يدوم"],
+    "product": { "name": "مرطّب ندى", "tagline": "خفيف وسريع الامتصاص", "price": "89 ر.س", "oldPrice": "129 ر.س", "image": "product.png" },
+    "features": [{ "title": "مكونات طبيعية" }, { "title": "بدون عطور" }, { "title": "لكل أنواع البشرة" }],
+    "offer": "خصم 30% لفترة محدودة",
+    "cta": { "text": "اطلبه الحين من متجر ندى", "button": "اطلب الآن" }
+  }
+}

@@ -15,6 +15,7 @@ import { intake, type IntakeQuestion } from '../director/intake';
 import { buildPlan, recipeCtx } from '../director/plan';
 import { buildStoryboard, type PlannedStoryboard } from '../director/storyboard';
 import { compileSpec, slug, type AudioPlan } from '../director/compile';
+import { ensureSoundtrack, planSound } from './sound';
 import { generatedBrand, pickStyle } from '../director/direction';
 import { STYLE_PRESETS } from '../styles/presets';
 import { brandFromLogo } from '../brand/logo-analyzer';
@@ -38,6 +39,11 @@ import { writeProjectBrief, writeDirectorFiles, writeAnimationGuide } from './pr
 import { cached, fileHash, hashOf } from '../cache/store';
 import { Perf } from '../perf/timer';
 import type { BeatAnalysis } from '../audio/beats';
+import { classifyGenre, selectModules, loadModules, isSelected } from '../director/modules';
+import { brandKey, deriveBrandMotion, recordFilm, type BrandMotion } from '../brand/brand-motion';
+import { loadBrandMotion, saveBrandMotion } from './brand-motion-store';
+import { chooseLogoReveal } from '../brand/logo-reveal';
+import { pickPersonality } from '../motion/personality';
 
 export interface DirectResult {
   status: 'ready' | 'needs-input';
@@ -52,7 +58,7 @@ export interface DirectResult {
   reference?: ReferenceStyle | null;
 }
 
-export async function direct(opts: { brief: unknown; baseDir: string; projectDir?: string; projectId?: string; assumeNoLogo?: boolean; cleanVoice?: boolean; perf?: Perf }): Promise<DirectResult> {
+export async function direct(opts: { brief: unknown; baseDir: string; projectDir?: string; projectId?: string; assumeNoLogo?: boolean; cleanVoice?: boolean; perf?: Perf; dryRun?: boolean }): Promise<DirectResult> {
   const perf = opts.perf ?? new Perf();
   const ttsAvailable = voiceProviders().some((p) => p.available);
   const { brief, questions, assumptions } = await perf.stage('intake', () => intake(opts.brief, { assumeNoLogo: opts.assumeNoLogo, ttsAvailable }));
@@ -223,14 +229,63 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
   perf.mark('audio', Date.now() - tAudio);
 
   const beats = await beatsJob;
+  const seed = brief.preferences.seed ?? hashString(JSON.stringify(brief.content));
+
+  // ── ONE master director + lazy modules: recognise the genre, switch on only what this film needs
+  const tMod = Date.now();
+  const genre = classifyGenre(brief);
+  const selected = selectModules({ brief, genre: genre.genre, cls, hasLogo: Boolean(logoId), hasMusic: Boolean(brief.audio.music) });
+  const moduleIds = selected.map((m) => m.id);
+  const loaded = await perf.stage('modules', () => loadModules(selected));
+  perf.meta.genre = genre.genre;
+  log.stage('MODULES', `genre ${genre.genre} (${genre.reason}); ${moduleIds.filter((id) => !selected.find((m) => m.id === id)?.core).join(', ') || 'core only'}`);
+
+  // brand motion guidelines: the brand's stored motion language wins over a fresh guess
+  let brandMotion: BrandMotion | null = null;
+  if (isSelected(selected, 'brand-motion')) {
+    const key = brandKey(brand?.name ?? brief.brand?.name, logoId ? assets[logoId].hash : null);
+    const stored = loadBrandMotion(key);
+    if (stored && !brief.motion) {
+      brief.motion = stored.personality;
+      assumptions.push(`motion personality ${stored.personality} from this brand's brand-motion.json (${stored.history.films} earlier film(s))`);
+    }
+    const pers = pickPersonality({ explicit: brief.motion, tone: brief.tone, request: brief.request, styleId, referenceEnergy: reference?.motion?.energy }).id;
+    brandMotion = stored ?? deriveBrandMotion({ key, name: brand?.name ?? brief.brand?.name ?? null, personality: pers, pace: brief.pace, soundPersonality: brief.audio.soundPersonality });
+  }
+  const personality = pickPersonality({ explicit: brief.motion, tone: brief.tone, request: brief.request, styleId, referenceEnergy: reference?.motion?.energy }).id;
+
+  // logo animation engine: measure the logo's structure, choose a reveal that fits it
+  let logoCtx: { structure?: import('../brand/logo-reveal').LogoStructure; reveal: string; reason: string } | undefined;
+  if (loaded['logo-animation'] && logoId) {
+    const { analyzeLogoStructure } = loaded['logo-animation'] as typeof import('./logo-structure');
+    const structure = await perf.stage('logo-structure', () => analyzeLogoStructure(join(projectDir, assets[logoId].src)));
+    const choice = chooseLogoReveal({ structure, personality, durationSec: genre.genre === 'logo' ? Math.max(2, (brief.duration ?? 5) - 1.5) : 3, history: brandMotion?.logo.history, explicit: brief.preferences.logoReveal, seed });
+    logoCtx = { structure, reveal: choice.reveal, reason: choice.reason };
+    writeFileSync(join(projectDir, 'logo-structure.json'), JSON.stringify({ structure, choice }, null, 2));
+    log.stage('LOGO', `${structure.layout}, ${structure.parts.length} part(s), symmetry h${structure.symmetry.horizontal}/v${structure.symmetry.vertical} → ${choice.reveal}`);
+  }
+  // map animation: resolve places/regions against the bundled data; nothing is guessed
+  let mapPre: import('../maps/geo').MapPrecomputed | undefined;
+  if (loaded.map && c.map) {
+    const aspect0 = brief.aspect ?? (brief.platform === 'youtube' ? '16:9' : brief.platform === 'instagram-feed' ? '4:5' : '9:16');
+    const h = { '9:16': 1150, '4:5': 950, '1:1': 820, '16:9': 560 }[aspect0];
+    mapPre = (loaded.map as typeof import('../maps/geo')).precomputeMap(c.map, 1000, h);
+    for (const w of mapPre.warnings) assumptions.push(`map: ${w}`);
+    log.stage('MAP', `${mapPre.pins.length} place(s), ${mapPre.regions.length} region(s), ${mapPre.routes.length} route(s)${mapPre.warnings.length ? `; ${mapPre.warnings.length} warning(s)` : ''}`);
+  }
+  writeFileSync(
+    join(projectDir, 'modules.json'),
+    JSON.stringify({ genre, selected, notSelected: (await import('../director/modules')).ModuleRegistry.ids().filter((id) => !moduleIds.includes(id)), loaded: Object.keys(loaded) }, null, 2),
+  );
+  perf.mark('modules', Date.now() - tMod);
 
   // ── plan → storyboard → creative direction → video.json
   const tDir = Date.now();
   const recipeAssets = { logo: logoId, product: productId, screenshot: shotId, images };
-  const plan = buildPlan({ brief, brand, assets: recipeAssets, voiceDuration: voiceTiming ? voiceTiming.end : undefined, voiceSegments: voiceTiming?.segments.length });
+  const planExtras = { genre: genre.genre, modules: moduleIds, logo: logoCtx, map: mapPre };
+  const plan = buildPlan({ brief, brand, assets: recipeAssets, voiceDuration: voiceTiming ? voiceTiming.end : undefined, voiceSegments: voiceTiming?.segments.length, ...planExtras });
   log.stage('DIRECTOR', `${plan.visualStyle} (${plan.styleReason}), ${plan.pace}, ${plan.duration}s, arc: ${plan.narrativeArc.map((a) => a.beat).join(' → ')}`);
-  const seed = brief.preferences.seed ?? hashString(JSON.stringify(brief.content));
-  const ctx = recipeCtx({ brief, brand, assets: recipeAssets }, plan.aspect as '9:16');
+  const ctx = recipeCtx({ brief, brand, assets: recipeAssets, ...planExtras }, plan.aspect as '9:16');
   let chapters: { title: string; scenes: string[] }[] = [];
   let board: PlannedStoryboard;
   if (brief.chapters && brief.chapters.length > 1) {
@@ -239,7 +294,7 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
     chapters = r.chapters;
   } else board = buildStoryboard(plan, ctx, { seed, voice: voiceTiming, prefer: brief.preferences.prefer, avoid: brief.preferences.avoid });
   if (board.scenes.length < 2) throw new MotionError({ code: 'INPUT_INVALID', what: 'Not enough content to direct a video', why: 'The brief only supports one scene.', action: 'Add at least a hook and a CTA (and ideally features, a product or a problem/solution).' });
-  const film = directFilm({ brief, plan, storyboard: board, seed, referenceEnergy: reference?.motion?.energy, beats: beats && beats.confidence > 0.15 ? beats : null, voiceLed: Boolean(voiceTiming) });
+  const film = directFilm({ brief, plan, storyboard: board, seed, referenceEnergy: reference?.motion?.energy, beats: beats && beats.confidence > 0.15 ? beats : null, voiceLed: Boolean(voiceTiming), genre: genre.genre, sharedElements: isSelected(selected, 'shared-elements') });
   const storyboard = film.storyboard;
   log.stage('STORYBOARD', storyboard.scenes.map((s) => `${s.family}/${s.variant} ${s.duration}s`).join(' | '));
   log.stage('DIRECTOR', `motion ${film.motion.personality} (${film.motion.personalityReason}); hero ${film.motion.heroScene ?? '—'}; camera ${film.motion.cameraBudget.used}/${film.motion.cameraBudget.allowed}${film.motion.beatSync ? `; ${film.motion.beatSync.aligned} cuts on beat @${film.motion.beatSync.bpm} BPM` : ''}`);
@@ -258,6 +313,8 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
     design: { allowPatterns: patterns, justification: patterns.length ? `requested in the brief: ${brief.request.slice(0, 120)}` : undefined },
     effects: cls.budget.effects,
     loop: brief.loop,
+    genre: genre.genre,
+    modules: moduleIds,
     beatSync: film.motion.beatSync && beats ? { bpm: beats.bpm, offset: beats.beats[0] ?? 0, aligned: film.motion.beatSync.aligned } : null,
     reference: reference ? { source: reference.source, kind: reference.kind === 'ui' ? 'image' : reference.kind, motionEnergy: reference.motion?.energy, visualDensity: reference.mapping.density, appliedTo: ['style', 'pace', 'motion personality', ...(brand?.source === 'generated' || brand?.source === 'user' ? [] : [])] } : undefined,
   });
@@ -266,8 +323,22 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
     const base = STYLE_PRESETS[spec.style.preset]?.background;
     if (base && base.kind !== reference.mapping.background) spec.style.overrides = { ...spec.style.overrides, background: { ...base, kind: reference.mapping.background, intensity: Math.max(base.intensity, 0.45), animate: true } };
   }
+  if (brandMotion) {
+    const logoScene = storyboard.scenes.find((s) => s.family === 'logo-animation');
+    spec.brandMotion = { key: brandMotion.key, personality: film.motion.personality, soundPersonality: brief.audio.soundPersonality ?? brandMotion.soundPersonality, logoReveal: logoScene?.variant, ctaStyle: brandMotion.cta.style };
+    const updated = recordFilm({ ...brandMotion, personality: film.motion.personality }, { logoReveal: logoScene?.variant, headlineFamilies: Object.keys(film.motion.textMotion ?? {}), transitions: storyboard.scenes.map((s) => s.transition).filter((t) => t !== 'none'), now: new Date().toISOString() });
+    if (!opts.dryRun) saveBrandMotion(updated);
+    writeFileSync(join(projectDir, 'brand-motion.json'), JSON.stringify(updated, null, 2));
+  }
   if (chapters.length) spec.timeline.chapters = chapters.map((ch, i) => ({ id: `chapter-${i + 1}`, title: ch.title, startScene: ch.scenes[0] }));
   perf.mark('director', Date.now() - tDir);
+
+  // ── sound: procedural soundtrack (only without user music) → Sound Director plan
+  await perf.stage('sound', async () => {
+    const st = await ensureSoundtrack(spec, projectDir, { heroSceneId: film.motion.heroScene ?? undefined, style: brief.audio.soundtrack });
+    const { report } = await planSound(spec, projectDir, { beats, write: !opts.dryRun });
+    log.stage('SOUND', `${st.reason}; ${spec.audio.sfx.cues?.length ?? 0} cue(s), personality ${spec.audio.sfx.personality ?? '—'}${report ? `, ${report.uniqueVariants} variants, sync ≤${report.syncErrorMaxMs} ms` : ''}`);
+  });
 
   writeFileSync(join(projectDir, 'brief.json'), JSON.stringify(brief, null, 2));
   writeFileSync(join(projectDir, 'plan.json'), JSON.stringify({ ...plan, assumptions, taskClass: cls }, null, 2));

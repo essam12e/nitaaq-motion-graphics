@@ -36,7 +36,7 @@ import { compatiblePersonalities, STYLE_PERSONALITY, type MotionPersonalityId } 
 
 export { sampleFrames, collectProbes } from './probes';
 
-export type QcPass = 'structure' | 'design' | 'motion' | 'technical';
+export type QcPass = 'structure' | 'design' | 'motion' | 'audio' | 'technical';
 
 export interface QcIssue {
   severity: Severity;
@@ -160,7 +160,7 @@ const PHONE_MIN: Record<string, number> = { headline: 12, title: 12, cta: 10, nu
 // ── scoring / critique / acceptance ───────────────────────────────────────────
 const PENALTY: Record<Severity, number> = { critical: 40, error: 15, warning: 5, info: 0 };
 function scoresOf(issues: QcIssue[], passes: QcPass[]): QualityReport['scores'] {
-  const s = { structure: 100, design: 100, motion: 100, technical: 100, overall: 100 } as QualityReport['scores'];
+  const s = { structure: 100, design: 100, motion: 100, audio: 100, technical: 100, overall: 100 } as QualityReport['scores'];
   for (const i of issues) if (i.pass) s[i.pass] = Math.max(0, s[i.pass] - PENALTY[i.severity]);
   const ran = passes.map((p) => s[p]);
   s.overall = Math.round(ran.reduce((a, b) => a + b, 0) / ran.length);
@@ -185,6 +185,7 @@ function acceptanceOf(issues: QcIssue[], stage: 'structure' | 'final', checks: Q
   if (stage === 'final') {
     rules.push({ rule: 'valid H.264/yuv420p MP4 at the right size, fps and duration', ok: none((i) => i.code.startsWith('MP4_') && severityRank(i.severity) >= 2 && i.code !== 'MP4_SIGNATURE') });
     rules.push({ rule: 'audio present and not clipping when planned', ok: checks.audio !== 'fail' });
+    rules.push({ rule: 'no sound file repeated back-to-back', ok: none((i) => i.code === 'SFX_REPEAT_CONSECUTIVE' && severityRank(i.severity) >= 2) });
     rules.push({ rule: 'no blank frames', ok: checks.blank !== 'fail' });
   }
   return rules;
@@ -285,7 +286,8 @@ export async function structuralQc(opts: { spec: VideoSpec; projectDir: string; 
       if (!t.text.trim()) continue;
       const tb = { ...base, scene: t.scene || s.scene, element: `${t.role}:"${t.text.slice(0, 32)}"` };
       if (t.fit === 'fail') add('structure', { ...tb, severity: t.critical ? 'critical' : 'error', code: 'TEXT_FIT_FAIL', message: `text does not fit its box even at minimum size (${t.reason ?? 'overflow'})`, repair: { action: 'shrink-text' } });
-      if (t.overflowX) add('structure', { ...tb, severity: t.critical ? 'critical' : 'error', code: 'TEXT_OVERFLOW', message: 'a text line is wider than its container', repair: { action: 'shrink-text' } });
+      // an invisible line (before its entrance) cannot visibly clip; its settled frames are sampled as holds
+      if (t.overflowX && t.opacity > 0.05) add('structure', { ...tb, severity: t.critical ? 'critical' : 'error', code: 'TEXT_OVERFLOW', message: 'a text line is wider than its container', repair: { action: 'shrink-text' } });
       if (t.arabic && Math.abs(t.letterSpacing) > 0.01) add('structure', { ...tb, severity: 'error', code: 'ARABIC_LETTER_SPACING', message: `letter-spacing ${t.letterSpacing}px on Arabic text breaks joining` });
       if (t.splitGlyphs) add('structure', { ...tb, severity: 'critical', code: 'ARABIC_SPLIT_GLYPHS', message: 'Arabic word split into single-letter elements (broken ligatures)' });
       if (t.arabic && t.direction !== 'rtl' && /^[؀-ۿ]/.test(t.text)) add('structure', { ...tb, severity: 'error', code: 'RTL_DIRECTION', message: 'Arabic text laid out left-to-right' });
@@ -477,7 +479,7 @@ function extractFrames(video: string, frames: number[], dir: string, half: boole
   return out;
 }
 
-export async function finalQc(opts: { spec: VideoSpec; projectDir: string; video: string; outDir: string; structural: StructuralQc; profile?: string; pass?: number }): Promise<QualityReport> {
+export async function finalQc(opts: { spec: VideoSpec; projectDir: string; video: string; outDir: string; structural: StructuralQc; profile?: string; pass?: number; extraIssues?: QcIssue[] }): Promise<QualityReport> {
   const { spec, video, structural } = opts;
   const t0 = Date.now();
   const timings: Record<string, number> = { ...structural.report.timings };
@@ -598,7 +600,9 @@ export async function finalQc(opts: { spec: VideoSpec; projectDir: string; video
   timings.pixelMs = Date.now() - tp;
   timings.finalMs = Date.now() - t0;
 
-  const report = finalize(spec, issues, checks, { video, stage: 'final', profile: opts.profile, samples: structural.report.samples, media, audio, contactSheet: structural.report.contactSheet, phoneSheet: structural.report.phoneSheet, repairPass: opts.pass, timings, probeCache: structural.report.probeCache }, ['structure', 'design', 'motion', 'technical']);
+  // sound-design / motion-variety findings from produce's sound stage
+  if (opts.extraIssues?.length) issues.push(...opts.extraIssues);
+  const report = finalize(spec, issues, checks, { video, stage: 'final', profile: opts.profile, samples: structural.report.samples, media, audio, contactSheet: structural.report.contactSheet, phoneSheet: structural.report.phoneSheet, repairPass: opts.pass, timings, probeCache: structural.report.probeCache }, opts.extraIssues ? ['structure', 'design', 'motion', 'audio', 'technical'] : ['structure', 'design', 'motion', 'technical']);
   writeFileSync(join(opts.outDir, 'quality-report.json'), JSON.stringify(report, null, 2));
   log.stage('QUALITY', `final ${report.passed ? 'PASSED' : 'FAILED'} — critical ${report.summary.critical}, error ${report.summary.error}, warning ${report.summary.warning}; score ${report.scores.overall} (${(timings.finalMs / 1000).toFixed(1)}s)`);
   return report;

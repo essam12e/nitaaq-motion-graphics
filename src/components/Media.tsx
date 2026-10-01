@@ -7,7 +7,7 @@
  */
 import React, { type CSSProperties } from 'react';
 import { Img } from 'remotion';
-import { useAsset, useAssetMeta, useVideo } from '../engine/context';
+import { useAsset, useAssetMeta, useSharedHidden, useVideo } from '../engine/context';
 import { alpha } from '../brand/color';
 
 export interface MediaProps {
@@ -40,6 +40,7 @@ export function Media(p: MediaProps) {
   const treatment = identity ? 'none' : p.treatment ?? 'none';
   const filter = treatment === 'mono' ? 'grayscale(1) contrast(1.05)' : undefined;
   const r = (p.radius ?? 0) * canvas.u;
+  const handedOff = useSharedHidden(p.src);
   return (
     <div
       data-qc="media"
@@ -56,6 +57,7 @@ export function Media(p: MediaProps) {
         boxShadow: p.shadow ? `0 ${2 * canvas.u}px ${6 * canvas.u}px ${alpha(t.shadow.color, 0.25 + 0.4 * t.shadow.strength)}` : undefined,
         border: p.frame ? `${Math.max(2, canvas.u * 0.35)}px solid ${alpha(t.palette.textPrimary, 0.12)}` : undefined,
         ...p.style,
+        ...(handedOff ? { opacity: 0 } : {}),
       }}
     >
       {url ? (

@@ -19,9 +19,16 @@ import * as cinematic from './cinematic/cinematic-scenes';
 import * as social from './social/social-scenes';
 import * as cta from './cta/cta-scenes';
 import * as flow from './flow/flow-scenes';
+import * as kinetic from './kinetic/kinetic-scenes';
+import * as logoAnim from './brand/logo-animation';
+import * as productDirector from './commerce/product-director';
+import * as mapScenes from './map/map-scenes';
+import * as illustration from './illustration/illustration-scenes';
+import * as dataStory from './data/data-story';
+import * as web from './web/gsap-sequence';
 
 const isScene = (x: unknown): x is SceneModule => Boolean(x && typeof x === 'object' && 'manifest' in x && 'Component' in x);
-const GROUPS: Record<string, unknown>[] = [moreTypography, brand, ui, mobile, commerce, data, media, infographic, cinematic, social, cta, flow];
+const GROUPS: Record<string, unknown>[] = [moreTypography, brand, ui, mobile, commerce, data, media, infographic, cinematic, social, cta, flow, kinetic, logoAnim, productDirector, mapScenes, illustration, dataStory, web];
 
 export const BUILTIN_SCENES: SceneModule[] = [kineticTitle, wordImpact, lineReveal, ...GROUPS.flatMap((g) => Object.values(g).filter(isScene))];
 

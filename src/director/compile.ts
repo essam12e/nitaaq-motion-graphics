@@ -29,6 +29,8 @@ export function slug(s: string): string {
   return base || `video-${hashString(s).toString(36).slice(0, 6)}`;
 }
 
+const sharedKind = (k?: string): 'logo' | 'product' | 'screenshot' => (k === 'logo' ? 'logo' : k === 'screenshot' ? 'screenshot' : 'product');
+
 export function compileSpec(input: {
   brief: Brief;
   plan: CreativePlan;
@@ -44,6 +46,8 @@ export function compileSpec(input: {
   beatSync?: { bpm: number; offset: number; aligned: number } | null;
   reference?: { source: string; kind: 'image' | 'video' | 'website'; motionEnergy?: number; visualDensity?: 'sparse' | 'balanced' | 'dense'; appliedTo: string[] };
   effects?: 'LOW' | 'MEDIUM' | 'HIGH';
+  genre?: string;
+  modules?: string[];
 }): VideoSpec {
   const { brief, plan, storyboard, audio } = input;
   const aspect = plan.aspect as Aspect;
@@ -59,8 +63,8 @@ export function compileSpec(input: {
     duration: s.duration,
     content: s.content,
     layout: {},
-    motion: { intensity: s.intensity, camera: s.camera, ...(input.motion ? { jobs: input.motion.scenes[i]?.jobs } : {}) },
-    transition: s.transition === 'none' ? undefined : { type: s.transition, duration: s.transitionDuration },
+    motion: { intensity: s.intensity, camera: s.camera, ...(input.motion ? { jobs: input.motion.scenes[i]?.jobs, text: input.motion.scenes[i]?.text } : {}) },
+    transition: s.transition === 'none' ? undefined : { type: s.transition, duration: s.transitionDuration, ...(input.motion?.scenes[i]?.transitionReason ? { reason: input.motion.scenes[i].transitionReason } : {}) },
     sfx: 'auto' as const,
     purpose: s.purpose,
     beat: s.beat,
@@ -113,8 +117,15 @@ export function compileSpec(input: {
     },
     scenes,
     design: { allowPatterns: input.design?.allowPatterns ?? [], decorations: input.design?.decorations ?? false, justification: input.design?.justification, effectBudget: input.effects },
-    motion: { personality: input.motion?.personality, seed: input.seed },
-    timeline: { seamlessLoop: Boolean(input.loop), chapters: [], beatSync: input.beatSync ?? undefined },
+    motion: { personality: input.motion?.personality, seed: input.seed, ...(input.motion?.heroScene ? { heroScene: input.motion.heroScene } : {}) },
+    timeline: {
+      seamlessLoop: Boolean(input.loop),
+      chapters: [],
+      beatSync: input.beatSync ?? undefined,
+      shared: (input.motion?.shared ?? []).map((sh, k) => ({ id: `shared-${k + 1}`, asset: sh.asset, kind: sharedKind(input.assets[sh.asset]?.kind), fromScene: sh.fromScene, toScene: sh.toScene })),
+    },
+    genre: input.genre,
+    modules: input.modules ?? [],
     ...(input.reference ? { reference: input.reference } : {}),
     captions: { enabled: false, position: 'bottom' as const, cues: [] },
     metadata: {

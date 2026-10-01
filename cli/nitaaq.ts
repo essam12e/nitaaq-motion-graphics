@@ -27,7 +27,7 @@ import { log } from '../src/core/logger';
 import { SceneRegistry } from '../src/scenes';
 import { STYLE_PRESETS } from '../src/styles/presets';
 import { VideoSchema } from '../src/schema/video';
-import { BriefSchema } from '../src/schema/brief';
+import { BriefSchema, VARIANT_STRATEGIES } from '../src/schema/brief';
 import { CreativePlanSchema, StoryboardSchema } from '../src/schema/plan';
 import { validateSpec, summarize } from '../src/validation/validate';
 import { repairSpec } from '../src/validation/repair';
@@ -39,6 +39,7 @@ import { produce } from '../src/node/produce';
 import { direct } from '../src/node/direct';
 import { preflightFast } from '../src/node/preflight';
 import { recomposeProject } from '../src/node/recompose';
+import { planVariants } from '../src/director/variants';
 import { beatsFor } from '../src/node/beats';
 import { analyzeReference } from '../src/reference/analyze';
 import { captureWebsite } from '../src/node/capture';
@@ -124,6 +125,41 @@ async function main(): Promise<number> {
       const res = await produce({ projectDir: p.dir, stopAfterAnimatic: true });
       out({ ok: res.ok, animatic: res.animatic, contactSheet: res.report?.contactSheet, phoneView: res.report?.phoneSheet, scores: res.report?.scores, critique: res.report?.critique, totalSec: Math.round(res.perf.totalMs / 100) / 10 });
       return res.ok ? 0 : 1;
+    }
+    case 'variants': {
+      // Ad creative variants: one directed film per strategy × aspect (recomposed per aspect, never cropped)
+      const file = pos[0];
+      if (!file) throw new Error(`Usage: nitaaq variants <brief.json> [--strategies ${VARIANT_STRATEGIES.join(',')}] [--aspects 9:16,4:5,1:1,16:9] [--plan-only]`);
+      const raw = JSON.parse(readFileSync(file, 'utf8'));
+      if (flag('strategies') || flag('aspects')) raw.variants = { ...(raw.variants ?? {}), ...(flag('strategies') ? { strategies: flag('strategies')!.split(',') } : {}), ...(flag('aspects') ? { aspects: flag('aspects')!.split(',') } : {}) };
+      if (!raw.variants?.strategies) raw.variants = { ...(raw.variants ?? {}), strategies: [...VARIANT_STRATEGIES] };
+      const brief = BriefSchema.parse(raw);
+      const baseId = (brief.title ?? basename(file, '.json')).replace(/[^\w-]+/g, '-');
+      const plan = planVariants(brief, baseId);
+      for (const u of plan.unsupported) log.info('VARIANTS', `skipped ${u.strategy}: ${u.reason}`);
+      const results = [];
+      for (const job of plan.jobs) {
+        log.info('VARIANTS', `${job.id} — ${job.why}`);
+        const perf = new Perf();
+        const r = await direct({ brief: job.brief, baseDir: dirname(resolve(file)), projectDir: join(workspace().projects, job.id), assumeNoLogo: flag('no-logo') === 'true', perf });
+        if (r.status !== 'ready') {
+          results.push({ id: job.id, strategy: job.strategy, aspect: job.aspect, ok: false, questions: r.questions });
+          continue;
+        }
+        const scenes = r.storyboard!.scenes.map((s) => `${s.family}/${s.variant}`);
+        if (flag('plan-only') === 'true') {
+          results.push({ id: job.id, strategy: job.strategy, aspect: job.aspect, ok: true, project: r.projectDir, scenes });
+          continue;
+        }
+        const res = await produce({ projectDir: r.projectDir, profile: profileOf('production'), deliverTo: flag('out') ? resolve(flag('out')!) : undefined, name: job.id, perf });
+        results.push({ id: job.id, strategy: job.strategy, aspect: job.aspect, ok: res.ok, delivered: res.delivered, scenes, scores: res.report?.scores });
+      }
+      const report = { base: baseId, unsupported: plan.unsupported, results };
+      const dest = flag('out') ? resolve(flag('out')!) : workspace().projects;
+      mkdirSync(dest, { recursive: true });
+      writeFileSync(join(dest, `${baseId}.variants-report.json`), JSON.stringify(report, null, 2));
+      out(report);
+      return results.every((r) => r.ok) ? 0 : 1;
     }
     case 'recompose': {
       const p = project(pos[0]);

@@ -24,6 +24,8 @@ export interface PlannedSfx {
 export function planSfx(spec: VideoSpec, timeline: Timeline, suggestionsFor: (scene: SceneSpec) => SfxSuggestion[]): PlannedSfx[] {
   const cfg = spec.audio.sfx;
   if (!cfg.enabled) return [];
+  // the Sound Director's plan (events → intent → family → variant → sync → mix) wins when present
+  if (cfg.cues && cfg.cues.length) return cfg.cues.map((c) => ({ sceneId: c.sceneId, sound: c.sound, file: c.file, atSec: c.atSec, volume: c.volume, duration: c.duration }));
   const out: PlannedSfx[] = [];
   const threshold = 1 - cfg.intensity; // intensity 0.5 → keep weight ≥ 0.5
   spec.scenes.forEach((scene, i) => {

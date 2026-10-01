@@ -15,6 +15,10 @@ import type { CreativePlan, Beat } from '../schema/plan';
 import type { PlannedScene, PlannedStoryboard } from './storyboard';
 import { SceneRegistry } from '../scenes';
 import { TRANSITIONS } from '../transitions/presentations';
+import { chooseTransitions, type CutScene } from '../transitions/engine';
+import { planTextMotion } from '../text-motion/planner';
+import { hasArabic } from '../typography/arabic';
+import { motionProfile } from '../motion/principles';
 import { PERSONALITIES, pickPersonality, physicsFor, type MotionPersonalityId } from '../motion/personality';
 import type { ElementKind } from '../motion/physics';
 import { createRng } from '../core/rng';
@@ -36,10 +40,15 @@ export const MOTION_JOBS: Record<Beat, string[]> = {
   process: ['guide-through-steps'],
   comparison: ['contrast-before-after'],
   brand: ['brand-recall'],
+  tease: ['build-curiosity', 'withhold-the-reveal'],
+  reveal: ['hero-reveal', 'release-tension'],
+  montage: ['escalate-rhythm', 'sequence-benefits'],
+  detail: ['show-craft', 'direct-attention'],
+  map: ['locate-the-story', 'connect-places'],
   cta: ['resolve', 'direct-action'],
 };
 
-const HERO_BEATS: Beat[] = ['solution', 'product', 'brand', 'demo', 'offer'];
+const HERO_BEATS: Beat[] = ['solution', 'product', 'brand', 'demo', 'offer', 'reveal'];
 
 export interface BeatGrid {
   bpm: number;
@@ -58,6 +67,9 @@ export interface SceneDirection {
   camera: PlannedScene['camera'];
   transitionOut: string;
   physics: Partial<Record<ElementKind, string>>;
+  /** Text Motion Engine families per role group. */
+  text?: Record<string, string>;
+  transitionReason?: string;
   why: string;
 }
 
@@ -71,6 +83,12 @@ export interface MotionSpec {
   cameraBudget: { allowed: number; used: number };
   beatSync: { bpm: number; aligned: number } | null;
   physics: Partial<Record<ElementKind, string>>;
+  /** Animation principles per element under this personality (anticipation, overshoot, arcs, squash…). */
+  principles: Record<string, string>;
+  textMotion: Record<string, number>;
+  transitions: Record<string, number>;
+  /** Shared-element continuity pairs (same identity asset across a cut). */
+  shared: { asset: string; fromScene: string; toScene: string }[];
   rules: string[];
   scenes: SceneDirection[];
 }
@@ -101,6 +119,8 @@ export function directFilm(input: {
   referenceEnergy?: number;
   beats?: BeatGrid | null;
   voiceLed: boolean;
+  genre?: string;
+  sharedElements?: boolean;
 }): { storyboard: PlannedStoryboard; motion: MotionSpec; shotlist: ShotListEntry[] } {
   const { brief, plan, storyboard } = input;
   const rng = createRng(`${input.seed}:creative`).next;
@@ -110,7 +130,7 @@ export function directFilm(input: {
   const n = scenes.length;
 
   // ── hero moment: the strongest solution/product/brand beat in the middle of the film
-  const HERO_BONUS: Partial<Record<Beat, number>> = { product: 0.3, solution: 0.25, brand: 0.2, demo: 0.15, offer: 0.1 };
+  const HERO_BONUS: Partial<Record<Beat, number>> = { reveal: 0.4, product: 0.3, solution: 0.25, brand: 0.2, demo: 0.15, offer: 0.1 };
   const heroScore = (s: PlannedScene) => s.intensity + (HERO_BONUS[s.beat] ?? 0);
   let hero = -1;
   scenes.forEach((s, i) => {
@@ -135,9 +155,44 @@ export function directFilm(input: {
   const camOn = new Set(priority.filter((p) => p.score >= 1.5).slice(0, allowed).map((p) => p.i));
   let used = 0;
 
-  // ── transitions from the personality family, varied, never the same three times running
+  // ── Scene Transition Engine: every cut chosen from the relationship between its two scenes
   const known = (id: string) => Boolean(TRANSITIONS[id]);
-  const family = P.transitions.filter(known);
+  const identityOf = (v: unknown, acc: Set<string>): Set<string> => {
+    if (typeof v === 'string' && /^(logo|product(-\d+)?|screenshot|screen-\d+)$/.test(v)) acc.add(v);
+    else if (Array.isArray(v)) v.forEach((x) => identityOf(x, acc));
+    else if (v && typeof v === 'object') Object.values(v).forEach((x) => identityOf(x, acc));
+    return acc;
+  };
+  const textOf = (c: Record<string, unknown>) => JSON.stringify(c);
+  const cutScenes: CutScene[] = scenes.map((s) => {
+    const cat = SceneRegistry.get(s.family)?.manifest.category ?? 'typography';
+    const main = [s.content.word, s.content.title, s.content.headline].find((x) => typeof x === 'string') as string | undefined;
+    return { id: s.id, beat: s.beat, family: s.family, category: s.family.includes('flow') ? 'flow' : cat, identity: [...identityOf(s.content, new Set())], hasWord: Boolean((Array.isArray(s.content.highlight) && s.content.highlight.length) || (main && main.split(/\s+/).some((w) => w.length >= 3 && w.length <= 12))) };
+  });
+  let onBeat: boolean[] | undefined;
+  if (input.beats && input.beats.beats.length > 4 && !input.voiceLed) {
+    const grid = [...input.beats.downbeats, ...input.beats.beats];
+    const tl0 = buildTimeline(scenes.map((s) => ({ id: s.id, duration: s.duration, transition: undefined })), 30);
+    onBeat = tl0.entries.slice(1).map((e) => grid.some((g) => Math.abs(g - e.startSec) < 0.22));
+  }
+  const cutChoices = chooseTransitions({
+    scenes: cutScenes,
+    personality: pick.id,
+    pace: plan.pace,
+    genre: input.genre,
+    heroIndex: hero,
+    seed: input.seed,
+    onBeat,
+    sharedElements: input.sharedElements !== false,
+    hasProduct: Object.values(cutScenes).some((c) => c.identity.some((x) => x.startsWith('product'))),
+    styleFamily: P.transitions.filter(known),
+  });
+  // ── Text Motion Engine: hierarchy + variety per scene
+  const textPlan = planTextMotion(
+    scenes.map((s) => ({ id: s.id, beat: s.beat, arabic: hasArabic(textOf(s.content)) && brief.language !== 'en', hasHighlight: Array.isArray(s.content.highlight) && (s.content.highlight as unknown[]).length > 0 })),
+    pick.id,
+    input.seed,
+  );
 
   const directions: SceneDirection[] = scenes.map((s, i) => {
     const m = SceneRegistry.get(s.family)?.manifest;
@@ -148,15 +203,9 @@ export function directFilm(input: {
       used++;
     }
     s.intensity = Math.round(Math.min(1, Math.max(0.25, escalation[i] * (0.55 + P.intensity * 0.6))) * 100) / 100;
-    if (i < n - 1 && family.length) {
-      const prev2 = [scenes[i - 1]?.transition, scenes[i - 2]?.transition];
-      const keep = s.transition !== 'none' && known(s.transition) && family.includes(s.transition);
-      if (!keep || (prev2[0] === s.transition && prev2[1] === s.transition)) {
-        const pool = family.filter((t) => t !== prev2[0]);
-        s.transition = (pool.length ? pool : family)[Math.floor(rng() * (pool.length || family.length))];
-      }
-      // the hero cut lands harder; the CTA arrives cleanly
-      if (i + 1 === hero && known('zoom-in') && pick.id !== 'premium') s.transition = 'zoom-in';
+    if (i < n - 1 && cutChoices[i]) {
+      s.transition = cutChoices[i].type === 'cut' ? 'cut' : cutChoices[i].type;
+      if (cutChoices[i].duration > 0) s.transitionDuration = cutChoices[i].duration;
     }
     const jobs = [...MOTION_JOBS[s.beat]];
     if (i === hero) jobs.unshift('hero-moment');
@@ -164,7 +213,7 @@ export function directFilm(input: {
     s.movement = s.camera === 'none' ? `still frame; ${pick.id} element motion (${jobs[0]})` : `camera ${s.camera}; ${pick.id} element motion`;
     const physics: Partial<Record<ElementKind, string>> = {};
     for (const el of ELEMENTS) physics[el] = physicsFor(pick.id, el).id;
-    return { id: s.id, beat: s.beat, family: s.family, variant: s.variant, jobs, hero: i === hero, intensity: s.intensity, camera: s.camera, transitionOut: s.transition, physics, why: i === hero ? 'peak of the film: the answer/product lands here' : i === 0 ? 'hook: stop the scroll in the first second' : i === n - 1 ? 'resolve on one clear action' : `carries the ${s.beat} beat` };
+    return { id: s.id, beat: s.beat, family: s.family, variant: s.variant, jobs, hero: i === hero, intensity: s.intensity, camera: s.camera, transitionOut: s.transition, transitionReason: cutChoices[i]?.reason, text: textPlan.scenes[i]?.text as Record<string, string>, physics, why: i === hero ? 'peak of the film: the answer/product lands here' : i === 0 ? 'hook: stop the scroll in the first second' : i === n - 1 ? 'resolve on one clear action' : `carries the ${s.beat} beat` };
   });
 
   // ── beat alignment (music without voice): snap cut points to the nearest beat within ±0.18 s
@@ -207,12 +256,18 @@ export function directFilm(input: {
     cameraBudget: { allowed, used },
     beatSync,
     physics,
+    principles: Object.fromEntries(ELEMENTS.filter((el) => el !== 'transition').map((el) => [el, motionProfile(pick.id, el).why])),
+    textMotion: textPlan.usage,
+    shared: cutChoices.flatMap((c, i) => (c.shared && c.type === 'shared' && scenes[i + 1] ? [{ asset: c.shared.asset, fromScene: scenes[i].id, toScene: scenes[i + 1].id }] : [])),
+    transitions: cutChoices.reduce((a, c) => ((a[c.type] = (a[c.type] ?? 0) + 1), a), {} as Record<string, number>),
     rules: [
       `one personality for the whole film: ${P.label} — ${P.description}`,
       'every scene has a motion job; decorative motion is removed',
       `camera moves on at most ${allowed} scene(s)`,
       `overshoot ≤ ${Math.round(P.overshootMax * 100)}%, stagger ${P.stagger}s`,
       'randomness is seeded: the same brief renders the same film',
+      'every transition has a reason (continuity, contrast, reveal, rhythm); a hard cut is often right',
+      'text motion follows hierarchy: headline ≠ support ≠ CTA, no family twice in a row',
     ],
     scenes: directions,
   };

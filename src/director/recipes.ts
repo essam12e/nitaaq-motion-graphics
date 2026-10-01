@@ -5,6 +5,10 @@
  */
 import type { Brief } from '../schema/brief';
 import type { Beat } from '../schema/plan';
+import type { LogoStructure } from '../brand/logo-reveal';
+import type { MapPrecomputed } from '../maps/geo';
+import { chooseVisualization } from '../data/visualize';
+import { matchIllustrations } from '../illustration/registry';
 
 export interface RecipeCtx {
   brief: Brief;
@@ -12,6 +16,14 @@ export interface RecipeCtx {
   assets: { logo?: string; product?: string; screenshot?: string; images: string[] };
   brandName?: string;
   lang: 'ar' | 'en' | 'mixed';
+  /** Production genre (src/director/modules.ts). */
+  genre?: string;
+  /** Selected module ids — families of unselected lazy modules are never used. */
+  modules?: string[];
+  /** Measured logo structure + the reveal the Logo Animation Engine chose. */
+  logo?: { structure?: LogoStructure; reveal: string; reason: string };
+  /** Precomputed map (node side) when the brief has map data. */
+  map?: MapPrecomputed;
 }
 
 export interface Recipe {
@@ -81,6 +93,68 @@ const splitClauses = (t: string): string[] => {
 
 /** A list's heading must stay a heading: a long problem paragraph is left to its points (which restate it). */
 const listHeading = (t?: string) => (t && t.trim().split(/\s+/).length <= 12 ? t : undefined);
+
+const mod = (c: RecipeCtx, id: string) => Boolean(c.modules?.includes(id));
+const LATIN = /[A-Za-z][A-Za-z0-9 .&'’-]{1,}/;
+/** Lines for kinetic typography: the user's script, else the hook split into clauses. */
+const kineticLines = (c: RecipeCtx): string[] => (c.brief.content.lines?.length ? c.brief.content.lines.slice(0, 6) : splitClauses(c.brief.content.hook)).map((l) => l.slice(0, 80));
+/** Illustration subjects that fit a text (never a random picture). */
+const subjectsFor = (c: RecipeCtx, ...texts: (string | undefined)[]): string[] => {
+  const hinted = (c.brief.content.illustration ?? []).flatMap((h) => matchIllustrations(h, 1).length ? matchIllustrations(h, 1) : []);
+  const found = matchIllustrations(texts.filter(Boolean).join(' '), 3);
+  return [...new Set([...hinted, ...found])];
+};
+const seriesData = (c: RecipeCtx) => {
+  const s = c.brief.content.series!;
+  return { labels: s.labels, values: s.values, prefix: s.prefix, suffix: s.suffix, source: s.source, title: s.title };
+};
+
+/** Families each genre leans on (weighted ×2.2 by the storyboard when eligible). */
+export const GENRE_PREFER: Record<string, string[]> = {
+  kinetic: ['kinetic-sequence', 'kinetic-stack', 'kinetic-number', 'kinetic-mixed', 'kinetic-replace', 'zero-asset-sequence'],
+  launch: ['tease-reveal', 'feature-montage', 'product-hero', 'kinetic-sequence', 'logo-animation'],
+  product: ['product-hero', 'product-detail', 'product-showcase', 'price-offer'],
+  logo: ['logo-animation'],
+  map: ['map-story'],
+  data: ['data-story', 'kinetic-number', 'kpi-counter'],
+  whiteboard: ['whiteboard'],
+  illustrated: ['illustration-scene', 'diagram-flow'],
+  explainer: ['diagram-flow', 'illustration-scene'],
+  procedural: ['zero-asset-sequence', 'kinetic-sequence'],
+  music: ['kinetic-sequence', 'feature-montage', 'zero-asset-sequence'],
+  'web-ui': ['gsap-sequence', 'browser-scene', 'landing-page'],
+  saas: ['saas-interface', 'dashboard', 'diagram-flow', 'gsap-sequence'],
+};
+
+export const MODULE_RECIPES: Recipe[] = [
+  // ───────── Arabic kinetic typography
+  { family: 'kinetic-sequence', beats: ['hook', 'tease', 'solution', 'montage'], weight: 1.1, visual: 'kinetic typography sequence (word groups)', when: (c) => mod(c, 'kinetic-type') && kineticLines(c).length >= 1 && kineticLines(c).join(' ').split(/\s+/).length >= 2, message: (c) => kineticLines(c).join(' / '), build: (c) => ({ lines: kineticLines(c), highlight: emph(c, ...kineticLines(c)) }), variants: (c) => (c.genre === 'music' || c.genre === 'launch' ? ['rhythm', 'impact', 'build'] : ['impact', 'build', 'rhythm']) },
+  { family: 'kinetic-stack', beats: ['hook', 'problem', 'solution', 'feature'], weight: 1, visual: 'editorial type stack', when: (c) => mod(c, 'kinetic-type') && kineticLines(c).length >= 2 && kineticLines(c).length <= 5 && kineticLines(c).every((l) => l.length <= 60), message: (c) => kineticLines(c).join(' / '), build: (c) => ({ lines: kineticLines(c), highlight: emph(c, ...kineticLines(c)), kicker: c.brandName }) },
+  { family: 'kinetic-number', beats: ['proof', 'data', 'hook'], weight: 1.25, visual: 'kinetic sourced number', when: (c) => mod(c, 'kinetic-type') && (c.brief.content.stats?.length ?? 0) >= 1, message: (c) => `${c.brief.content.stats![0].value} ${c.brief.content.stats![0].label}`, build: (c) => { const s = c.brief.content.stats![0]; return { value: s.value, prefix: s.prefix, suffix: s.suffix, label: s.label, source: s.source }; } },
+  { family: 'kinetic-mixed', beats: ['hook', 'solution', 'brand'], weight: 1.15, visual: 'Arabic + English kinetic title', when: (c) => mod(c, 'kinetic-type') && Boolean(c.brief.content.english || (c.lang !== 'en' && LATIN.test(c.brief.content.hook))), message: (c) => c.brief.content.hook, build: (c) => { const en = c.brief.content.english ?? c.brief.content.hook.match(LATIN)![0].trim(); const ar = c.brief.content.english ? c.brief.content.hook : c.brief.content.hook.replace(en, '').replace(/\s+/g, ' ').trim() || c.brief.content.hook; return { arabic: ar.slice(0, 80), english: en.slice(0, 40), highlight: emph(c, ar) }; } },
+  { family: 'kinetic-replace', beats: ['hook', 'feature', 'solution'], weight: 1.3, visual: 'word replacement', when: (c) => mod(c, 'kinetic-type') && Boolean(c.brief.content.rotate), message: (c) => `${c.brief.content.rotate!.prefix} ${c.brief.content.rotate!.words.join(' / ')}`, build: (c) => ({ prefix: c.brief.content.rotate!.prefix, words: c.brief.content.rotate!.words.slice(0, 6), suffix: c.brief.content.rotate!.suffix }) },
+  // ───────── logo animation
+  { family: 'logo-animation', beats: ['brand', 'reveal', 'solution', 'cta'], weight: 1.6, visual: 'structure-aware logo reveal', when: (c) => mod(c, 'logo-animation') && Boolean(c.assets.logo && c.logo), message: (c) => c.brandName ?? 'logo', build: (c) => ({ logo: c.assets.logo, tagline: c.genre === 'logo' ? c.brief.content.subhook ?? c.brief.content.solution ?? c.brief.content.cta.text : c.brief.content.solution, structure: c.logo!.structure ? { layout: c.logo!.structure.layout, contentBox: c.logo!.structure.contentBox, parts: c.logo!.structure.parts, symmetry: c.logo!.structure.symmetry, dominantDirection: c.logo!.structure.dominantDirection } : undefined, revealReason: c.logo!.reason }), variants: (c) => [c.logo!.reveal] },
+  // ───────── product commercial
+  { family: 'product-hero', beats: ['product', 'reveal', 'hook'], weight: 1.5, visual: 'product hero shot', when: (c) => mod(c, 'product-commercial') || mod(c, 'launch-film') ? Boolean(c.assets.product) : false, message: (c) => c.brief.content.product?.name ?? '', build: (c) => ({ image: c.assets.product, name: c.brief.content.product?.name, title: c.brief.content.product?.tagline, highlight: emph(c, c.brief.content.product?.tagline), price: c.genre === 'launch' ? undefined : c.brief.content.product?.price }), variants: (c) => (c.genre === 'launch' ? ['dark-reveal', 'drop-land'] : c.brief.tone.some((t) => /فخم|luxur|premium|راق/i.test(t)) ? ['rim-light', 'dark-reveal'] : ['drop-land', 'rim-light']) },
+  { family: 'product-detail', beats: ['detail', 'feature'], weight: 1.4, visual: 'details on the real product', when: (c) => mod(c, 'product-commercial') && Boolean(c.assets.product) && (c.brief.content.features?.length ?? 0) >= 2, message: (c) => c.brief.content.features!.map((f) => f.title).join('، '), build: (c) => ({ image: c.assets.product, title: undefined, details: clip(c.brief.content.features, 5).map((f) => ({ label: f.title.slice(0, 40), value: f.description && f.description.length <= 30 ? f.description : undefined })) }), variants: (c) => (c.orientation === 'landscape' ? ['specs', 'callouts'] : ['specs', 'macro']) },
+  // ───────── launch / hype
+  { family: 'tease-reveal', beats: ['tease', 'reveal', 'hook'], weight: 1.7, visual: 'tease then reveal', when: (c) => mod(c, 'launch-film') && Boolean(c.brief.content.reveal || c.brandName || c.brief.content.product?.name), message: (c) => c.brief.content.reveal ?? c.brief.content.product?.name ?? c.brandName ?? '', build: (c) => ({ tease: (c.brief.content.tease ? splitClauses(c.brief.content.tease) : c.brief.content.hook ? [c.brief.content.hook] : []).slice(0, 3).map((x) => x.slice(0, 60)), reveal: (c.brief.content.reveal ?? c.brief.content.product?.name ?? c.brandName!).slice(0, 60), image: c.assets.product ?? undefined, date: c.brief.content.launchDate }), variants: (c) => (c.brief.tone.some((t) => /فخم|luxur|cinem|سينما/i.test(t)) ? ['slit', 'word-tease'] : ['word-tease', 'slit', 'countdown']) },
+  { family: 'feature-montage', beats: ['montage', 'feature'], weight: 1.3, visual: 'feature montage on the beat', when: (c) => (mod(c, 'launch-film') || c.genre === 'music') && (c.brief.content.features?.length ?? 0) >= 3 && c.brief.content.features!.every((f) => f.title.length <= 40), message: (c) => c.brief.content.features!.map((f) => f.title).join(' / '), build: (c) => ({ features: clip(c.brief.content.features, 8).map((f) => f.title), image: c.assets.product }), variants: (c) => (c.assets.product ? ['rail', 'flash'] : ['flash']) },
+  // ───────── map
+  { family: 'map-story', beats: ['map', 'proof', 'feature'], weight: 1.8, visual: 'animated map (Natural Earth data)', when: (c) => mod(c, 'map') && Boolean(c.map && (c.map.pins.length || c.map.regions.length || c.map.focus)), message: (c) => c.brief.content.map?.title ?? 'map', build: (c) => ({ title: c.brief.content.map?.title, geo: c.map }), variants: (c) => (c.map!.routes.length ? ['route', 'pins'] : c.map!.regions.length ? ['regions', 'focus'] : c.map!.pins.length ? ['pins', 'focus'] : ['focus']) },
+  // ───────── illustration / explainer
+  { family: 'illustration-scene', beats: ['problem', 'solution', 'feature', 'hook'], weight: 1.15, visual: 'procedural illustration', when: (c) => mod(c, 'illustration') && subjectsFor(c, c.brief.content.problem, c.brief.content.solution, c.brief.content.hook, ...(c.brief.content.features?.map((f) => f.title) ?? [])).length >= 1, message: (c) => c.brief.content.solution ?? c.brief.content.hook, build: (c) => { const feats = c.brief.content.features ?? []; const trio = feats.slice(0, 3).map((f) => ({ subject: subjectsFor(c, f.title, f.description)[0], label: f.title.slice(0, 40) })).filter((x) => x.subject); if (trio.length >= 2) return { title: c.brief.content.solution, items: trio, style: c.genre === 'illustrated' ? 'flat' : 'duotone' }; const subj = subjectsFor(c, c.brief.content.solution, c.brief.content.problem, c.brief.content.hook)[0]; return { title: c.brief.content.solution ?? c.brief.content.hook, highlight: emph(c, c.brief.content.solution ?? c.brief.content.hook), items: [{ subject: subj }], style: c.genre === 'illustrated' ? 'flat' : 'duotone' }; }, variants: (c) => ((c.brief.content.features ?? []).filter((f) => subjectsFor(c, f.title, f.description).length).length >= 2 ? ['trio'] : c.orientation === 'landscape' ? ['explain', 'hero'] : ['hero', 'explain']) },
+  { family: 'diagram-flow', beats: ['process', 'demo', 'solution'], weight: 1.35, visual: 'diagram of the process', when: (c) => mod(c, 'illustration') && (c.brief.content.steps?.length ?? 0) >= 2 && c.brief.content.steps!.length <= 6 && c.brief.content.steps!.every((s) => s.length <= 32), message: (c) => c.brief.content.steps!.join(' ← '), build: (c) => ({ nodes: c.brief.content.steps!.map((st) => ({ label: st, subject: subjectsFor(c, st)[0] })), center: c.brandName }), variants: (c) => ((c.brief.content.integrations?.length ?? 0) >= 3 ? ['hub', 'linear'] : ['linear', 'cycle']) },
+  // ───────── zero asset
+  { family: 'zero-asset-sequence', beats: ['hook', 'problem', 'solution', 'feature', 'tease', 'cta'], weight: 1.1, visual: 'asset-free geometry + type', when: (c) => mod(c, 'zero-asset'), message: (c) => c.brief.content.hook, build: (c) => ({ lines: (c.brief.content.lines?.length ? c.brief.content.lines.slice(0, 3) : splitClauses(c.brief.content.hook).slice(0, 3)).map((x) => x.slice(0, 60)), highlight: emph(c, c.brief.content.hook) }), variants: () => ['shapes', 'lines', 'orbit'] },
+  // ───────── whiteboard
+  { family: 'whiteboard', beats: ['problem', 'solution', 'process', 'feature', 'hook'], weight: 2, visual: 'whiteboard drawing', when: (c) => mod(c, 'whiteboard'), message: (c) => c.brief.content.solution ?? c.brief.content.hook, build: (c) => { const st = c.brief.content.steps?.length ? c.brief.content.steps : c.brief.content.features?.map((f) => f.title) ?? splitClauses(c.brief.content.solution ?? c.brief.content.hook); return { title: c.brief.content.problem && c.brief.content.problem.length <= 100 ? c.brief.content.problem : undefined, steps: st.slice(0, 4).map((t) => ({ text: t.slice(0, 80), subject: subjectsFor(c, t)[0] })) }; }, variants: (c) => (subjectsFor(c, ...(c.brief.content.steps ?? []), ...(c.brief.content.features?.map((f) => f.title) ?? [])).length ? ['draw', 'write'] : ['write']) },
+  // ───────── data story
+  { family: 'data-story', beats: ['data', 'proof'], weight: 1.6, visual: 'data story (honest visualization)', when: (c) => mod(c, 'data') && Boolean(c.brief.content.series && c.brief.content.series.labels.length === c.brief.content.series.values.length && c.brief.content.series.labels.length <= 8), message: (c) => c.brief.content.series!.title ?? 'data', build: (c) => seriesData(c), variants: (c) => [chooseVisualization(seriesData(c)).kind] },
+  // ───────── gsap
+  { family: 'gsap-sequence', beats: ['feature', 'demo'], weight: 1.2, visual: 'staggered UI timeline (GSAP)', when: (c) => mod(c, 'gsap') && ((c.brief.content.features?.length ?? 0) >= 2 || (c.brief.content.ui?.items?.length ?? 0) >= 2), message: (c) => (c.brief.content.features?.map((f) => f.title) ?? c.brief.content.ui!.items!).join('، '), build: (c) => ({ title: c.brief.content.ui?.headline, items: (c.brief.content.features?.length ? c.brief.content.features.map((f) => ({ label: f.title.slice(0, 36) })) : c.brief.content.ui!.items!.map((x) => ({ label: x.slice(0, 36) }))).slice(0, 8) }), variants: (c) => (c.orientation === 'portrait' ? ['cascade', 'stagger-grid'] : ['stagger-grid', 'cascade']) },
+];
 
 export const RECIPES: Recipe[] = [
   // ───────── hook
@@ -168,3 +242,4 @@ export const RECIPES: Recipe[] = [
   { family: 'cta-button', beats: ['cta'], weight: 1.2, visual: 'button pressed', when: (c) => Boolean(c.brief.content.cta.button), message: (c) => c.brief.content.cta.text, build: (c) => ({ title: c.brief.content.cta.text, highlight: emph(c, c.brief.content.cta.text), button: c.brief.content.cta.button, buttonIcon: c.lang === 'en' ? 'ArrowRight' : 'ArrowLeft' }) },
   { family: 'cta-clean', beats: ['cta'], weight: 1, visual: 'clean CTA', when: () => true, message: (c) => c.brief.content.cta.text, build: (c) => ({ title: c.brief.content.cta.text, highlight: emph(c, c.brief.content.cta.text), button: c.brief.content.cta.button, subtitle: c.brief.content.cta.url?.replace(/^https?:\/\//, '') }) },
 ];
+RECIPES.push(...MODULE_RECIPES);
