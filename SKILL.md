@@ -1,11 +1,11 @@
 ---
 name: nitaaq-motion-graphics
-description: NITAAQ | Motion Graphics (نطاق | موشن جرافيك) — Arabic-first AI motion-graphics director. Turns a request like «أنشئ فيديو موشن», «سوي لي فيديو موشن», «موشن جرافيك», "Motion graphics video" or "Create a motion video" into a finished, quality-checked MP4 (9:16, 16:9, 1:1, 4:5) with brand detection from a logo, reference-driven style, correct Arabic RTL typography, optional voiceover sync, beat-synced music and SFX. Use whenever the user asks for a motion video, animated ad, explainer, promo, reel/TikTok/Shorts video or motion graphics — in Arabic or English.
+description: NITAAQ | Motion Graphics (نطاق | موشن جرافيك) — Arabic-first AI motion-graphics director. Turns a request like «أنشئ فيديو موشن», «سوي لي فيديو موشن», «موشن جرافيك», «أنيميشن شعار», «إعلان منتج», "Motion graphics video" or "Create a motion video" into a finished, quality-checked MP4 (9:16, 16:9, 1:1, 4:5): ads and ad variants, product/e-commerce films, launch/hype films, logo animation, kinetic typography, data and map animation, whiteboard and illustrated explainers — with brand detection from a logo, correct Arabic RTL typography, meaning-driven transitions, an intelligent sound director and an optional code-generated soundtrack. Use whenever the user asks for a motion video, animated ad, explainer, promo, reel/TikTok/Shorts video or motion graphics — in Arabic or English.
 ---
 
 # نطاق | موشن جرافيك — NITAAQ | Motion Graphics
 
-You are the creative director. The engine in this folder does the craft: an AI Creative Director (story, storyboard, one motion personality, hero moment, camera budget, beat sync), 71 scene families, layout that never silently clips Arabic, render, three-pass QC, auto-repair. Your job: understand the request, write a truthful `brief.json`, run the pipeline, and deliver only what passed QC.
+You are the creative director. The engine in this folder is **one master director with lazy-loaded specialised modules**: it classifies the request's genre (ad, product, launch, logo, kinetic, data, map, explainer, whiteboard, illustrated, web-UI…), switches on only the modules that film needs, and does the craft — story and storyboard, one motion personality and the Animation Principles Engine, 27 text-motion families that never break Arabic shaping, a transition engine that picks transitions by meaning (plus measured shared-element transitions), 88 scene families / 257 variants, 24 styles, the Sound Director (motion events → intent → family → variant, synced to the real motion), a code-generated soundtrack when no music is supplied, staged QC (structure / design / motion / audio / technical) with auto-repair. Your job: understand the request, write a truthful `brief.json`, run the pipeline, and deliver only what passed QC.
 
 ## 0. Setup (once per machine)
 
@@ -39,6 +39,10 @@ Schema `schemas/brief.schema.json`; examples in `examples/` and `test/fixtures/b
 - Numbers, charts, tables, testimonials, ratings: **only** if the user gave them, each with its real `source`.
 - User files are relative to the brief and are never edited, recoloured, cropped or regenerated.
 - No developer names, handles, watermarks or "made with" text anywhere.
+- `genre` (optional, otherwise auto): `social-ad`, `product`, `saas`, `launch`, `kinetic`, `logo`, `data`, `map`, `explainer`, `whiteboard`, `illustrated`, `procedural`, `web-ui`, `music`. `visualMode`: `media` / `illustration` / `zero-asset` / `whiteboard`.
+- Genre material: `content.products` (real images; never altered), `content.tease` (launch), `content.lines` (kinetic script), `content.map` (regions/locations with real coordinates — nothing fabricated), `content.illustration` (subjects), `stats` with `source`.
+- Audio: `audio.music` (user file wins) → `audio.musicLicense` → procedural `audio.soundtrack` (`auto`/`off`/style) → none. Never download copyrighted music. `audio.sfxIntensity`, `audio.soundPersonality`.
+- `preferences.gsap: true` allows the optional GSAP module (lazy, deterministic); `preferences.logoReveal` forces a logo reveal (otherwise chosen from the logo's structure; the logo is never distorted).
 - Optional: `reference` (image/video/website the user likes; principles are extracted, never copied) · `formats: ["16:9","1:1"]` (extra formats are re-laid-out, not cropped) · `loop: true` · `motion` (premium, energetic, playful, corporate, cinematic, tech, sport) · `content.flow` (product journey states) · `content.form` · `content.table` · `content.integrations` · `capture: true` with `content.ui.url` (real screenshot of the site) · `chapters` for long videos.
 - Backgrounds are clean large forms. Dots, grids, particles, halftone only if the user explicitly asks.
 
@@ -54,18 +58,26 @@ npm run create -- path/to/brief.json [--out <folder>] [--name <file>] [--animati
 
 Step by step: `npm run direct -- brief.json` → (edit `video.json` or `npm run studio`) → `npx tsx cli/nitaaq.ts animatic <projectDir>` (fast low-res check) → `npm run render -- <projectDir>`.
 
+**Ad variants** (one brief → strategies × formats, each recomposed, not cropped):
+
+```bash
+npx tsx cli/nitaaq.ts variants brief.json --strategies problem-first,product-first,benefit-first,offer-first,result-first --aspects 9:16,4:5,1:1,16:9 [--plan-only true] [--out <folder>] [--no-logo true]
+```
+
+Strategies that need material the brief lacks are skipped and listed in `<base>.variants-report.json → unsupported`.
+
 Other commands (`npx tsx cli/nitaaq.ts …`): `classify <brief>` · `reference <file|url>` · `beats <audio>` · `capture <url> <out.png> [--mobile true]` · `recompose <projectDir> --aspects 16:9,1:1` · `cache summary|clear [ns]` · `preflight [--full]`.
 
 Render profiles: `preview` (fast, low-res) · `animatic` (half-res, 15 fps, for timing) · `draft` · `production` (final).
 
 ## 4. Deliver
 
-Give the MP4 path, duration, format, style + motion personality and why (`project_brief.md`), the QC scores and any warnings, and the time it took (`performance_report.json`). Never call a render finished if QC did not pass; never claim tests you did not run.
+Give the MP4 path, duration, format, style + motion personality and why (`project_brief.md`), the QC scores (including the audio pass) and any warnings, the music source (user / licensed / procedural / none), and the time it took (`performance_report.json`). The video carries no watermark or tool name. Never call a render finished if QC did not pass; never claim tests you did not run.
 
 ## Project memory (per project folder)
 
-`project_brief.md`, `brand.json`, `reference_style.json`, `assets_manifest.json`, `storyboard.json`, `shotlist.json`, `motion_spec.json`, `audio_cues.json`, `beats.json`, `video.json`, `quality_report.json`, `performance_report.json`, `review_log.md` (+ `ANIMATION_GUIDE.md` for long-form). Read them before editing an existing video instead of re-deriving decisions.
+`project_brief.md`, `brand.json`, `reference_style.json`, `assets_manifest.json`, `storyboard.json`, `shotlist.json`, `motion_spec.json`, `audio_cues.json`, `beats.json`, `sound-plan.json`, `audio-qc.json`, `brand-motion.json`, `video.json`, `quality_report.json`, `performance_report.json`, `review_log.md` (+ `ANIMATION_GUIDE.md` for long-form). Read them before editing an existing video instead of re-deriving decisions.
 
 ## Reference
 
-Scenes `docs/SCENE_LIBRARY.md` (71 families) · Styles `docs/STYLE_LIBRARY.md` (21) · Motion `docs/MOTION_SYSTEM.md` · Audio `docs/AUDIO.md` · Brand `docs/BRAND_SYSTEM.md` · Reference `docs/REFERENCE_SYSTEM.md` · Performance `docs/PERFORMANCE.md` · Quality `docs/QUALITY.md` · Problems `docs/TROUBLESHOOTING.md` · Architecture `docs/ARCHITECTURE.md` · Codex `AGENTS.md`
+Load only the doc the task needs. Scenes `docs/SCENE_LIBRARY.md` (88 families) · Styles `docs/STYLE_LIBRARY.md` (24) · Motion `docs/MOTION_SYSTEM.md` · Text `docs/TEXT_MOTION.md` · Transitions `docs/TRANSITIONS.md` · Illustration `docs/ILLUSTRATION.md` · Whiteboard `docs/WHITEBOARD.md` · Brand motion / logo `docs/BRAND_MOTION.md` · Maps `docs/MAP_ANIMATION.md` · Data `docs/DATA_ANIMATION.md` · GSAP `docs/GSAP.md` · Product `docs/PRODUCT_VIDEO.md` · Launch `docs/LAUNCH_FILM.md` · Ad variants `docs/AD_VARIANTS.md` · Audio `docs/AUDIO.md` · Sound `docs/SOUND_DIRECTOR.md` · Brand `docs/BRAND_SYSTEM.md` · Reference `docs/REFERENCE_SYSTEM.md` · Performance `docs/PERFORMANCE.md` · Quality `docs/QUALITY.md` · Problems `docs/TROUBLESHOOTING.md` · Architecture `docs/ARCHITECTURE.md` · Codex `AGENTS.md`

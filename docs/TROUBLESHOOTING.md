@@ -32,6 +32,17 @@ Every error prints **what** failed, **where**, **why**, whether it was **repaire
 | `PHONE_UNREADABLE` | text too small at phone size | Cut words or raise `textScale`; the repair loop tries first |
 | `EFFECT_BUDGET` (warning) | heavy families/blur/glow over the task's budget | Use lighter families or a flatter style; render will be slower |
 | `CAMERA_OVERUSE` / `TRANSITION_MONOTONY` | motion without restraint/variety | Let the Creative Director re-plan (`direct` again) or edit `motion_spec.json` choices in video.json |
+| `TRANSITION_REPEAT` / `TEXT_MOTION_REPEAT` / `TEXT_MOTION_OVERUSED` | the same transition or headline text motion twice in a row / too often | The engines avoid this by design; if it appears after manual edits, change `scenes[i].transition` or `motion.text` |
+| `SFX_REPEAT_CONSECUTIVE` / `SFX_REPEAT_OVERUSED` | the same sound file back-to-back / too often | The sound stage re-plans with another variation (up to 3); if it persists, lower `audio.sfxIntensity` in the brief or remove explicit per-scene `sfx` arrays |
+| `SFX_DENSITY` | too many sound cues per 10 s | Auto-repair lowers the intensity; or set `audio.sfxIntensity` lower in the brief |
+| `SFX_SYNC` | a cue is > 80 ms off its motion anchor | Re-run `direct` (re-plans on the measured peaks); report it if it repeats |
+| `SFX_VOICE_CLASH` | an SFX sits on top of a voice phrase | Auto-repair lowers SFX; or a lower `audio.sfxVolume` / `audio.sfxIntensity` for voice-led films |
+| `SFX_KEY_SILENT` (warning) | a key moment (logo / hero / price / CTA) has no sound | Usually the density budget; raise `audio.sfxIntensity` slightly |
+| `AUDIO_EMPTY` | no voice, no music and no SFX | Intended only when the user asked for silence; otherwise allow the procedural soundtrack or SFX |
+| Shared transition falls back to a normal one | `shared-rects` could not see the asset at one edge of the transition (listed in the produce log) | Expected — nothing is guessed; keep the asset visible at the end of the outgoing scene |
+| `gsap` cards render static (`data-qc-gsap="missing"`) | the optional `gsap` package is not installed | `npm i gsap` or let the director use a non-GSAP family |
+| A map place or route end is missing (validation warning, `warnings` in the map content) | the place is not in the bundled data and the brief gave no `lat`/`lon` | Provide real coordinates or a GeoJSON file; locations are never invented |
+| `variants` makes fewer files than expected | a strategy needs material the brief does not have (e.g. product-first without a product image) | Read `<base>.variants-report.json` → `unsupported` |
 | `LOOP_SEAM` | last frame differs from the first in a loop | End on the opening composition |
 | `REFERENCE_UNREADABLE` | reference file missing or not an image/video | Check the path or send a screenshot |
 | `CAPTURE_FAILED` | website could not be captured (blocked network, blank page) | Ask the user for a screenshot of the page; nothing is fabricated |

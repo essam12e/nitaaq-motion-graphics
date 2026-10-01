@@ -129,9 +129,20 @@ export function composeSoundtrack(input: ComposeInput): ComposeResult {
   const root = 45 + Math.floor(r() * 7); // A2..D#3
   const scale = def.minor ? MINOR : MAJOR;
   const keyName = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#'][root - 45] + (def.minor ? ' minor' : ' major');
+  // per-section harmony (separate stream so the rest of the seed is unchanged):
+  // the peak re-voices the progression (rotation or one substituted degree),
+  // the resolve section leans home (ends each cycle on the tonic).
+  const hr = createRng(`soundtrack-harmony:${input.seed}:${input.style}`).next;
+  const base = def.progression;
+  const rotate = hr() < 0.5;
+  const subIdx = 1 + Math.floor(hr() * (base.length - 1));
+  const peakProg = rotate ? [...base.slice(2), ...base.slice(0, 2)] : base.map((d, i) => (i === subIdx ? (d + 2) % 7 : d));
+  const resolveProg = [...base.slice(0, base.length - 1), 0];
   const chordAt = (t: number) => {
     const barIdx = Math.floor((t - firstBeat + bar * 64) / bar);
-    const deg = def.progression[barIdx % def.progression.length];
+    const name = (sections.find((x) => t >= x.start && t < x.end) ?? sections[sections.length - 1]).name;
+    const prog = name === 'peak' ? peakProg : name === 'resolve' ? resolveProg : def.progression;
+    const deg = prog[barIdx % prog.length];
     const tones = [0, 2, 4].map((k) => {
       const d = deg + k;
       return root + scale[d % 7] + 12 * Math.floor(d / 7);

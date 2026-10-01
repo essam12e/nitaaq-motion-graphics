@@ -28,6 +28,7 @@ import { Perf } from '../perf/timer';
 import { renderConcurrency } from './render';
 import { writeAssetsManifest } from './manifest';
 import { ensureSoundtrack, planSound } from './sound';
+import { resolveSharedRects } from './shared-rects';
 import { audioQc, motionVarietyQc } from '../qc/audio-qc';
 import type { QcIssue } from '../qc/quality';
 import type { BeatAnalysis } from '../audio/beats';
@@ -133,6 +134,13 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
     spec = next;
     save(specFile, spec);
     passes++;
+  }
+
+  // 2a. shared-element continuity: measure the identity asset at both transition edges
+  if (spec.timeline?.shared?.length) {
+    const sr = await perf.stage('shared-elements', () => resolveSharedRects(spec, opts.projectDir));
+    log.stage('DIRECTOR', `shared elements: ${sr.measured} measured${sr.skipped.length ? `, ${sr.skipped.length} kept as normal transitions (${sr.skipped.map((x) => x.why).join('; ')})` : ''}`);
+    if (sr.changed) save(specFile, spec);
   }
 
   // 2b. sound on the final timeline: soundtrack (no user music only) → Sound Director → audio QC + repair

@@ -36,9 +36,11 @@ const CASES: Record<string, { brief: string; what: string }> = {
 
 const GROUPS: Record<string, string[]> = {
   planning: ['intake', 'classify', 'director', 'storyboard', 'compile', 'creative', 'modules', 'sound-director'],
-  preprocessing: ['assets', 'brand', 'fonts', 'audio', 'beats', 'reference', 'capture', 'soundtrack', 'sfx-library', 'brand-motion', 'map-data'],
+  preprocessing: ['assets', 'brand', 'fonts', 'audio', 'beats', 'reference', 'capture', 'soundtrack', 'sfx-library', 'brand-motion', 'map-data', 'logo-structure'],
+  // soundtrack synthesis + Sound Director + audio QC (direct and produce both record 'sound')
+  sound: ['sound'],
   validation: ['validation'],
-  qc: ['qc-structure', 'qc-final', 'contact-sheet', 'audio-qc'],
+  qc: ['qc-structure', 'qc-final', 'contact-sheet', 'audio-qc', 'shared-elements'],
   animatic: ['animatic'],
   render: ['render'],
 };

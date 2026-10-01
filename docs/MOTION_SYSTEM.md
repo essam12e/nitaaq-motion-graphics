@@ -11,7 +11,7 @@ Runs after the storyboard and writes its decisions to `motion_spec.json` and `sh
 - **One hero moment**: the strongest product/solution/brand/demo/offer beat in the middle of the film (never the first or last scene).
 - **Escalation curve**: hook 0.8 → build → hero 1.0 → CTA 0.7 (the CTA resolves, it does not shout).
 - **Camera budget**: at most `ceil(scenes × activity × 0.6)` camera moves, given to hero, hook and CTA first; scenes marked strict-safe-area never move the camera.
-- **Transitions** from the personality's family, never the same one three times in a row; the cut into the hero lands with `zoom-in` (except premium).
+- **Transitions** are chosen by meaning by the Transition Engine (`TRANSITIONS.md`): relationship of the two scenes first, a flashy budget, never the same non-cut type back-to-back.
 - **Beat sync** (music, no voice): cut points snap to the nearest beat or downbeat within ±0.18 s when the previous scene can absorb the change (never below its minimum duration). Voice-led films follow the voice, never the beat.
 - Deterministic: all choices use a seeded RNG. Same brief + seed = same film.
 
@@ -29,7 +29,7 @@ Runs after the storyboard and writes its decisions to `motion_spec.json` and `sh
 
 ## 3. Physics library (`src/motion/physics.ts`)
 
-Ten presets, measured (overshoot and settle frames at 30 fps are computed, and unit-tested):
+Twelve presets, measured (overshoot and settle frames at 30 fps are computed, and unit-tested):
 
 | Preset | Drive | stiffness/damping/mass | Overshoot | Settle (frames) | Use |
 |---|---|---|---|---|---|
@@ -43,12 +43,28 @@ Ten presets, measured (overshoot and settle frames at 30 fps are computed, and u
 | cinematic | curve | 70/20/1.4 | 0 % | 38 | camera, atmosphere |
 | mechanical | curve | 400/40/0.5 | 0 % | 11 | data, tickers |
 | sport | spring | 380/18/0.6 | 9 % | 8 | sports and hype |
+| corporate | curve | 150/28/1 | 0 % | — | institutional, measured ease-out |
+| tech | spring | 300/30/0.7 | 2 % | — | product UI and SaaS, crisp |
 
 Default per element type: button/cursor → responsive · card/icon/notification/hero-title → snappy · text/body → soft · panel/dashboard/device/product → heavy · logo → premium · chart/number → mechanical · camera/background → cinematic. Each personality overrides some of these (e.g. premium makes buttons and icons `soft`; sport makes cards and numbers `sport`).
 
+## 3b. Animation Principles Engine (`src/motion/principles.ts`)
+
+One function, `motionProfile(personality, element, areaFraction)`, decides **how** a thing moves from **what** it is, how big/heavy it looks, and the film's personality. Every scene that animates an element asks it rather than hard-coding easing.
+
+- **Apparent mass** (feather → light → medium → heavy → massive) from the element kind and its on-screen area; heavier = longer (`timeScale` 0.75 → 1.35).
+- **Anticipation**: a small counter-move before expressive moves (6–10 % of travel for bouncy personalities, 3 % tech); never on buttons, cursors, charts, numbers, or under premium / corporate / cinematic.
+- **Overshoot** bounded by the personality's budget ∩ the preset.
+- **Follow-through** (`followThrough`): children lag and settle after their parent; **secondary motion** (`secondaryMotion`): shadows/labels/glows react slightly later.
+- **Arcs** (`arcPoint`): organic objects (product, icon, logo, card, notification) travel on arcs; UI travels straight.
+- **Squash & stretch** (`squashStretch`): volume-preserving, only for light objects in playful (and slightly in sport) films — never on logos or titles.
+- **Sound anchors** (`anchorsOf` / `profileAnchors`): the same motion curve yields `start`, `peak` (peak velocity), `contact`, `settle`, `completion` — the Sound Director syncs to these (`SOUND_DIRECTOR.md`), not to scene start.
+
+The profile's `why` string is written to `motion_spec.json`, so every move documents its reason.
+
 ## 4. State-based motion and shared elements
 
-`state-flow` (alias `shared-element`, `journey`) moves one element through the product journey (logo → search → result → product → cart → checkout → success): the same surface morphs size, radius and content between states instead of cutting between unrelated cards. `form-fill`, `workflow`, `order-success`, `browser-scene` and `landing-page` are also state-driven (empty → typed → submitted → done).
+`state-flow` (alias `shared-element`, `journey`) moves one element through the product journey (logo → search → result → product → cart → checkout → success): the same surface morphs size, radius and content between states instead of cutting between unrelated cards. `form-fill`, `workflow`, `order-success`, `browser-scene` and `landing-page` are also state-driven (empty → typed → submitted → done). Across scenes, the same logo / product / screenshot is carried by a measured **shared-element transition** (`TRANSITIONS.md`).
 
 ## 5. Seamless loop
 
@@ -56,4 +72,4 @@ Default per element type: button/cursor → responsive · card/icon/notification
 
 ## 6. QC checks on motion
 
-`HOLD_TOO_SHORT`, `VOICE_DRIFT`, `MOTION_NO_PURPOSE`, `CAMERA_OVERUSE` (> 70 % of scenes), `TRANSITION_MONOTONY`, `PERSONALITY_MISMATCH`. See `QUALITY.md`.
+`HOLD_TOO_SHORT`, `VOICE_DRIFT`, `MOTION_NO_PURPOSE`, `CAMERA_OVERUSE` (> 70 % of scenes), `TRANSITION_MONOTONY`, `TRANSITION_REPEAT`, `TEXT_MOTION_REPEAT`, `TEXT_MOTION_OVERUSED`, `PERSONALITY_MISMATCH`. See `QUALITY.md`.

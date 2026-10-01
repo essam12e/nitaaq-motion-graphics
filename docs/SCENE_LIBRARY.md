@@ -2,13 +2,13 @@
 
 _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit by hand._
 
-**71 families · 201 variants · 11 categories.** Every family works in 9:16, 16:9, 1:1 and 4:5 unless noted, validates its `content` with Zod, and ships an example used by the Studio and the visual-regression gallery. **Cost** is the render-cost class used by the effect budget (LOW/MEDIUM/HIGH, see PERFORMANCE.md); **Motion** is the recommended physics and camera use.
+**88 families · 257 variants · 13 categories.** Every family works in 9:16, 16:9, 1:1 and 4:5 unless noted, validates its `content` with Zod, and ships an example used by the Studio and the visual-regression gallery. **Cost** is the render-cost class used by the effect budget (LOW/MEDIUM/HIGH, see PERFORMANCE.md); **Motion** is the recommended physics and camera use.
 
 ## Friendly aliases
 
 `shared-element` → `state-flow` · `journey` → `state-flow` · `automation` → `workflow` · `integrations` → `integration-hub` · `table` → `data-table` · `order-complete` → `order-success` · `specs` → `product-details` · `form` → `form-fill` · `landing` → `landing-page` · `title` → `kinetic-title` · `headline` → `kinetic-title` · `hook` → `word-impact` · `quote` → `quote-typography` · `logo` → `logo-reveal` · `intro` → `brand-intro` · `outro` → `brand-outro` · `browser` → `browser-scene` · `website` → `browser-scene` · `app` → `phone-mockup` · `phone` → `phone-mockup` · `notification` → `order-notification` · `notifications` → `notification-stack` · `product` → `product-showcase` · `products` → `product-grid` · `offer` → `price-offer` · `price` → `price-offer` · `cart` → `shopping-cart` · `checkout` → `checkout-flow` · `chart` → `bar-chart` · `stats` → `kpi-counter` · `kpi` → `kpi-counter` · `counter` → `kpi-counter` · `comparison` → `comparison-table` · `features` → `feature-set` · `steps` → `process-steps` · `process` → `process-steps` · `checklist` → `icon-list` · `testimonials` → `testimonial` · `review` → `testimonial` · `chat` → `chat-message` · `stat` → `stat-highlight` · `cta` → `cta-clean` · `qr` → `cta-qr` · `contact` → `cta-contact` · `before-after-slider` → `before-after`
 
-## typography (9)
+## typography (14)
 
 | Family | Variants | Beats | Duration (s) | Cost | Motion | Content (required*) |
 |---|---|---|---|---|---|---|
@@ -21,8 +21,13 @@ _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit b
 | **quote-typography**<br>Editorial quote treatment; variants editorial / centered / bar. Quotes must be real (user-provided). | editorial, **centered**, bar | social, proof, brand | 2.5–10 (default 4) | LOW | elements: hero-title/text; jobs: establish-hierarchy/stop-the-scroll | quote*, author, role, highlight |
 | **split-typography**<br>Two contrasting statements on two colour fields; variants halves / diagonal / stacked. | **halves**, diagonal, stacked | problem, comparison, solution, bridge | 1.8–7 (default 3) | LOW | elements: hero-title/text; jobs: establish-hierarchy/stop-the-scroll | first*, second*, label |
 | **type-on**<br>Text typed into a field (search, prompt, terminal). Arabic is typed per character with correct contextual shaping — no split glyphs. | **search**, prompt, terminal | hook, problem, demo | 2.2–8 (default 3.4) | LOW | elements: hero-title/text; jobs: establish-hierarchy/stop-the-scroll | text*, label, result, icon |
+| **kinetic-mixed**<br>Arabic line and an English term composed together (each in its own face and direction, bidi-isolated). Variants stacked / interlock. | **stacked**, interlock | hook, solution, brand, reveal | 2–7 (default 3) | LOW | elements: hero-title/text; jobs: establish-hierarchy/stop-the-scroll | arabic*, english*, highlight |
+| **kinetic-replace**<br>A fixed phrase with a rotating key word (masked vertical replacement; the slot width eases between words). | **slot** | hook, feature, solution, montage | 2.4–8 (default 3.6) | LOW | elements: hero-title/text; jobs: establish-hierarchy/stop-the-scroll | prefix*, words*, suffix |
+| **kinetic-sequence**<br>Arabic-first kinetic typography: phrase impact / build-up / line rhythm. Units are word groups, never glyphs. | **impact**, build, rhythm | hook, bridge, tease, montage, problem, solution | 1.6–10 (default 3.6) | LOW | elements: hero-title; jobs: stop-the-scroll/escalate-rhythm | lines*, highlight |
+| **kinetic-stack**<br>Stacked lines with scale/weight hierarchy; each line has its own reveal; emphasis on a soft bar. Variants centered / offset. | **centered**, offset | hook, problem, solution, tease, brand | 2.2–9 (default 3.8) | LOW | elements: hero-title/text; jobs: establish-hierarchy/stop-the-scroll | lines*, highlight, kicker |
+| **zero-asset-sequence**<br>No images: seeded geometry choreographed around the type — shapes / lines / orbit. Never dotted or patterned backgrounds. | **shapes**, lines, orbit | hook, problem, solution, feature, cta, tease | 1.6–8 (default 3.2) | LOW | elements: hero-title/text; jobs: establish-hierarchy/stop-the-scroll | lines*, highlight, seed |
 
-## brand (5)
+## brand (6)
 
 | Family | Variants | Beats | Duration (s) | Cost | Motion | Content (required*) |
 |---|---|---|---|---|---|---|
@@ -31,8 +36,9 @@ _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit b
 | **color-transition**<br>Brand colours sweep across the frame and land a word; variants sweep / circles / bars. | sweep, circles, **bars** | bridge, brand, solution | 1.2–4 (default 2.2) | LOW | elements: logo/hero-title; jobs: brand-recall | word*, sub |
 | **logo-reveal**<br>Reveals the user's logo (never altered); variants mask / scale-glow / lines / ring. | mask, **scale-glow**, lines, ring | brand, hook, cta | 1.6–6 (default 2.8) | LOW | elements: logo/hero-title; jobs: brand-recall | logo, tagline |
 | **logo-spotlight**<br>Logo emerges under a moving spotlight or with orbiting rings; variants spotlight / orbit. | **spotlight**, orbit | brand, cta | 2–6 (default 3) | LOW | elements: logo/hero-title; jobs: brand-recall | logo, tagline |
+| **logo-animation**<br>Reveals the user's logo with a reveal chosen from its measured structure (symbol/wordmark split, symmetry, direction). The logo is never distorted: every layer is the same image, ending at identity. | **mask**, stroke, shape-assembly, scale, spotlight, light-sweep, split-assembly, typography-reveal, icon-wordmark, depth, minimal-premium, energetic | brand, hook, cta, reveal | 1.2–6 (default 3) | LOW | elements: logo/hero-title; jobs: brand-recall | logo, tagline, structure, revealReason |
 
-## ui (9)
+## ui (10)
 
 | Family | Variants | Beats | Duration (s) | Cost | Motion | Content (required*) |
 |---|---|---|---|---|---|---|
@@ -45,8 +51,9 @@ _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit b
 | **integration-hub**<br>Your product in the centre; connected tools attach one by one along drawn links. No third-party logos are drawn — tools are named and shown with neutral icons. | **orbit**, columns | feature, demo, solution | 3–10 (default 5) | LOW | elements: card/icon/logo; jobs: connect/show-ecosystem | eyebrow, title, highlight, subtitle, center*, centerLogo, apps* |
 | **landing-page**<br>A landing page from the user's words (or their real screenshot) in a browser: hero, then a smooth scroll to features, then the CTA is pressed. | **scroll**, hero | demo, product, solution | 3–10 (default 5) | MEDIUM | elements: dashboard/cursor/button; jobs: show-how-it-works | eyebrow, title, highlight, subtitle, url, screenshot, pageTitle*, pageSubtitle, pageCta, features |
 | **state-flow**<br>One shared element morphs through product states (logo → search → result → product → cart → checkout → success). Continuity instead of cuts: the eye never loses the subject. | **morph**, morph-trail | demo, solution, process, product | 3.5–16 (default 7) | MEDIUM | elements: card/button/icon/text; jobs: connect-states/show-how-it-works | eyebrow, title, highlight, subtitle, states* |
+| **gsap-sequence**<br>Complex staggered UI timeline driven by GSAP, seeked by the Remotion frame (deterministic). gsap is lazy-loaded and optional: stagger-grid / cascade. | **stagger-grid**, cascade | feature, demo, proof | 2.2–8 (default 3.6) | MEDIUM | elements: dashboard/panel/cursor/card; jobs: show-how-it-works | title, items*, emphasis |
 
-## commerce (9)
+## commerce (11)
 
 | Family | Variants | Beats | Duration (s) | Cost | Motion | Content (required*) |
 |---|---|---|---|---|---|---|
@@ -59,6 +66,8 @@ _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit b
 | **shopping-cart**<br>Product card → add-to-cart click → item flies into the cart with a badge; variants add / summary. | **add**, summary | demo, product, offer | 2.6–8 (default 3.6) | MEDIUM | elements: product/card/button; jobs: show-the-product | eyebrow, title, highlight, subtitle, image, name*, price, button |
 | **order-success**<br>The payoff state: a check that draws itself, the order number, delivery time and the next action. | **card**, full | solution, cta, proof | 2.2–7 (default 3.5) | LOW | elements: icon/card/button; jobs: resolve/reward | title*, orderId, eta, button |
 | **product-details**<br>The user's product (unchanged) with callouts that draw out to its real features, one by one. | **callouts**, list | product, feature | 3–10 (default 5) | MEDIUM | elements: product/card/text; jobs: show-the-product/sequence-benefits | eyebrow, title, highlight, subtitle, image*, name, specs*, price |
+| **product-detail**<br>Detail beats on the real product photo: macro (zoom into declared points), callouts (pointer lines only to declared points), specs (spec rail). | macro, callouts, **specs** | detail, feature, product | 2.4–10 (default 4) | MEDIUM | elements: product/card/button; jobs: show-the-product | image*, title, details* |
+| **product-hero**<br>Hero shot of the user's real product (pixels never altered); variants drop-land / rim-light / dark-reveal. | drop-land, **rim-light**, dark-reveal | product, reveal, hook | 2–8 (default 3.4) | MEDIUM | elements: product/card/button; jobs: show-the-product | image*, name, title, highlight, price |
 
 ## media (5)
 
@@ -79,7 +88,7 @@ _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit b
 | **notification-stack**<br>Notifications landing on a phone lock screen or as banners; variants lockscreen / banners. | **lockscreen**, banners | hook, proof, social, problem | 2.4–8 (default 3.8) | MEDIUM | elements: device/notification/button; jobs: show-how-it-works | eyebrow, title, highlight, subtitle, notifications*, time |
 | **phone-mockup**<br>App screen in a phone; variants float / tilt / scroll / hero. | **float**, tilt, scroll, hero | demo, product, solution, feature | 2.4–9 (default 3.8) | MEDIUM | elements: device/notification/button; jobs: show-how-it-works | eyebrow, title, highlight, subtitle, screen* |
 
-## data (9)
+## data (11)
 
 | Family | Variants | Beats | Duration (s) | Cost | Motion | Content (required*) |
 |---|---|---|---|---|---|---|
@@ -92,6 +101,8 @@ _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit b
 | **ranking**<br>Top-N list or podium (order provided by the user); variants list / podium. | **list**, podium | proof, data, feature | 2.6–9 (default 4) | MEDIUM | elements: chart/number; jobs: make-the-number-land | eyebrow, title, highlight, subtitle, items* |
 | **timeline**<br>Milestones along a drawn path; variants horizontal / vertical / milestones. | horizontal, **vertical**, milestones | process, brand, proof | 3–12 (default 4.6) | MEDIUM | elements: chart/number; jobs: make-the-number-land | eyebrow, title, highlight, subtitle, events* |
 | **data-table**<br>A clean table assembles row by row; one row is emphasised. Numbers only from the user (with a source). | **rows**, highlight | data, proof, comparison | 3–12 (default 5) | LOW | elements: card/text/number; jobs: make-the-number-land | eyebrow, title, highlight, subtitle, columns*, rows*, highlightRow, source |
+| **kinetic-number**<br>One real number counts or rolls (digits are safe to animate per digit) beside its Arabic label; source shown. Variants count / roll / split. | **count**, roll, split | data, proof, hook | 2.2–7 (default 3) | MEDIUM | elements: number/text; jobs: make-the-number-land | value*, prefix, suffix, label*, source*, decimals |
+| **data-story**<br>Context → build → insight → takeaway with the honest visualization for the numbers (big-number / change / share / line / bar). Source required and shown; changes are computed. | **bar**, line, share, change, big-number | data, proof | 2.8–10 (default 4.6) | MEDIUM | elements: chart/number; jobs: make-the-number-land | title, insight, labels*, values*, prefix, suffix, decimals, emphasis, source* |
 
 ## infographic (6)
 
@@ -104,7 +115,7 @@ _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit b
 | **pros-cons**<br>Two columns of pros and cons (or old way vs new way); variants columns / cards. | **columns**, cards | comparison, problem, solution | 3–10 (default 4.6) | LOW | elements: card/icon; jobs: sequence-benefits | eyebrow, title, highlight, subtitle, prosTitle, consTitle, pros*, cons* |
 | **workflow**<br>Connected steps light up one after another along a drawn path — automations, pipelines, "how it works". | **path**, stack | process, demo, solution | 3–12 (default 5.5) | LOW | elements: card/icon; jobs: guide-through-steps | eyebrow, title, highlight, subtitle, steps* |
 
-## cinematic (5)
+## cinematic (7)
 
 | Family | Variants | Beats | Duration (s) | Cost | Motion | Content (required*) |
 |---|---|---|---|---|---|---|
@@ -113,6 +124,8 @@ _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit b
 | **light-sweep-title**<br>Premium title with a specular light sweep across it; variants sweep / shine / glint. | **sweep**, shine, glint | brand, offer, hook, product | 2–7 (default 3) | HIGH | elements: hero-title/camera; jobs: create-tension/hero-moment | eyebrow, title*, highlight, subtitle |
 | **speed-transition**<br>Short, high-energy bridge beat: speed lines and a zoom-punch word; variants streaks / burst. | **streaks**, burst | bridge, hook, solution | 1–3 (default 1.6) | HIGH | elements: hero-title/camera; jobs: create-tension/hero-moment | text*, highlight |
 | **spotlight-reveal**<br>A moving spotlight searches the dark, then lights the subject (text or user image); variants beam / circle. | **circle**, beam | hook, product, brand | 2.4–8 (default 3.6) | HIGH | elements: hero-title/camera; jobs: create-tension/hero-moment | title, highlight, subtitle, image, role |
+| **feature-montage**<br>Fast montage of features on the beat: flash (one big word per beat) / rail (features stream past the product). | **flash**, rail | montage, feature | 1.6–8 (default 3.2) | HIGH | elements: hero-title/camera; jobs: create-tension/hero-moment | features*, image, title |
+| **tease-reveal**<br>Launch tease that withholds, then reveals the name / product / logo: slit / countdown / word-tease. | **slit**, countdown, word-tease | tease, reveal, hook | 2.4–7 (default 3.6) | HIGH | elements: hero-title/camera; jobs: create-tension/hero-moment | tease, reveal*, image, date |
 
 ## social (5)
 
@@ -134,9 +147,23 @@ _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit b
 | **cta-logo**<br>End card with the user's logo (only if provided) + CTA; variants lockup / reveal. Falls back to brand-name text, never a fake logo. | **lockup**, reveal | cta, brand | 2.4–7 (default 3.4) | LOW | elements: button/logo; jobs: direct-action/resolve | eyebrow, title*, highlight, subtitle, button, buttonIcon, logo |
 | **cta-qr**<br>Scannable QR code (always dark-on-light for scan reliability) generated from the user URL; variants card / side. | **card**, side | cta | 3–9 (default 4) | LOW | elements: button/logo; jobs: direct-action/resolve | eyebrow, title*, highlight, subtitle, button, buttonIcon, url*, caption |
 
-## Transitions (16)
+## map (1)
 
-`cut` (Cut, energy 0.9) · `none` (None, energy 0.5) · `crossfade` (Crossfade, energy 0.2) · `fade` (Dip, energy 0.15) · `slide` (Slide over, energy 0.5) · `push` (Push, energy 0.6) · `wipe` (Wipe, energy 0.4) · `mask-wipe` (Angled mask, energy 0.55) · `zoom-in` (Zoom through, energy 0.7) · `zoom-out` (Zoom out, energy 0.5) · `blur` (Blur dissolve, energy 0.3) · `iris` (Iris, energy 0.6) · `light-sweep` (Light sweep, energy 0.4) · `speed-ramp` (Speed ramp, energy 0.95) · `flip` (Card flip, energy 0.6) · `color-sweep` (Brand colour sweep, energy 0.7)
+| Family | Variants | Beats | Duration (s) | Cost | Motion | Content (required*) |
+|---|---|---|---|---|---|---|
+| **map-story**<br>Animated map from bundled Natural Earth geometry (Saudi regions, countries, places) — focus / regions / pins / route. Places without data are never guessed. | focus, regions, **pins**, route | map, proof, feature | 2.8–12 (default 5) | MEDIUM | elements: chart/icon/camera; jobs: locate-the-story/connect-places | title, subtitle, geo* |
+
+## illustration (3)
+
+| Family | Variants | Beats | Duration (s) | Cost | Motion | Content (required*) |
+|---|---|---|---|---|---|---|
+| **diagram-flow**<br>Explains a system/process as nodes and connectors drawn step by step: linear (RTL) / hub / cycle. | **linear**, hub, cycle | process, solution, demo, feature | 2.6–10 (default 4.4) | MEDIUM | elements: icon/card/chart; jobs: explain-the-idea/show-how-it-works | title, nodes*, center |
+| **illustration-scene**<br>Procedural vector illustrations in the brand palette (flat / line / duotone), drawn on: hero / trio / explain. No stock art or AI images. | **hero**, trio, explain | problem, solution, feature, hook, process | 2–8 (default 3.6) | MEDIUM | elements: icon/card/chart; jobs: explain-the-idea/show-how-it-works | title, highlight, subtitle, items*, style |
+| **whiteboard**<br>Whiteboard explainer: ink illustrations drawn stroke by stroke with written labels — draw / write. | **draw**, write | problem, solution, process, feature, hook, cta | 2.6–12 (default 5) | MEDIUM | elements: icon/card/chart; jobs: explain-the-idea/show-how-it-works | title, steps* |
+
+## Transitions (30)
+
+`cut` (Cut, energy 0.9) · `none` (None, energy 0.5) · `crossfade` (Crossfade, energy 0.2) · `fade` (Dip, energy 0.15) · `slide` (Slide over, energy 0.5) · `push` (Push, energy 0.6) · `wipe` (Wipe, energy 0.4) · `mask-wipe` (Angled mask, energy 0.55) · `zoom-in` (Zoom through, energy 0.7) · `zoom-out` (Zoom out, energy 0.5) · `blur` (Blur dissolve, energy 0.3) · `iris` (Iris, energy 0.6) · `light-sweep` (Light sweep, energy 0.4) · `speed-ramp` (Speed ramp, energy 0.95) · `flip` (Card flip, energy 0.6) · `color-sweep` (Brand colour sweep, energy 0.7) · `match-cut` (Match cut, energy 0.35) · `shared` (Shared element, energy 0.4) · `morph` (Morph, energy 0.45) · `camera-push` (Camera push, energy 0.55) · `camera-pull` (Camera pull, energy 0.45) · `whip` (Whip pan, energy 0.95) · `depth` (Depth, energy 0.5) · `shape` (Brand shape, energy 0.6) · `text-sweep` (Text-driven, energy 0.75) · `object-sweep` (Product-driven, energy 0.8) · `color-dip` (Colour transition, energy 0.5) · `perspective` (Perspective turn, energy 0.65) · `page` (Page / UI, energy 0.45) · `split` (Split, energy 0.55)
 
 ## Adding a scene family
 

@@ -34,7 +34,7 @@ const loadGsap = () => (gsapPromise ??= import('gsap').then((m) => (m.gsap ?? (m
 
 function GsapSequence({ content: c, variant }: { content: GC; variant: string }) {
   const L = useLayout();
-  const { tokens: t } = useVideo();
+  const { tokens: t, dir } = useVideo();
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const u = L.u;
@@ -63,7 +63,7 @@ function GsapSequence({ content: c, variant }: { content: GC; variant: string })
         .to(cards, { y: (i: number) => (i - (cards.length - 1) / 2) * u * 1.2, rotate: (i: number) => (i - (cards.length - 1) / 2) * 3, duration: 0.6, ease: 'power2.inOut' }, '+=0.15')
         .to(cards[emph], { scale: 1.08, duration: 0.35, ease: 'back.out(2)' }, '-=0.2');
     } else {
-      t1.from(cards, { x: u * 8, y: u * 4, opacity: 0, scale: 0.9, duration: 0.5, stagger: { each: 0.07, from: 'start', grid: 'auto' } })
+      t1.from(cards, { x: (dir === 'rtl' ? 1 : -1) * u * 8, y: u * 4, opacity: 0, scale: 0.9, duration: 0.5, stagger: { each: 0.07, from: 'start', grid: 'auto' } })
         .to(cards, { opacity: (i: number) => (i === emph ? 1 : 0.55), duration: 0.4 }, '+=0.25')
         .to(cards[emph], { scale: 1.1, duration: 0.4, ease: 'back.out(2.2)' }, '<');
     }
@@ -72,7 +72,7 @@ function GsapSequence({ content: c, variant }: { content: GC; variant: string })
       t1.kill();
       tl.current = null;
     };
-  }, [g, variant, u, emph]);
+  }, [g, variant, u, emph, dir]);
   // Remotion is the clock: seek every frame (no gsap ticker involved)
   useLayoutEffect(() => {
     tl.current?.seek(frame / fps, false);
@@ -82,7 +82,7 @@ function GsapSequence({ content: c, variant }: { content: GC; variant: string })
   return (
     <Stage gap={u * 3}>
       {c.title ? <Text text={c.title} role="title" size={6} /> : null}
-      <div ref={root} data-qc-gsap={g ? 'loaded' : g === null ? 'missing' : 'loading'} style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, ${cardW}px)`, gap: variant === 'cascade' ? u * 0.6 : u * 2, direction: 'rtl' }}>
+      <div ref={root} data-qc-gsap={g ? 'loaded' : g === null ? 'missing' : 'loading'} style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, ${cardW}px)`, gap: variant === 'cascade' ? u * 0.6 : u * 2, direction: dir }}>
         {c.items.map((it, i) => (
           <div key={i} data-card style={{ padding: `${u * 2}px ${u * 2.4}px`, borderRadius: u * 1.6, background: i === emph ? t.palette.primary : t.palette.surface, border: `${Math.max(1, u * 0.15)}px solid ${alpha(t.palette.textPrimary, 0.1)}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: u * 2 }}>
             <Text text={it.label} role="label" size={3.6} animate="none" color={i === emph ? t.palette.textOnPrimary : t.palette.textOnSurface} maxLines={2} align="start" />
