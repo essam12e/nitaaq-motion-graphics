@@ -3,12 +3,14 @@
  *
  *   nitaaq create   <brief.json> [--profile production] [--no-logo] [--out dir] [--name file] [--clean-voice]
  *   nitaaq direct   <brief.json> [--project dir] [--no-logo]          → plan.json, storyboard.json, video.json
- *   nitaaq produce  <projectDir|video.json> [--profile …]             → render + QC + repair loop
+ *   nitaaq produce  <projectDir|video.json> [--profile …] [--animatic]  → staged QC + repair + render + final QC
+ *   nitaaq animatic <projectDir|video.json>                            → structural QC + sheets + half-size 15 fps animatic
  *   nitaaq validate <video.json> [--fix]
- *   nitaaq render   <projectDir|video.json> [--profile preview|draft|production] [--out file.mp4]
+ *   nitaaq render   <projectDir|video.json> [--profile preview|animatic|draft|production] [--out file.mp4] [--no-cache]
  *   nitaaq quality  <projectDir|video.json> [--video file.mp4]
  *   nitaaq brand    <logo> [--name …]
- *   nitaaq preflight | scenes [--json] | styles | schema-export [--out dir] | voices
+ *   nitaaq cache    [summary|clear [namespace]]
+ *   nitaaq preflight [--full] | scenes [--json] | styles | schema-export [--out dir] | voices
  *
  * Exit codes: 0 ok · 1 failed · 2 needs user input (questions printed as JSON).
  */
@@ -24,7 +26,8 @@ import { BriefSchema } from '../src/schema/brief';
 import { CreativePlanSchema, StoryboardSchema } from '../src/schema/plan';
 import { validateSpec, summarize } from '../src/validation/validate';
 import { repairSpec } from '../src/validation/repair';
-import { loadSpec, nodeValidateOptions, renderVideo, type RenderProfile } from '../src/node/render';
+import { loadSpec, nodeValidateOptions, renderVideo, closeBrowser, RENDER_PROFILES, type RenderProfile } from '../src/node/render';
+import { cacheSummary, clearCache } from '../src/cache/store';
 import { runQuality } from '../src/qc/quality';
 import { produce } from '../src/node/produce';
 import { direct } from '../src/node/direct';
@@ -48,7 +51,7 @@ for (let i = 1; i < argv.length; i++) {
 const flag = (k: string) => flags.get(k);
 const profileOf = (d: RenderProfile): RenderProfile => {
   const p = (flag('profile') ?? d) as RenderProfile;
-  if (!['preview', 'draft', 'production'].includes(p)) throw new Error(`--profile must be preview, draft or production (got ${p})`);
+  if (!RENDER_PROFILES.includes(p)) throw new Error(`--profile must be one of ${RENDER_PROFILES.join(', ')} (got ${p})`);
   return p;
 };
 /** Accepts a project folder or a video.json path. */
@@ -83,15 +86,29 @@ async function main(): Promise<number> {
         out({ status: 'ready', project: r.projectDir, assumptions: r.assumptions, scenes: r.storyboard!.scenes.map((s) => `${s.family}/${s.variant} ${s.duration}s`) });
         return 0;
       }
-      const res = await produce({ projectDir: r.projectDir, profile: profileOf('production'), deliverTo: flag('out') ? resolve(flag('out')!) : undefined, name: flag('name') });
-      out({ ok: res.ok, delivered: res.delivered, report: res.report ? join(dirname(res.video ?? r.projectDir), '..', 'qc', 'final', 'quality-report.json') : null, summary: res.report?.summary, repairs: res.repairs.length });
+      const res = await produce({ projectDir: r.projectDir, profile: profileOf('production'), deliverTo: flag('out') ? resolve(flag('out')!) : undefined, name: flag('name'), animatic: flag('animatic') === 'true' });
+      out({ ok: res.ok, delivered: res.delivered, report: join(r.projectDir, 'quality_report.json'), performance: join(r.projectDir, 'performance_report.json'), summary: res.report?.summary, scores: res.report?.scores, repairs: res.repairs.length, totalSec: Math.round(res.perf.totalMs / 100) / 10 });
       return res.ok ? 0 : 1;
     }
     case 'produce': {
       const p = project(pos[0]);
-      const res = await produce({ projectDir: p.dir, profile: profileOf('production'), deliverTo: flag('out') ? resolve(flag('out')!) : undefined, name: flag('name') });
-      out({ ok: res.ok, delivered: res.delivered, summary: res.report?.summary, repairs: res.repairs.length, passes: res.passes });
+      const res = await produce({ projectDir: p.dir, profile: profileOf('production'), deliverTo: flag('out') ? resolve(flag('out')!) : undefined, name: flag('name'), animatic: flag('animatic') === 'true' });
+      out({ ok: res.ok, delivered: res.delivered, animatic: res.animatic, summary: res.report?.summary, scores: res.report?.scores, failed: res.report?.acceptance.filter((a) => !a.ok).map((a) => a.rule), repairs: res.repairs.length, passes: res.passes, totalSec: Math.round(res.perf.totalMs / 100) / 10 });
       return res.ok ? 0 : 1;
+    }
+    case 'animatic': {
+      const p = project(pos[0]);
+      const res = await produce({ projectDir: p.dir, stopAfterAnimatic: true });
+      out({ ok: res.ok, animatic: res.animatic, contactSheet: res.report?.contactSheet, phoneView: res.report?.phoneSheet, scores: res.report?.scores, critique: res.report?.critique, totalSec: Math.round(res.perf.totalMs / 100) / 10 });
+      return res.ok ? 0 : 1;
+    }
+    case 'cache': {
+      if (pos[0] === 'clear') {
+        clearCache(pos[1]);
+        log.info('CACHE', `cleared ${pos[1] ?? 'everything'}`);
+      }
+      out(cacheSummary());
+      return 0;
     }
     case 'validate': {
       const p = project(pos[0]);
@@ -114,7 +131,7 @@ async function main(): Promise<number> {
       const profile = profileOf('preview');
       const file = flag('out') ? resolve(flag('out')!) : join(p.dir, 'renders', `${spec.project.id}-${profile}.mp4`);
       mkdirSync(dirname(file), { recursive: true });
-      const r = await renderVideo({ spec, projectDir: p.dir, output: file, profile });
+      const r = await renderVideo({ spec, projectDir: p.dir, output: file, profile, cache: flag('no-cache') !== 'true' });
       log.info('RENDER', `${file} (${(r.bytes / 1e6).toFixed(2)} MB). Not QC'd — run \`nitaaq quality\` or use \`nitaaq produce\` for a checked delivery.`);
       return 0;
     }
@@ -174,7 +191,10 @@ async function main(): Promise<number> {
 }
 
 main()
-  .then((code) => process.exit(code))
+  .then(async (code) => {
+    await closeBrowser();
+    process.exit(code);
+  })
   .catch((e) => {
     if (isMotionError(e)) process.stderr.write(formatMotionError(e) + '\n');
     else process.stderr.write(`Error: ${(e as Error).message}\n`);

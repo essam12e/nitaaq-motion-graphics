@@ -127,7 +127,7 @@ export const featureSet = defineScene<FSC>(
                   {c.features.map((f, i) => {
                     const pt = pts[i];
                     const x = pt.x * Math.cos(spin) - (pt.y * Math.sin(spin) * w) / h;
-                    const y = pt.y + float(m.frame, m.fps, u * 0.8, 4, i);
+                    const y = pt.y + float(m.frame, m.fps, (m.floatK ?? 1) * u * 0.8, 4, i);
                     return (
                       <div key={i} style={{ position: 'absolute', left: w / 2 + (rtl ? -x : x) - cardW / 2, top: h / 2 + y - u * 6 }}>
                         <FeatureCard f={f} w={cardW} delay={0.3 + i * 0.12} compact />
@@ -211,7 +211,7 @@ export const featureSet = defineScene<FSC>(
                     const x = (rtl ? 1 - fx : fx) * w;
                     const y = (n <= 3 ? 0.15 + (i / Math.max(1, n - 1)) * 0.7 : fy) * h;
                     return (
-                      <div key={i} style={{ position: 'absolute', left: clamp(x - cardW / 2, 0, w - cardW), top: y - u * 6, transform: `translateY(${float(m.frame, m.fps, u * 1.4, 3.5 + i * 0.6, i * 1.3)}px) rotate(${((i % 2) * 2 - 1) * 2}deg)` }}>
+                      <div key={i} style={{ position: 'absolute', left: clamp(x - cardW / 2, 0, w - cardW), top: y - u * 6, transform: `translateY(${float(m.frame, m.fps, (m.floatK ?? 1) * u * 1.4, 3.5 + i * 0.6, i * 1.3)}px) rotate(${((i % 2) * 2 - 1) * 2}deg)` }}>
                         <FeatureCard f={f} w={cardW} delay={0.15 + i * 0.18} horizontal compact />
                       </div>
                     );

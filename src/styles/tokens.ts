@@ -1,19 +1,40 @@
 /** Style tokens: every scene reads these instead of hardcoded looks. */
-export type BackgroundKind =
+import type { MotionPersonalityId } from '../motion/personality';
+
+/**
+ * Background kinds. Clean kinds are built from 1–5 large intentional forms (gradients,
+ * light, geometry). Pattern kinds (dots, grid, halftone, bokeh, stripes, lines, particles)
+ * are never used by default: they render only when `design.allowPatterns` names them
+ * (the user asked for that look or a reference needs it) — see src/design/patterns.ts.
+ */
+export type CleanBackgroundKind =
   | 'solid'
+  | 'brand-solid'
+  | 'soft-gradient'
+  | 'directional-gradient'
+  | 'radial-light'
+  | 'cinematic-light'
+  | 'vignette'
+  | 'brand-shapes'
+  | 'geometry'
+  | 'depth-layers'
+  | 'glass-depth'
+  | 'editorial'
+  | 'atmosphere'
+  | 'product-stage'
+  | 'paper'
+  | 'light-sweep'
+  | 'shadow-field'
+  // legacy names kept for old video.json files (all are large-form, no repeats)
   | 'gradient'
   | 'mesh'
-  | 'grid'
-  | 'dots'
   | 'aurora'
   | 'spotlight'
-  | 'paper'
-  | 'halftone'
-  | 'lines'
   | 'rays'
-  | 'bokeh'
-  | 'stripes'
   | 'noise-gradient';
+
+export type PatternBackgroundKind = 'dots' | 'grid' | 'halftone' | 'bokeh' | 'stripes' | 'lines' | 'particles';
+export type BackgroundKind = CleanBackgroundKind | PatternBackgroundKind;
 
 export type SurfaceKind = 'flat' | 'glass' | 'outline' | 'elevated' | 'neon' | 'paper' | 'comic' | 'soft';
 export type EasingFamily = 'smooth' | 'snappy' | 'elastic' | 'cinematic';
@@ -44,6 +65,8 @@ export interface StyleTokens {
   mode: 'dark' | 'light';
   palette: Palette;
   background: { kind: BackgroundKind; intensity: number; animate: boolean; secondaryKind?: BackgroundKind };
+  /** Key light character used by light-based backgrounds and surfaces. */
+  lighting: 'flat' | 'soft' | 'key' | 'spot' | 'rim';
   surface: { kind: SurfaceKind; radius: number; borderWidth: number; blur: number; opacity: number };
   shadow: { strength: number; color: string; spread: number };
   glow: number;
@@ -62,12 +85,15 @@ export interface StyleTokens {
     highlight: 'color' | 'marker' | 'underline' | 'box' | 'glow' | 'outline';
   };
   spacing: { unit: number; density: 'tight' | 'normal' | 'airy' };
-  motion: { intensity: number; easing: EasingFamily; entrance: EntranceFamily; stagger: number; float: number };
+  motion: { intensity: number; easing: EasingFamily; entrance: EntranceFamily; stagger: number; float: number; personality: MotionPersonalityId };
   transitions: string[];
   icon: { style: 'line' | 'duotone' | 'filled' | 'badge'; stroke: number };
   image: { treatment: 'none' | 'duotone' | 'grain' | 'rounded' | 'frame' | 'polaroid' | 'halftone' | 'mono'; radius: number };
   texture: { grain: number; vignette: number; scanlines: boolean };
+  /** Spacing/density language (Director + layout read it). */
+  density?: 'sparse' | 'balanced' | 'dense';
   depth: number;
+  /** Small scattered decorations. Off by default (banned: random-decorations); rendered only with design.decorations. */
   accents: { shape: 'blob' | 'line' | 'ring' | 'dots' | 'plus' | 'burst' | 'none'; amount: number };
 }
 

@@ -202,15 +202,21 @@ export function formatNumber(v: number, opts: { decimals?: number; prefix?: stri
   return `${opts.prefix ?? ''}${toNumerals(s, opts.numerals ?? 'latin')}${opts.suffix ?? ''}`;
 }
 
-/** Decorative accents per style (rings, plus marks, lines, bursts). Purely ornamental, low contrast. */
+/**
+ * Scattered decorations (rings, plus marks, lines, bursts). Banned by default
+ * (design/banned-patterns.json: random-decorations) — rendered only when the
+ * project sets design.decorations (user asked for it / a reference needs it).
+ */
 export function Accents({ seed = 0 }: { seed?: number }) {
-  const { tokens: t, canvas } = useVideo();
+  const { tokens: t, canvas, spec } = useVideo();
   const m = useMotion();
   const u = canvas.u;
   const W = canvas.width;
   const H = canvas.height;
   const a = t.accents;
+  if (!spec.design?.decorations) return null;
   if (a.shape === 'none' || a.amount <= 0) return null;
+  if (a.shape === 'dots' && !spec.design.allowPatterns.includes('dots')) return null;
   const n = Math.round(2 + a.amount * 4);
   const items = Array.from({ length: n }, (_, i) => {
     const k = (seed * 7 + i * 13) % 17;
@@ -221,7 +227,7 @@ export function Accents({ seed = 0 }: { seed?: number }) {
     <svg width={W} height={H} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       {items.map(({ x, y, s, i }) => {
         const px = x * W;
-        const py = y * H + float(m.frame, m.fps, u * 1.2, 5 + i, i);
+        const py = y * H + float(m.frame, m.fps, (m.floatK ?? 1) * u * 1.2, 5 + i, i);
         const pr = progress(m, 0.1 + i * 0.07, 0.8);
         const sz = u * 2.2 * s * pr;
         switch (a.shape) {

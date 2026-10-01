@@ -13,7 +13,7 @@ function hashTree(dirs: string[]): string {
     for (const name of readdirSync(d).sort()) {
       const p = join(d, name);
       // node-only code is not part of the browser bundle
-      if (d === join(ROOT, 'src') && (name === 'node' || name === 'director' || name === 'qc')) continue;
+      if (d === join(ROOT, 'src') && ['node', 'director', 'qc', 'cache', 'perf', 'reference', 'pipeline'].includes(name)) continue;
       const st = statSync(p);
       if (st.isDirectory()) walk(p);
       else h.update(relative(ROOT, p)).update(String(st.size)).update(String(st.mtimeMs));
@@ -29,10 +29,17 @@ function hashTree(dirs: string[]): string {
 }
 
 let memo: { key: string; url: string } | null = null;
+let keyMemo: string | null = null;
+
+/** Hash of everything that goes into the browser bundle (src minus node-only code, public, package.json). */
+export function bundleKey(): string {
+  if (!keyMemo) keyMemo = hashTree([join(ROOT, 'src'), join(ROOT, 'public'), join(ROOT, 'package.json')]);
+  return keyMemo;
+}
 
 /** Returns a serve directory for the composition. Rebuilds only when src/ or public/ changed. */
 export async function getBundle(opts: { force?: boolean } = {}): Promise<string> {
-  const key = hashTree([join(ROOT, 'src'), join(ROOT, 'public'), join(ROOT, 'package.json')]);
+  const key = bundleKey();
   if (!opts.force && memo?.key === key) return memo.url;
   const cacheDir = join(workspace().cache, 'bundles');
   const target = join(cacheDir, key);
@@ -51,18 +58,38 @@ export async function getBundle(opts: { force?: boolean } = {}): Promise<string>
   return target;
 }
 
-/** Copies project assets into the bundle's public dir under p/<id>/ and returns the assetBase to use. */
+/**
+ * Copies project assets into the bundle's public dir under p/<id>/ and returns the
+ * assetBase to use. Incremental: a file is copied only when missing or changed
+ * (size/mtime), so repeated QC stills and renders don't re-copy media.
+ */
 export function stageProjectAssets(bundleDir: string, projectId: string, projectDir: string, files: string[]): string {
   const base = `p/${projectId}`;
   const dest = join(bundleDir, 'public', base);
-  rmSync(dest, { recursive: true, force: true });
+  const wanted = new Set<string>();
   for (const f of files) {
     const src = join(projectDir, f);
     if (!existsSync(src)) throw new MotionError({ code: 'ASSET_MISSING', what: `Asset not found: ${f}`, where: src, why: 'The project references a file that does not exist on disk.', action: 'Put the file in the project folder or fix its path in video.json.' });
     const out = join(dest, f);
+    wanted.add(out);
+    const ss = statSync(src);
+    if (existsSync(out)) {
+      const so = statSync(out);
+      if (so.size === ss.size && so.mtimeMs >= ss.mtimeMs) continue;
+    }
     mkdirSync(join(out, '..'), { recursive: true });
-    cpSync(src, out);
+    cpSync(src, out, { preserveTimestamps: true });
   }
+  // drop files the spec no longer references (never serve stale assets)
+  const prune = (d: string) => {
+    if (!existsSync(d)) return;
+    for (const n of readdirSync(d)) {
+      const p = join(d, n);
+      if (statSync(p).isDirectory()) prune(p);
+      else if (!wanted.has(p)) rmSync(p, { force: true });
+    }
+  };
+  prune(dest);
   return base;
 }
 

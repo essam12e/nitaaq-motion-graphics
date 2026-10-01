@@ -64,6 +64,18 @@ export function applyQcRepairs(input: VideoSpec, report: QualityReport, pass: nu
         s.layout.textScale = next;
       }
     }
+    if (actions.has('clean-background')) {
+      // a banned pattern showed up in this scene's real pixels: force a clean, large-form background
+      const prev = s.background?.kind ?? '(style)';
+      if (prev !== 'soft-gradient') {
+        log(`${p}.background.kind`, reason, `${prev} → soft-gradient`);
+        s.background = { ...(s.background ?? {}), kind: 'soft-gradient' };
+      }
+      if (spec.design.decorations) {
+        log('design.decorations', reason, 'true → false');
+        spec.design.decorations = false;
+      }
+    }
     if (actions.has('scrim') && !s.layout.scrim) {
       log(`${p}.layout.scrim`, reason, 'enabled a contrast scrim behind text');
       s.layout.scrim = true;

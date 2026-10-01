@@ -667,7 +667,7 @@ export const orderNotification = defineScene<OrC>(
                 const pushDown = variant === 'stack' ? items.slice(i + 1).reduce((acc, _, j) => acc + clamp(progress(m, 0.3 + (i + 1 + j) * 0.45, 0.5)), 0) : 0;
                 const y = variant === 'cascade' ? i * (cardH + u * 3) : pushDown * (cardH * 0.26);
                 const sc = variant === 'stack' ? 1 - pushDown * 0.05 : 1;
-                const floatY = variant === 'single' ? float(m.frame, m.fps, u * 1.2, 3.5) : 0;
+                const floatY = variant === 'single' ? float(m.frame, m.fps, (m.floatK ?? 1) * u * 1.2, 3.5) : 0;
                 return (
                   <div key={i} style={{ position: 'absolute', left: 0, right: 0, top: y + floatY + (variant === 'cascade' ? 0 : u * 4), transform: `translateY(${(1 - p) * -u * 18}px) scale(${sc * (0.9 + 0.1 * clamp(p))})`, opacity: clamp(p * 2) * (variant === 'stack' ? 1 - pushDown * 0.25 : 1), zIndex: 10 + i }}>
                     <Surface kind="glass" style={{ background: alpha(ui.page, 0.92), padding: `${u * 3}px ${u * 3.6}px`, display: 'flex', alignItems: 'center', gap: u * 3, borderRadius: u * 4.2 }}>

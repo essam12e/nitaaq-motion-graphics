@@ -17,7 +17,7 @@ export interface SurfaceProps {
 }
 
 export function Surface({ children, style, kind, tone = 'surface', radius, padding, glow, qc }: SurfaceProps) {
-  const { tokens: t, canvas } = useVideo();
+  const { tokens: t, canvas, effects } = useVideo();
   const u = canvas.u;
   const k = kind ?? t.surface.kind;
   const r = (radius ?? t.surface.radius) * u;
@@ -37,7 +37,8 @@ export function Surface({ children, style, kind, tone = 'surface', radius, paddi
       look = {
         background: tone === 'surface' ? `linear-gradient(145deg, ${alpha(mix(toneBg, '#FFFFFF', 0.12), t.surface.opacity)}, ${alpha(toneBg, t.surface.opacity * 0.7)})` : alpha(toneBg, 0.9),
         border: `${t.surface.borderWidth}px solid ${alpha('#FFFFFF', t.mode === 'dark' ? 0.14 : 0.5)}`,
-        backdropFilter: `blur(${t.surface.blur}px)`,
+        // backdrop blur is the most expensive CSS effect we use: full renders only, capped
+        backdropFilter: effects === 'full' && t.surface.blur > 0 ? `blur(${Math.min(16, t.surface.blur)}px)` : undefined,
         boxShadow: `0 ${2 * u}px ${6 * u}px ${alpha(shadowCol, 0.35 * t.shadow.strength + 0.1)}, inset 0 1px 0 ${alpha('#FFFFFF', 0.16)}${g > 0 ? `, 0 0 ${4 * u * g}px ${alpha(p.glow, 0.18 * g)}` : ''}`,
       };
       break;

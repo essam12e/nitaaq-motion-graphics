@@ -7,7 +7,7 @@
  */
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = '1.0';
+export const SCHEMA_VERSION = '2.0';
 
 export const AspectSchema = z.enum(['9:16', '16:9', '1:1', '4:5']);
 export const PlatformSchema = z.enum(['tiktok', 'instagram-reels', 'instagram-feed', 'youtube-shorts', 'youtube', 'generic']);
@@ -188,6 +188,8 @@ export const SceneMotionSchema = z.object({
   entrance: z.string().optional(),
   camera: z.enum(['none', 'push', 'pull', 'pan-left', 'pan-right', 'rise', 'fall', 'tilt', 'drift', 'orbit']).optional(),
   speed: z.number().min(0.4).max(2.5).default(1),
+  /** What the motion in this scene is for (direct attention, reveal, connect states, …). */
+  jobs: z.array(z.string()).optional(),
 });
 
 export const SceneBackgroundSchema = z.object({
@@ -238,6 +240,44 @@ export const MetadataSchema = z.object({
   notes: z.string().optional(),
 });
 
+/** Design policy: what the film is allowed to use beyond the clean defaults. */
+export const DesignSchema = z.object({
+  /** Pattern backgrounds the user explicitly asked for (or a reference needs). Empty = none, ever. */
+  allowPatterns: z.array(z.enum(['dots', 'grid', 'halftone', 'bokeh', 'stripes', 'lines', 'particles'])).default([]),
+  /** Small scattered decorations (rings, plus marks, bursts). Off by default. */
+  decorations: z.boolean().default(false),
+  /** Why a normally-banned look is used (shown in QC instead of an error). */
+  justification: z.string().max(300).optional(),
+});
+
+export const MotionPersonalitySchema = z.enum(['premium', 'energetic', 'playful', 'corporate', 'cinematic', 'tech', 'sport']);
+
+/** Film-level motion contract: one personality, seeded procedural variation. */
+export const FilmMotionSchema = z.object({
+  personality: MotionPersonalitySchema.optional(),
+  /** Seed for any procedural variation (geometry placement, stagger jitter). */
+  seed: z.union([z.string(), z.number()]).optional(),
+});
+
+export const TimelineOptionsSchema = z.object({
+  /** Ending returns to the opening frame state (social/logo/ambient loops). */
+  seamlessLoop: z.boolean().default(false),
+  /** Long-form: chapter boundaries (scene ids that start a chapter). */
+  chapters: z.array(z.object({ id: z.string(), title: z.string().optional(), startScene: z.string() })).default([]),
+  /** Beat grid used by the Director (filled from beats.json when music exists). */
+  beatSync: z.object({ bpm: z.number().positive(), offset: z.number(), aligned: z.number().int().min(0) }).optional(),
+});
+
+/** Design language inferred from a user reference (summary of reference_style.json). */
+export const ReferenceSummarySchema = z.object({
+  source: z.string(),
+  kind: z.enum(['image', 'video', 'website']),
+  motionEnergy: Unit.optional(),
+  cameraActivity: Unit.optional(),
+  visualDensity: z.enum(['sparse', 'balanced', 'dense']).optional(),
+  appliedTo: z.array(z.string()).default([]),
+});
+
 export const VideoSchema = z.object({
   version: z.string().default(SCHEMA_VERSION),
   project: ProjectSchema,
@@ -249,6 +289,10 @@ export const VideoSchema = z.object({
   direction: DirectionSchema.default({}),
   assets: z.record(AssetSchema).default({}),
   audio: AudioSchema.default({}),
+  design: DesignSchema.default({}),
+  motion: FilmMotionSchema.default({}),
+  timeline: TimelineOptionsSchema.default({}),
+  reference: ReferenceSummarySchema.optional(),
   scenes: z.array(SceneSchema).min(1),
   captions: CaptionsSchema.default({}),
   metadata: MetadataSchema.default({}),

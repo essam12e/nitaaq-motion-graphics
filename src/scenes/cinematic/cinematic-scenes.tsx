@@ -55,18 +55,15 @@ export const cinematicTitle = defineScene<TC>(
     const bars = variant === 'letterbox' ? progress(m, 0, 0.9, 'cinematic') : 0;
     const barH = Math.max(0, (H - W / 2.39) / 2) * bars;
     const barCap = Math.min(barH, safe.y - u);
-    const rng = createRng(hashString(c.title)).next;
-    const motes = variant === 'epic' ? Array.from({ length: 26 }, () => ({ x: rng(), y: rng(), r: 0.2 + rng() * 0.6, sp: 0.3 + rng() })) : [];
+    // 'epic' used to scatter 26 floating motes (a particle field). It now uses one large
+    // light form + a slow light sweep: atmosphere without decoration.
+    const sweep = clamp((s - 0.2) / 2.2);
     return (
       <div style={{ position: 'absolute', inset: 0 }}>
         {variant === 'epic' ? (
           <>
             <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse at 50% 55%, ${alpha(t.palette.primary, 0.35)}, transparent 60%)` }} />
-            <svg width={W} height={H} style={{ position: 'absolute', inset: 0 }}>
-              {motes.map((p, i) => (
-                <circle key={i} cx={p.x * W} cy={(((p.y - s * 0.02 * p.sp) % 1) + 1) % 1 * H} r={u * p.r} fill={alpha(t.palette.accent, 0.5)} />
-              ))}
-            </svg>
+            <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(105deg, transparent ${-30 + sweep * 150}%, ${alpha(t.palette.accent, 0.12)} ${-10 + sweep * 150}%, transparent ${10 + sweep * 150}%)` }} />
           </>
         ) : null}
         <div style={{ position: 'absolute', inset: 0, transform: `scale(${push})` }}>
@@ -141,7 +138,7 @@ export const spotlightReveal = defineScene<SC>(
             {c.subtitle ? <Text text={c.subtitle} role="subtitle" delay={1.5} maxWidth={safe.width} color="#E6E6EA" /> : null}
           </Centered>
         </div>
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: `radial-gradient(circle ${R * 1.05}px at ${cx}px ${cy}px, ${alpha('#FFFFFF', 0.06 * (1 - open))}, transparent 70%)`, transform: `translateY(${float(m.frame, m.fps, u * 0.3, 3)}px)` }} />
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: `radial-gradient(circle ${R * 1.05}px at ${cx}px ${cy}px, ${alpha('#FFFFFF', 0.06 * (1 - open))}, transparent 70%)`, transform: `translateY(${float(m.frame, m.fps, (m.floatK ?? 1) * u * 0.3, 3)}px)` }} />
       </div>
     );
   },

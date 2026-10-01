@@ -16,6 +16,12 @@ export type Stage =
   | 'PREFLIGHT'
   | 'STUDIO'
   | 'SCHEMA'
+  | 'CACHE'
+  | 'PERF'
+  | 'REFERENCE'
+  | 'BEATS'
+  | 'CAPTURE'
+  | 'RECOMPOSE'
   | 'COMPLETE';
 
 export type Level = 'debug' | 'info' | 'warn' | 'error';

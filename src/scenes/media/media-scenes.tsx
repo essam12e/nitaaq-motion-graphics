@@ -221,13 +221,7 @@ export const imageParallax = defineScene<PaC>(
             </div>
           </>
         ) : null}
-        {variant === 'layers' ? (
-          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-            {[0, 1, 2].map((i) => (
-              <div key={i} style={{ position: 'absolute', width: u * (6 + i * 4), height: u * (6 + i * 4), borderRadius: '50%', border: `1px solid ${alpha(t.palette.primary, 0.3)}`, left: `${15 + i * 30}%`, top: `${20 + ((i * 23) % 50)}%`, transform: `translate(${(0.5 - k) * u * (4 + i * 5)}px, ${float(m.frame, m.fps, u, 4 + i, i)}px)` }} />
-            ))}
-          </div>
-        ) : null}
+        {/* 'layers' parallax comes from the image + title depth; the old floating rings were decoration without a job. */}
       </div>
     );
   },

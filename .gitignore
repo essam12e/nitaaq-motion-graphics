@@ -10,3 +10,4 @@ schemas/*.tmp
 .qc-tmp.png
 test/visual/output/
 renders/
+.cache/

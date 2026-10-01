@@ -61,7 +61,7 @@ describe('auto repair', () => {
 });
 
 describe('QC repair loop mapping', () => {
-  const report = (issues: QualityReport['issues']): QualityReport => ({ version: '1.0', project: 'x', video: null, createdAt: '', passed: false, summary: { info: 0, warning: 0, error: 0, critical: 0 }, checks: {}, issues, samples: [] });
+  const report = (issues: QualityReport['issues']): QualityReport => ({ version: '2.0', project: 'x', video: null, stage: 'structure', createdAt: '', passed: false, summary: { info: 0, warning: 0, error: 0, critical: 0 }, scores: { structure: 0, design: 0, motion: 0, technical: 0, overall: 0 }, acceptance: [], critique: [], checks: {}, issues, samples: [], timings: {} });
   it('maps findings to safe layout/timing changes', () => {
     const s = demo();
     const r = applyQcRepairs(s, report([

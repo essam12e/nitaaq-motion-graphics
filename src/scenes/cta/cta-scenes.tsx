@@ -336,7 +336,7 @@ export const ctaQr = defineScene<QC>(
     const scan = (s * 0.7) % 1;
     const p = progress(m, 0.3, 0.7, 'elastic');
     const qr = (
-      <div style={{ transform: `scale(${p}) translateY(${float(m.frame, m.fps, u * 0.4, 4)}px)`, position: 'relative' }}>
+      <div style={{ transform: `scale(${p}) translateY(${float(m.frame, m.fps, (m.floatK ?? 1) * u * 0.4, 4)}px)`, position: 'relative' }}>
         <div style={{ padding: u * 1.6, borderRadius: u * 3, background: '#FFFFFF', boxShadow: `0 ${u * 2}px ${u * 6}px ${alpha('#000', 0.3)}, 0 0 0 ${u * 0.5}px ${alpha(t.palette.primary, 0.6)}` }}>
           <QrCode value={c.url} size={size} fg="#0B0B0F" bg="#FFFFFF" />
         </div>

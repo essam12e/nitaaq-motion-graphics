@@ -6,6 +6,7 @@ import type { CanvasProfile } from '../layout/canvas';
 import type { Timeline, TimelineEntry } from '../core/timeline';
 import type { MotionCtx } from '../motion/primitives';
 import { highlightColor } from '../styles/resolve';
+import { PERSONALITIES } from '../motion/personality';
 
 export interface FontFamilies {
   display: string;
@@ -28,6 +29,10 @@ export interface VideoCtxValue {
   debugSafeArea: boolean;
   dir: 'rtl' | 'ltr';
   hl: string;
+  /** 'reduced' = animatic/preview: expensive effects (backdrop blur, grain, heavy shadows) are skipped. */
+  effects: 'full' | 'reduced';
+  /** Total frames when the film loops seamlessly (ambient motion becomes periodic). */
+  loopFrames: number | null;
 }
 
 export const VideoCtx = createContext<VideoCtxValue | null>(null);
@@ -70,8 +75,10 @@ export function useMotion(): MotionCtx {
       intensity: s?.intensity ?? v.tokens.motion.intensity,
       easing: v.tokens.motion.easing,
       speed: s?.speed ?? 1,
+      personality: v.tokens.motion.personality,
+      floatK: PERSONALITIES[v.tokens.motion.personality]?.float ?? 1,
     }),
-    [frame, fps, s?.intensity, s?.speed, v.tokens.motion.intensity, v.tokens.motion.easing],
+    [frame, fps, s?.intensity, s?.speed, v.tokens.motion.intensity, v.tokens.motion.easing, v.tokens.motion.personality],
   );
 }
 

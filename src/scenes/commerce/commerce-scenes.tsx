@@ -77,7 +77,7 @@ export const productShowcase = defineScene<PC>(
     const { m, s, durSec } = useSceneTime();
     const u = L.u;
     const enter = progress(m, 0.05, 1, 'cinematic');
-    const lift = float(m.frame, m.fps, 0.5, 4) + 0.5;
+    const lift = float(m.frame, m.fps, (m.floatK ?? 1) * 0.5, 4) + 0.5;
     const light = variant === 'spotlight' || variant === 'hero' ? clamp((s - 0.5) / 1.4) : 0;
     const info = (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: L.orientation === 'landscape' ? 'flex-start' : 'center', gap: u * 1.6 }}>

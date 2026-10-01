@@ -25,6 +25,8 @@ export interface VideoCompositionProps {
   mode?: 'render' | 'preview' | 'qc';
   debugSafeArea?: boolean;
   muted?: boolean;
+  /** 'reduced' for animatic/preview/QC: skips expensive effects, keeps timing and layout. */
+  effects?: 'full' | 'reduced';
   [key: string]: unknown;
 }
 
@@ -58,6 +60,13 @@ function SceneShell({ entry, prevTransition, dirSign }: { entry: TimelineEntry; 
     const tr = TRANSITIONS[scene.transition?.type ?? 'crossfade'] ?? TRANSITIONS.crossfade;
     const f = tr.frame((frame - outStart) / entry.transitionOut, dirSign);
     style = { ...style, ...f.exit };
+  }
+  // Seamless loop: the last scene dissolves back to the (periodic) background, which is
+  // exactly what frame 0 shows before the first scene's entrance begins.
+  if (v.loopFrames && entry.index === v.timeline.entries.length - 1) {
+    const L = Math.min(Math.round(0.6 * v.timeline.fps), Math.floor(entry.durationInFrames * 0.3));
+    const k = Math.min(1, Math.max(0, (frame - (entry.durationInFrames - L)) / L));
+    if (k > 0) style = { ...style, opacity: (typeof style.opacity === 'number' ? style.opacity : 1) * (1 - k * k * (3 - 2 * k)) };
   }
   const ctx = useMemo(
     () => ({
@@ -154,7 +163,7 @@ function GlobalLayer({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const VideoComposition: React.FC<VideoCompositionProps> = ({ spec, assetBase = '', mode = 'render', debugSafeArea = false, muted = false }) => {
+export const VideoComposition: React.FC<VideoCompositionProps> = ({ spec, assetBase = '', mode = 'render', debugSafeArea = false, muted = false, effects = 'full' }) => {
   const rt = useMemo(() => buildRuntime(spec), [spec]);
   const { fps } = useVideoConfig();
   const value: VideoCtxValue = useMemo(
@@ -170,8 +179,10 @@ export const VideoComposition: React.FC<VideoCompositionProps> = ({ spec, assetB
       debugSafeArea: mode === 'preview' && (debugSafeArea || spec.safeArea.debug),
       dir: rt.dir,
       hl: rt.hl,
+      effects,
+      loopFrames: spec.timeline?.seamlessLoop ? rt.timeline.totalFrames : null,
     }),
-    [spec, rt, assetBase, mode, debugSafeArea],
+    [spec, rt, assetBase, mode, debugSafeArea, effects],
   );
   const userFonts = rt.userFonts.map((u) => ({ family: u.family, url: resolveAssetUrl(u.src, assetBase) }));
   const dirSign: 1 | -1 = rt.dir === 'rtl' ? -1 : 1;

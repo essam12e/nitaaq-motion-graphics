@@ -15,8 +15,16 @@ function which(bin: string): string | null {
   return r.status === 0 && p ? p : null;
 }
 
-/** ffmpeg/ffprobe: env override → system → Remotion's bundled binaries. */
+let ffMemo: { ffmpeg: string; ffprobe: string; source: 'env' | 'system' | 'remotion' } | null = null;
+
+/** ffmpeg/ffprobe: env override → system → Remotion's bundled binaries. Resolved once per process. */
 export function findFfmpeg(): { ffmpeg: string; ffprobe: string; source: 'env' | 'system' | 'remotion' } {
+  if (ffMemo) return ffMemo;
+  ffMemo = findFfmpegUncached();
+  return ffMemo;
+}
+
+function findFfmpegUncached(): { ffmpeg: string; ffprobe: string; source: 'env' | 'system' | 'remotion' } {
   if (process.env.MOTION_FFMPEG && process.env.MOTION_FFPROBE) return { ffmpeg: process.env.MOTION_FFMPEG, ffprobe: process.env.MOTION_FFPROBE, source: 'env' };
   const sysF = which('ffmpeg');
   const sysP = which('ffprobe');

@@ -6,6 +6,8 @@
 import { Easing, interpolate, spring } from 'remotion';
 import type { EasingFamily, EntranceFamily } from '../styles/tokens';
 import type { CSSProperties } from 'react';
+import { PHYSICS, presetProgress, type ElementKind } from './physics';
+import { PERSONALITIES, physicsFor, type MotionPersonalityId } from './personality';
 
 export const clamp = (v: number, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -26,27 +28,41 @@ export interface MotionCtx {
   intensity: number;
   easing: EasingFamily;
   speed: number;
+  /** Film motion personality; every spring/curve below is drawn from its physics. */
+  personality?: MotionPersonalityId;
+  /** Ambient float multiplier from the personality (0 = settled elements rest). */
+  floatK?: number;
 }
 
-/** 0→1 progress starting at `delay` sec, lasting `dur` sec, using the family's easing. */
+/**
+ * 0→1 progress starting at `delay` sec, lasting `dur` sec. All timing comes from
+ * the central physics library (src/motion/physics.ts) through the film's motion
+ * personality — legacy easing names map onto the personality's presets:
+ *   elastic → the personality's icon physics (bounce only where the personality allows it)
+ *   snappy  → the personality's card physics
+ *   smooth / cinematic → curve presets (soft / cinematic)
+ */
 export function progress(m: MotionCtx, delay: number, dur = 0.7, family: EasingFamily = m.easing): number {
-  const f = m.frame - delay * m.fps / m.speed;
-  const d = Math.max(1, (dur * m.fps) / m.speed);
-  if (family === 'elastic' || family === 'snappy') {
-    return spring({
-      frame: f,
-      fps: m.fps,
-      durationInFrames: family === 'elastic' ? undefined : d,
-      config: family === 'elastic' ? { damping: 11, stiffness: 140, mass: 0.8 } : { damping: 200, stiffness: 180 },
-    });
-  }
-  const e = family === 'cinematic' ? EASE.cinematic : EASE.smooth;
-  return interpolate(f, [0, d], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: e });
+  const pers = m.personality ? PERSONALITIES[m.personality] : undefined;
+  let preset;
+  if (family === 'elastic') preset = pers ? physicsFor(m.personality, 'icon') : PHYSICS.elastic;
+  else if (family === 'snappy') preset = pers ? physicsFor(m.personality, 'card') : PHYSICS.snappy;
+  else if (family === 'cinematic') preset = PHYSICS.cinematic;
+  else preset = pers && pers.id === 'premium' ? PHYSICS.premium : PHYSICS.soft;
+  // curve presets honour the caller's duration; springs keep their physical character
+  return presetProgress(preset, m.frame, m.fps, delay, preset.drive === 'curve' ? dur : undefined, m.speed);
 }
 
-/** Spring that overshoots (for impacts). */
+/** Element-aware progress: physics chosen by element kind under the film personality. */
+export function motionFor(m: MotionCtx, element: ElementKind, delay = 0, dur?: number): number {
+  return presetProgress(physicsFor(m.personality, element), m.frame, m.fps, delay, dur, m.speed);
+}
+
+/** Spring that overshoots (for impacts) — capped by the personality's overshoot budget. */
 export function overshoot(m: MotionCtx, delay: number, stiffness = 170): number {
-  return spring({ frame: m.frame - delay * m.fps / m.speed, fps: m.fps, config: { damping: 9 + (1 - m.intensity) * 10, stiffness, mass: 0.7 } });
+  const pers = m.personality ? PERSONALITIES[m.personality] : undefined;
+  const preset = pers ? physicsFor(m.personality, 'hero-title') : { ...PHYSICS.snappy, stiffness, damping: 9 + (1 - m.intensity) * 10 };
+  return presetProgress(preset, m.frame, m.fps, delay, undefined, m.speed);
 }
 
 /** Exit progress near the end of a scene (0 = visible, 1 = gone). */

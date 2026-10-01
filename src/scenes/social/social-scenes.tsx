@@ -151,7 +151,7 @@ export const testimonial = defineScene<TeC>(
       <div style={{ position: 'absolute', left: safe.x, top: safe.y, width: safe.width, height: safe.height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {variant === 'card' ? (
           <Reveal delay={0} family="scale">
-            <Surface style={{ width: W, padding: u * 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: u * 2.4, transform: `translateY(${float(m.frame, m.fps, u * 0.6, 5)}px)` }}>{body}</Surface>
+            <Surface style={{ width: W, padding: u * 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: u * 2.4, transform: `translateY(${float(m.frame, m.fps, (m.floatK ?? 1) * u * 0.6, 5)}px)` }}>{body}</Surface>
           </Reveal>
         ) : (
           <div style={{ width: W, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: u * 2.6 }}>{body}</div>

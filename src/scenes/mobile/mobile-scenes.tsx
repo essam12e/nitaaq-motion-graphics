@@ -104,7 +104,7 @@ export const phoneMockup = defineScene<PC>(
           const H = Math.min(h * 0.96, (w / 0.49) * 0.95);
           const W = H * 0.49;
           const enter = progress(m, 0.05, 0.9);
-          const fy = float(m.frame, m.fps, v.canvas.u * 1.4, 4);
+          const fy = float(m.frame, m.fps, (m.floatK ?? 1) * v.canvas.u * 1.4, 4);
           const t = s / durSec;
           let tf = `translateY(${(1 - enter) * H * 0.35 + fy}px)`;
           if (variant === 'tilt') tf = `perspective(2200px) rotateY(${-22 + 14 * enter + 6 * t}deg) rotateX(${8 - 4 * t}deg) translateY(${(1 - enter) * H * 0.3}px)`;
