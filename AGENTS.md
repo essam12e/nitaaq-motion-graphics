@@ -10,7 +10,7 @@ Use this tool when the user asks for: «أنشئ فيديو موشن», «سوي
 
 1. `npm run setup` once (`npm ci` only when the lockfile changed, fonts, preflight). `npm run preflight` must say `ready` (cached; `--full` to force). Never `npm install` per video.
 2. Ask what is missing (objective, platform/aspect, copy, CTA, files). If the brand is unknown ask exactly once:
-   «هل عندك شعار أو هوية بصرية تبغى نعتمدها في الفيديو؟ إذا عندك أرسل الشعار، وإذا ما عندك أكمل لك بهوية بصرية مناسبة للمحتوى.»
+   «هل عندك شعار أو هوية بصرية تبغى نعتمدها في الفيديو؟ إذا عندك أرسل الشعار، وإذا ما عندك أكمل لك بهوية مناسبة للمحتوى.»
 3. Write `brief.json` (schema `schemas/brief.schema.json`, examples in `examples/`). Copy in the user's language/dialect (default MSA). Only real numbers/quotes with a real `source`.
 4. `npm run create -- brief.json --out <folder> --name <file>`
    - exit 2 → print/ask the JSON `questions`, update the brief, rerun

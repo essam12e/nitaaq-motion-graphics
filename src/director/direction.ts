@@ -38,9 +38,13 @@ const INDUSTRY_STYLE: [RegExp, string][] = [
   [/gov|حكوم|وزار|national|وطني/i, 'saudi-modern'],
 ];
 
-export function pickStyle(brief: Brief): { id: string; reason: string } {
+export function pickStyle(brief: Brief, genre?: string): { id: string; reason: string } {
   const explicit = findStyleId(brief.style);
   if (explicit) return { id: explicit, reason: `requested style "${brief.style}"` };
+  // the film's form decides the look before tone does (a whiteboard film is a board, whatever the tone)
+  if (genre === 'whiteboard') return { id: 'whiteboard', reason: 'whiteboard film' };
+  if (genre === 'illustrated') return { id: 'illustration', reason: 'illustrated film' };
+  if (genre === 'launch' && /hype|حماس|قوي|energetic|bold|جريء|teaser|تشويق/i.test([...brief.tone, brief.request].join(' '))) return { id: 'launch-hype', reason: 'hype launch film' };
   const tone = [...brief.tone, brief.request].join(' ');
   for (const [re, id] of TONE_STYLE) if (re.test(brief.tone.join(' '))) return { id, reason: `tone (${brief.tone.join(', ')})` };
   const gccVoice = brief.language !== 'en' && ['saudi', 'gulf'].includes(brief.dialect);
@@ -83,5 +87,5 @@ export function generatedBrand(brief: Brief, styleId: string): BrandProfile | nu
   };
 }
 
-export const LOGO_QUESTION_AR = 'هل عندك شعار أو هوية بصرية تبغى نعتمدها في الفيديو؟ إذا عندك أرسل الشعار، وإذا ما عندك أكمل لك بهوية بصرية مناسبة للمحتوى.';
+export const LOGO_QUESTION_AR = 'هل عندك شعار أو هوية بصرية تبغى نعتمدها في الفيديو؟ إذا عندك أرسل الشعار، وإذا ما عندك أكمل لك بهوية مناسبة للمحتوى.';
 export const LOGO_QUESTION_EN = 'Do you have a logo or brand identity to use in the video? If so, upload it and I will extract the brand colours automatically. If not, I will create a fitting visual direction without adding a fake logo.';

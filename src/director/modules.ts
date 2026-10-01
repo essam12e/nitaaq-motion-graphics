@@ -35,7 +35,7 @@ export function classifyGenre(brief: Brief): GenreDecision {
   const c = brief.content;
   const req = [brief.request, brief.industry, ...(brief.tone ?? [])].join(' ');
   const blocks = contentBlocks(brief);
-  if (brief.visualMode === 'whiteboard' || has(/سبور|whiteboard|رسم توضيحي|doodle/i, req)) return { genre: 'whiteboard', reason: 'whiteboard drawing requested', explicit: false };
+  if (brief.visualMode === 'whiteboard' || has(/سبور|وايت ?بورد|whiteboard|رسم توضيحي|doodle/i, req)) return { genre: 'whiteboard', reason: 'whiteboard drawing requested', explicit: false };
   if (c.map && (c.map.locations?.length || c.map.regions?.length || c.map.routes?.length || c.map.focus)) return { genre: 'map', reason: 'the brief carries map data (places / regions / routes)', explicit: false };
   if (has(/شعار|لوقو|لوغو|logo/i, req) && has(/تحريك|انيميشن|أنيميشن|animation|reveal|ظهور|intro|انترو/i, req) && blocks <= 1 && (brief.duration ?? 10) <= 15)
     return { genre: 'logo', reason: 'a short logo animation request', explicit: false };

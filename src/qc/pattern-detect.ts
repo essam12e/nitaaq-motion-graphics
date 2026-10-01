@@ -62,7 +62,7 @@ const cv = (xs: number[]) => {
  * @param grey  greyscale pixels (0..255), row-major
  * @param masks rectangles (image coordinates) to ignore — text, media, cards
  */
-export function detectPatterns(grey: Uint8Array | Uint8ClampedArray, w: number, h: number, masks: Rect[] = [], opts: { threshold?: number } = {}): PatternScan {
+export function detectPatterns(grey: Uint8Array | Uint8ClampedArray, w: number, h: number, masks: Rect[] = [], opts: { threshold?: number; debug?: boolean } = {}): PatternScan & { points?: { x: number; y: number }[]; threshold?: number; sigma?: number } {
   const T = opts.threshold ?? 7;
   const L = new Float32Array(w * h);
   for (let i = 0; i < w * h; i++) L[i] = grey[i];
@@ -92,7 +92,7 @@ export function detectPatterns(grey: Uint8Array | Uint8ClampedArray, w: number, 
   const neg = scanSign(L, blur, masked, w, h, thr, -1);
   const score = (r: SignScan) => r.findings.length * 1000 + r.centroids;
   const best = score(neg) > score(pos) ? neg : pos;
-  return { findings: best.findings, blobs: best.centroids, lattice: best.lattice, gridLines: best.gridLines };
+  return { findings: best.findings, blobs: best.centroids, lattice: best.lattice, gridLines: best.gridLines, ...(opts.debug ? { points: best.points, threshold: thr, sigma } : {}) };
 }
 
 interface SignScan {
@@ -100,6 +100,25 @@ interface SignScan {
   centroids: number;
   lattice: number;
   gridLines: { cols: number; rows: number };
+  points?: { x: number; y: number }[];
+}
+
+/**
+ * A particle field covers the frame: points in at least 12 of 36 coarse cells, across ≥3 columns
+ * and ≥3 rows. Anti-aliased edges of a few shapes (rings, glows, icons) cluster in a band and are not one.
+ */
+function spread(pts: { x: number; y: number }[], w: number, h: number): boolean {
+  const cells = new Set<number>();
+  const cols = new Set<number>();
+  const rows = new Set<number>();
+  for (const p of pts) {
+    const cx = Math.min(5, Math.floor((p.x / w) * 6));
+    const cy = Math.min(5, Math.floor((p.y / h) * 6));
+    cells.add(cy * 6 + cx);
+    cols.add(cx);
+    rows.add(cy);
+  }
+  return cells.size >= 12 && cols.size >= 3 && rows.size >= 3;
 }
 
 function scanSign(L: Float32Array, blur: Float32Array, masked: Uint8Array, w: number, h: number, T: number, sign: 1 | -1): SignScan {
@@ -193,7 +212,7 @@ function scanSign(L: Float32Array, blur: Float32Array, masked: Uint8Array, w: nu
 
   const findings: PatternFinding[] = [];
   if (centroids.length >= 30 && lattice < 0.35) findings.push({ kind: 'dot-lattice', count: centroids.length, regularity: Math.round((1 - lattice) * 100) / 100, message: `${centroids.length} small dots in a regular lattice` });
-  else if (centroids.length >= 70) findings.push({ kind: 'particle-field', count: centroids.length, regularity: Math.round((1 - lattice) * 100) / 100, message: `${centroids.length} scattered small points (particle field)` });
+  else if (centroids.length >= 70 && spread(centroids, w, h)) findings.push({ kind: 'particle-field', count: centroids.length, regularity: Math.round((1 - lattice) * 100) / 100, message: `${centroids.length} scattered small points (particle field)` });
   if (colL.count >= 4 && rowL.count >= 4 && colL.regular < 0.25 && rowL.regular < 0.25) findings.push({ kind: 'line-grid', count: colL.count + rowL.count, regularity: 1, message: `${colL.count}×${rowL.count} regularly spaced grid lines` });
-  return { findings, centroids: centroids.length, lattice: Math.round(lattice * 100) / 100, gridLines: { cols: colL.count, rows: rowL.count } };
+  return { findings, centroids: centroids.length, lattice: Math.round(lattice * 100) / 100, gridLines: { cols: colL.count, rows: rowL.count }, points: centroids };
 }

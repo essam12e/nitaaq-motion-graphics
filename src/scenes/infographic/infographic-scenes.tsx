@@ -386,7 +386,7 @@ export const processSteps = defineScene<StC>(
                 const p = progress(m, 0.2 + i * per, 0.6, 'elastic');
                 return (
                   <div key={i} style={{ position: 'absolute', top: i * rowH, left: 0, right: 0, display: 'flex', alignItems: 'flex-start', gap: u * 3, opacity: clamp(p * 2) }}>
-                    <div style={{ width: u * 9.6, height: u * 9.6, borderRadius: variant === 'numbered' ? u * 2 : 99, background: t.palette.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: `scale(${p})`, flexShrink: 0, boxShadow: `0 0 0 ${u}px ${alpha(t.palette.primary, 0.2)}` }}>
+                    <div data-qc="box" style={{ width: u * 9.6, height: u * 9.6, borderRadius: variant === 'numbered' ? u * 2 : 99, background: t.palette.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: `scale(${p})`, flexShrink: 0, boxShadow: `0 0 0 ${u}px ${alpha(t.palette.primary, 0.2)}` }}>
                       {variant === 'numbered' || !st.icon ? <span style={{ fontFamily: v.fonts.latin, fontWeight: 800, fontSize: u * 4.4, color: t.palette.textOnPrimary }}>{i + 1}</span> : <Icon name={st.icon} size={u * 4.6} color={t.palette.textOnPrimary} treatment="plain" />}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: u * 0.4, paddingTop: u * 0.6 }}>

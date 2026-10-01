@@ -12,3 +12,4 @@ test/visual/output/
 renders/
 .cache/
 public/sfx/gen/
+.scratch/

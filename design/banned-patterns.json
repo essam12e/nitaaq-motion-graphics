@@ -1,23 +1,194 @@
 {
   "$comment": "Generic AI/template looks the engine refuses by default. Enforced in validation (spec level, src/design/banned.ts) and in QC (pixel level, src/qc/pattern-detect.ts). A pattern is only allowed when the user asked for it or a supplied reference clearly needs it: set video.json design.allowPatterns / design.justification.",
-  "version": 1,
+  "version": 2,
   "patterns": [
-    { "id": "dotted-background", "severity": "critical", "detect": ["spec:background-kind:dots", "spec:background-kind:halftone", "pixel:dot-lattice"], "allowWith": "dots", "why": "Repeated small dots read as a generic template texture and compete with Arabic i'jam dots." },
-    { "id": "particle-field", "severity": "critical", "detect": ["spec:background-kind:bokeh", "spec:background-kind:particles", "pixel:particle-field"], "allowWith": "particles", "why": "Random point fields are decoration without a job." },
-    { "id": "generic-tech-grid", "severity": "critical", "detect": ["spec:background-kind:grid", "spec:background-kind:lines", "pixel:line-grid"], "allowWith": "grid", "why": "Blueprint grids are the default 'tech' cliché." },
-    { "id": "repeating-stripes", "severity": "error", "detect": ["spec:background-kind:stripes"], "allowWith": "stripes", "why": "Busy repeating stripes fight the text." },
-    { "id": "random-decorations", "severity": "error", "detect": ["spec:decorations-without-justification"], "allowWith": "decorations", "why": "Floating rings/plus marks/bursts scattered in corners have no purpose." },
-    { "id": "meaningless-glowing-circles", "severity": "warning", "detect": ["spec:glow-everywhere"], "why": "Glow on every element flattens hierarchy." },
-    { "id": "excessive-neon-glow", "severity": "warning", "detect": ["spec:neon-without-request"], "why": "Neon glow only when the brand or request is neon." },
-    { "id": "glassmorphism-everywhere", "severity": "warning", "detect": ["spec:glass-on-every-card"], "why": "Glass on every card is a cliché and an expensive backdrop blur." },
-    { "id": "gradient-blob-behind-every-heading", "severity": "warning", "detect": ["spec:blob-behind-headings"], "why": "One atmospheric light per film, not a blob per heading." },
-    { "id": "all-elements-from-bottom", "severity": "warning", "detect": ["spec:single-entrance-family"], "why": "One entrance for everything reads mechanical." },
-    { "id": "fade-in-only", "severity": "warning", "detect": ["spec:fade-only"], "why": "Fade alone does not explain hierarchy or cause/effect." },
-    { "id": "identical-cards-repeated", "severity": "warning", "detect": ["spec:same-family-variant-repeated"], "why": "The same card layout repeated scene after scene." },
-    { "id": "centered-heading-cards-cta-template", "severity": "warning", "detect": ["spec:template-arc"], "why": "Heading → cards → CTA for every video regardless of story." },
-    { "id": "generic-blue-purple-ai-gradient", "severity": "warning", "detect": ["spec:blue-purple-default"], "why": "Blue-violet gradient used without brand or request." },
-    { "id": "fake-futuristic-hud", "severity": "warning", "detect": ["spec:hud-without-request"], "why": "HUD overlays only when asked for." },
-    { "id": "excessive-pills-labels", "severity": "info", "detect": ["spec:eyebrow-on-every-scene"], "why": "A label on every scene is noise." },
-    { "id": "noise-reduces-readability", "severity": "warning", "detect": ["spec:heavy-grain"], "why": "Grain above ~0.15 over text costs legibility and bitrate." }
+    {
+      "id": "dotted-background",
+      "severity": "critical",
+      "detect": [
+        "spec:background-kind:dots",
+        "spec:background-kind:halftone",
+        "pixel:dot-lattice"
+      ],
+      "allowWith": "dots",
+      "why": "Repeated small dots read as a generic template texture and compete with Arabic i'jam dots."
+    },
+    {
+      "id": "particle-field",
+      "severity": "critical",
+      "detect": [
+        "spec:background-kind:bokeh",
+        "spec:background-kind:particles",
+        "pixel:particle-field"
+      ],
+      "allowWith": "particles",
+      "why": "Random point fields are decoration without a job."
+    },
+    {
+      "id": "generic-tech-grid",
+      "severity": "critical",
+      "detect": [
+        "spec:background-kind:grid",
+        "spec:background-kind:lines",
+        "pixel:line-grid"
+      ],
+      "allowWith": "grid",
+      "why": "Blueprint grids are the default 'tech' cliché."
+    },
+    {
+      "id": "repeating-stripes",
+      "severity": "error",
+      "detect": [
+        "spec:background-kind:stripes"
+      ],
+      "allowWith": "stripes",
+      "why": "Busy repeating stripes fight the text."
+    },
+    {
+      "id": "random-decorations",
+      "severity": "error",
+      "detect": [
+        "spec:decorations-without-justification"
+      ],
+      "allowWith": "decorations",
+      "why": "Floating rings/plus marks/bursts scattered in corners have no purpose."
+    },
+    {
+      "id": "meaningless-glowing-circles",
+      "severity": "warning",
+      "detect": [
+        "spec:glow-everywhere"
+      ],
+      "why": "Glow on every element flattens hierarchy."
+    },
+    {
+      "id": "excessive-neon-glow",
+      "severity": "warning",
+      "detect": [
+        "spec:neon-without-request"
+      ],
+      "why": "Neon glow only when the brand or request is neon."
+    },
+    {
+      "id": "glassmorphism-everywhere",
+      "severity": "warning",
+      "detect": [
+        "spec:glass-on-every-card"
+      ],
+      "why": "Glass on every card is a cliché and an expensive backdrop blur."
+    },
+    {
+      "id": "gradient-blob-behind-every-heading",
+      "severity": "warning",
+      "detect": [
+        "spec:blob-behind-headings"
+      ],
+      "why": "One atmospheric light per film, not a blob per heading."
+    },
+    {
+      "id": "all-elements-from-bottom",
+      "severity": "warning",
+      "detect": [
+        "spec:single-entrance-family"
+      ],
+      "why": "One entrance for everything reads mechanical."
+    },
+    {
+      "id": "fade-in-only",
+      "severity": "warning",
+      "detect": [
+        "spec:fade-only"
+      ],
+      "why": "Fade alone does not explain hierarchy or cause/effect."
+    },
+    {
+      "id": "identical-cards-repeated",
+      "severity": "warning",
+      "detect": [
+        "spec:same-family-variant-repeated"
+      ],
+      "why": "The same card layout repeated scene after scene."
+    },
+    {
+      "id": "centered-heading-cards-cta-template",
+      "severity": "warning",
+      "detect": [
+        "spec:template-arc"
+      ],
+      "why": "Heading → cards → CTA for every video regardless of story."
+    },
+    {
+      "id": "generic-blue-purple-ai-gradient",
+      "severity": "warning",
+      "detect": [
+        "spec:blue-purple-default"
+      ],
+      "why": "Blue-violet gradient used without brand or request."
+    },
+    {
+      "id": "fake-futuristic-hud",
+      "severity": "warning",
+      "detect": [
+        "spec:hud-without-request"
+      ],
+      "why": "HUD overlays only when asked for."
+    },
+    {
+      "id": "excessive-pills-labels",
+      "severity": "info",
+      "detect": [
+        "spec:eyebrow-on-every-scene"
+      ],
+      "why": "A label on every scene is noise."
+    },
+    {
+      "id": "noise-reduces-readability",
+      "severity": "warning",
+      "detect": [
+        "spec:heavy-grain"
+      ],
+      "why": "Grain above ~0.15 over text costs legibility and bitrate."
+    },
+    {
+      "id": "same-transition-repeated",
+      "severity": "warning",
+      "detect": [
+        "qc:TRANSITION_REPEAT",
+        "qc:TRANSITION_MONOTONY",
+        "director:transition-engine-variety"
+      ],
+      "allowWith": "repetition",
+      "why": "One flashy transition between every scene reads as a template; a hard cut is often right."
+    },
+    {
+      "id": "same-sfx-repeated",
+      "severity": "error",
+      "detect": [
+        "qc:SFX_REPEAT_CONSECUTIVE",
+        "qc:SFX_REPEAT_OVERUSED",
+        "director:sfx-history"
+      ],
+      "allowWith": "repetition",
+      "why": "The same whoosh/click on every move sounds like a loop and cheapens the film."
+    },
+    {
+      "id": "same-logo-reveal-repeated",
+      "severity": "warning",
+      "detect": [
+        "director:logo-reveal-history"
+      ],
+      "allowWith": "repetition",
+      "why": "Every film from one brand opening with the identical reveal flattens the brand; brand-motion.json history penalises the last reveals."
+    },
+    {
+      "id": "same-kinetic-text-repeated",
+      "severity": "warning",
+      "detect": [
+        "qc:TEXT_MOTION_REPEAT",
+        "qc:TEXT_MOTION_OVERUSED"
+      ],
+      "allowWith": "repetition",
+      "why": "One text reveal for every headline erases the message hierarchy."
+    }
   ]
 }

@@ -89,11 +89,21 @@ export function collectProbe(frame: number, width: number, height: number): Prob
     const fontPx = parseFloat(cs.fontSize) || 0;
     for (const line of Array.from(h.children)) {
       let w = 0;
+      // text nodes (the spaces between words) are measured, not estimated: Arabic spaces are narrower
+      // than a Latin guess, and an estimate flags shrink-wrapped lines as overflowing. The range rect is
+      // transformed like the line, so it is scaled back by the line's own laid-out/visual ratio.
+      const lr = line.getBoundingClientRect().width;
+      const k = lr > 0 && line instanceof HTMLElement ? line.offsetWidth / lr : 1;
       for (const n of Array.from(line.childNodes)) {
         if (n instanceof HTMLElement) {
           const ls = getComputedStyle(n);
           w += n.offsetWidth + (parseFloat(ls.marginLeft) || 0) + (parseFloat(ls.marginRight) || 0);
-        } else if (n.nodeType === Node.TEXT_NODE) w += (n.textContent ?? '').length * fontPx * 0.26;
+        } else if (n.nodeType === Node.TEXT_NODE) {
+          const r = document.createRange();
+          r.selectNodeContents(n);
+          const tw = r.getBoundingClientRect().width * k;
+          w += Number.isFinite(tw) && tw > 0 ? tw : (n.textContent ?? '').length * fontPx * 0.26;
+        }
       }
       if (w > h.clientWidth * 1.01 + 2) overflowX = true;
     }

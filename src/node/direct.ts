@@ -145,7 +145,7 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
 
   // ── brand
   const tBrand = Date.now();
-  const styleId = pickStyle(brief).id;
+  const styleId = pickStyle(brief, classifyGenre(brief).genre).id;
   let brand: BrandProfile | null;
   if (logoId) {
     const rel = assets[logoId].src;
@@ -293,7 +293,7 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
     board = r.storyboard;
     chapters = r.chapters;
   } else board = buildStoryboard(plan, ctx, { seed, voice: voiceTiming, prefer: brief.preferences.prefer, avoid: brief.preferences.avoid });
-  if (board.scenes.length < 2) throw new MotionError({ code: 'INPUT_INVALID', what: 'Not enough content to direct a video', why: 'The brief only supports one scene.', action: 'Add at least a hook and a CTA (and ideally features, a product or a problem/solution).' });
+  if (board.scenes.length < 2 && !(genre.genre === 'logo' && board.scenes[0]?.family === 'logo-animation')) throw new MotionError({ code: 'INPUT_INVALID', what: 'Not enough content to direct a video', why: 'The brief only supports one scene.', action: 'Add at least a hook and a CTA (and ideally features, a product or a problem/solution).' });
   const film = directFilm({ brief, plan, storyboard: board, seed, referenceEnergy: reference?.motion?.energy, beats: beats && beats.confidence > 0.15 ? beats : null, voiceLed: Boolean(voiceTiming), genre: genre.genre, sharedElements: isSelected(selected, 'shared-elements') });
   const storyboard = film.storyboard;
   log.stage('STORYBOARD', storyboard.scenes.map((s) => `${s.family}/${s.variant} ${s.duration}s`).join(' | '));

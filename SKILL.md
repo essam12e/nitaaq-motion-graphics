@@ -24,7 +24,7 @@ Collect, in the user's language and dialect (default MSA; never force a dialect)
 
 Ask only what blocks the work. **If the brand is unknown, ask exactly this once:**
 
-> هل عندك شعار أو هوية بصرية تبغى نعتمدها في الفيديو؟ إذا عندك أرسل الشعار، وإذا ما عندك أكمل لك بهوية بصرية مناسبة للمحتوى.
+> هل عندك شعار أو هوية بصرية تبغى نعتمدها في الفيديو؟ إذا عندك أرسل الشعار، وإذا ما عندك أكمل لك بهوية مناسبة للمحتوى.
 
 No logo → `"brand": null` (or `{ "name": "…", "colors": [...] }`). Never invent or draw a logo.
 

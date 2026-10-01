@@ -227,7 +227,7 @@ export function directSound(input: SoundDirectorInput): { cues: SfxCue[]; report
         if (n >= varCap) s -= 2;
         // same file within 3 s anywhere in the film reads as a loop
         if (cues.some((c) => c.file === v.file && Math.abs(c.atSec - atSec) < 3)) s -= 1.2;
-        if (recentHist.has(v.id)) s -= 0.35;
+        if (recentHist.has(v.id)) s -= 0.7; // a variant heard in the last films loses to any fresh one of the family
         if (v.source === 'library') s -= 0.05; // generated variants are tuned to the bank's loudness
         s += rng() * 0.1;
         return { v, s };

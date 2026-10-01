@@ -112,7 +112,7 @@ function pickPace(brief: Brief, styleId: string): 'slow' | 'medium' | 'fast' {
 export function buildPlan(input: PlanInput): CreativePlan {
   const { brief } = input;
   const aspect: Aspect = brief.aspect ?? PLATFORM_DEFAULT_ASPECT[brief.platform];
-  const style = pickStyle(brief);
+  const style = pickStyle(brief, input.genre);
   const pace = pickPace(brief, style.id);
   const voiceLed = Boolean(input.voiceDuration);
   const duration = Math.round(

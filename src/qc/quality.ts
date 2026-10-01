@@ -284,7 +284,9 @@ export async function structuralQc(opts: { spec: VideoSpec; projectDir: string; 
     const hold = s.kind === 'hold';
     for (const t of p.texts) {
       if (!t.text.trim()) continue;
-      const tb = { ...base, scene: t.scene || s.scene, element: `${t.role}:"${t.text.slice(0, 32)}"` };
+      // the text's own scene (during a transition the sample belongs to the other scene) — repairs target this index
+      const ownIdx = t.scene ? spec.scenes.findIndex((x) => x.id === t.scene) : -1;
+      const tb = { ...base, scene: t.scene || s.scene, sceneIndex: ownIdx >= 0 ? ownIdx : base.sceneIndex, element: `${t.role}:"${t.text.slice(0, 32)}"` };
       if (t.fit === 'fail') add('structure', { ...tb, severity: t.critical ? 'critical' : 'error', code: 'TEXT_FIT_FAIL', message: `text does not fit its box even at minimum size (${t.reason ?? 'overflow'})`, repair: { action: 'shrink-text' } });
       // an invisible line (before its entrance) cannot visibly clip; its settled frames are sampled as holds
       if (t.overflowX && t.opacity > 0.05) add('structure', { ...tb, severity: t.critical ? 'critical' : 'error', code: 'TEXT_OVERFLOW', message: 'a text line is wider than its container', repair: { action: 'shrink-text' } });
