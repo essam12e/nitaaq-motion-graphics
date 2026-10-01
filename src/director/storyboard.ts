@@ -130,6 +130,18 @@ export function buildStoryboard(plan: CreativePlan, ctx: RecipeCtx, opts: { seed
   const rng = createRng(seed).next;
   const picked: { r: Recipe; beat: Beat; content: Record<string, unknown>; message: string }[] = [];
   const usedFamilies = new Map<string, number>();
+  // user-supplied material each family shows: unseen material is preferred, shown material is not repeated
+  const shown = new Set<string>();
+  const payloadOf = (family: string): string | null => {
+    if (['browser-scene', 'screenshot-focus', 'landing-page'].includes(family)) return ctx.assets.screenshot ? 'screenshot' : null;
+    if (family === 'integration-hub') return 'integrations';
+    if (family === 'form-fill') return 'form';
+    if (family === 'state-flow') return 'flow';
+    if (family === 'data-table') return 'table';
+    if (['process-steps', 'workflow', 'timeline'].includes(family)) return 'steps';
+    if (['feature-set', 'icon-list', 'product-details'].includes(family)) return 'features';
+    return null;
+  };
   const beats = plan.narrativeArc.map((a) => a.beat);
   const skip = new Set<number>();
 
@@ -150,6 +162,8 @@ export function buildStoryboard(plan: CreativePlan, ctx: RecipeCtx, opts: { seed
         if (uses) w *= 0.25 / uses;
         if (m.category === prevCat) w *= 0.6;
         if (opts.prefer?.includes(r.family)) w *= 2.2;
+        const pay = payloadOf(r.family);
+        if (pay) w *= shown.has(pay) ? 0.4 : pay === 'screenshot' ? 1.8 : 1.5; // the user's real screenshot first
         // match the beat's energy
         w *= 1 - Math.abs(m.energy - BEAT_ENERGY[beat]) * 0.5;
         // copy longer than every variant of the family can hold → strongly prefer roomier families
@@ -171,6 +185,8 @@ export function buildStoryboard(plan: CreativePlan, ctx: RecipeCtx, opts: { seed
     if (!parsed.success) return; // recipe could not be satisfied by the brief — skip rather than guess
     picked.push({ r, beat, content, message: r.message(ctx) });
     usedFamilies.set(r.family, (usedFamilies.get(r.family) ?? 0) + 1);
+    const pay = payloadOf(r.family);
+    if (pay) shown.add(pay);
     if (r.family === 'problem-solution') beats.forEach((b, j) => j > bi && b === 'bridge' && skip.add(j));
   });
 

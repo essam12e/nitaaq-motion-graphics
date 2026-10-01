@@ -247,6 +247,7 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
     seed,
     motion: film.motion,
     design: { allowPatterns: patterns, justification: patterns.length ? `requested in the brief: ${brief.request.slice(0, 120)}` : undefined },
+    effects: cls.budget.effects,
     loop: brief.loop,
     beatSync: film.motion.beatSync && beats ? { bpm: beats.bpm, offset: beats.beats[0] ?? 0, aligned: film.motion.beatSync.aligned } : null,
     reference: reference ? { source: reference.source, kind: reference.kind === 'ui' ? 'image' : reference.kind, motionEnergy: reference.motion?.energy, visualDensity: reference.mapping.density, appliedTo: ['style', 'pace', 'motion personality', ...(brand?.source === 'generated' || brand?.source === 'user' ? [] : [])] } : undefined,

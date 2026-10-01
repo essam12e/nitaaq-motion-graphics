@@ -8,24 +8,94 @@
   "platform": "youtube",
   "aspect": "16:9",
   "duration": 30,
-  "tone": ["professional", "clear"],
-  "brand": { "name": "Insightly" },
-  "audio": { "mode": "none", "sfx": true },
+  "tone": [
+    "professional",
+    "clear"
+  ],
+  "brand": {
+    "name": "Insightly"
+  },
+  "audio": {
+    "mode": "none",
+    "sfx": true
+  },
   "content": {
     "hook": "بياناتك موجودة، لكن هل تفهمها؟",
-    "emphasis": ["تفهمها", "Dashboard", "دقائق"],
+    "emphasis": [
+      "تفهمها",
+      "Dashboard",
+      "دقائق"
+    ],
     "problem": "تقارير Excel متفرقة وقرارات متأخرة",
     "bridge": "مع Insightly",
     "solution": "Dashboard واحد يحوّل بياناتك إلى قرارات",
-    "steps": ["اربط مصادر البيانات عبر API", "اختر مؤشرات KPI المهمة", "شارك التقارير مع فريقك"],
-    "features": [
-      { "title": "Real-time Dashboard", "description": "تحديث لحظي للمؤشرات" },
-      { "title": "تنبيهات ذكية", "description": "إشعار عند أي تغير مهم" },
-      { "title": "تكامل مع Slack", "description": "التقارير تصل لفريقك" },
-      { "title": "تصدير PDF", "description": "بضغطة زر" }
+    "steps": [
+      "اربط مصادر البيانات عبر API",
+      "اختر مؤشرات KPI المهمة",
+      "شارك التقارير مع فريقك"
     ],
-    "series": { "title": "زمن إعداد التقرير (دقائق)", "labels": ["يدوي", "Excel", "Insightly"], "values": [180, 95, 12], "source": "قياس داخلي — بيانات اختبار للعرض" },
-    "ui": { "url": "app.insightly.io", "appName": "Insightly", "screenshot": "dashboard-screenshot.png", "menu": ["Overview", "Reports", "Alerts"], "headline": "Overview" },
-    "cta": { "text": "ابدأ تجربتك المجانية اليوم", "button": "Start free trial", "url": "https://insightly.io", "qr": "https://insightly.io" }
+    "features": [
+      {
+        "title": "Real-time Dashboard",
+        "description": "تحديث لحظي للمؤشرات"
+      },
+      {
+        "title": "تنبيهات ذكية",
+        "description": "إشعار عند أي تغير مهم"
+      },
+      {
+        "title": "تكامل مع Slack",
+        "description": "التقارير تصل لفريقك"
+      },
+      {
+        "title": "تصدير PDF",
+        "description": "بضغطة زر"
+      }
+    ],
+    "series": {
+      "title": "زمن إعداد التقرير (دقائق)",
+      "labels": [
+        "يدوي",
+        "Excel",
+        "Insightly"
+      ],
+      "values": [
+        180,
+        95,
+        12
+      ],
+      "source": "قياس داخلي — بيانات اختبار للعرض"
+    },
+    "ui": {
+      "url": "app.insightly.io",
+      "appName": "Insightly",
+      "screenshot": "dashboard-screenshot.png",
+      "menu": [
+        "Overview",
+        "Reports",
+        "Alerts"
+      ],
+      "headline": "Overview"
+    },
+    "cta": {
+      "text": "ابدأ تجربتك المجانية اليوم",
+      "button": "Start free trial",
+      "url": "https://insightly.io",
+      "qr": "https://insightly.io"
+    },
+    "form": {
+      "fields": [
+        {
+          "label": "Workspace",
+          "value": "Nada Store"
+        },
+        {
+          "label": "Data source",
+          "value": "Shopify API"
+        }
+      ],
+      "button": "Connect",
+      "done": "Dashboard جاهز"
+    }
   }
 }

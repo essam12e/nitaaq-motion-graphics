@@ -1,12 +1,12 @@
 {
   "request": "سوي لي فيديو موشن إعلاني لتطبيق تقني سعودي لإدارة المواعيد",
-  "title": "test-f-square",
+  "title": "test-f-multi-format",
   "language": "ar",
   "dialect": "saudi",
   "objective": "promote",
   "industry": "tech app",
-  "platform": "instagram-feed",
-  "aspect": "1:1",
+  "platform": "tiktok",
+  "aspect": "9:16",
   "duration": 18,
   "tone": [
     "حديث",
@@ -57,5 +57,9 @@
       "text": "حمّل موعد وابدأ اليوم",
       "button": "حمّل التطبيق"
     }
-  }
+  },
+  "formats": [
+    "16:9",
+    "1:1"
+  ]
 }

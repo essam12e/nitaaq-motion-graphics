@@ -112,7 +112,7 @@ export function compileSpec(input: {
       sfx: { enabled: audio.sfx, intensity: brief.audio.sfxIntensity ?? sfxIntensity, volume: brief.audio.sfxVolume ?? (voiceLed ? 0.45 : 0.6), overrides: {} },
     },
     scenes,
-    design: { allowPatterns: input.design?.allowPatterns ?? [], decorations: input.design?.decorations ?? false, justification: input.design?.justification },
+    design: { allowPatterns: input.design?.allowPatterns ?? [], decorations: input.design?.decorations ?? false, justification: input.design?.justification, effectBudget: input.effects },
     motion: { personality: input.motion?.personality, seed: input.seed },
     timeline: { seamlessLoop: Boolean(input.loop), chapters: [], beatSync: input.beatSync ?? undefined },
     ...(input.reference ? { reference: input.reference } : {}),

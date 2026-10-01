@@ -23,6 +23,7 @@ import { summarize, type Issue } from '../validation/validate';
 import { loadSpec, nodeValidateOptions, renderVideo, type RenderProfile, type RenderResult } from './render';
 import { structuralQc, finalQc, type QualityReport, type StructuralQc } from '../qc/quality';
 import { applyQcRepairs, blockingUnrepairable } from '../qc/repair-loop';
+import { estimateEffectCost } from '../perf/effect-budget';
 import { Perf } from '../perf/timer';
 import { renderConcurrency } from './render';
 import { writeAssetsManifest } from './manifest';
@@ -84,6 +85,7 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
   perf.meta.profile = profile;
   perf.meta.concurrency = renderConcurrency();
   perf.meta.durationSec = spec.scenes.reduce((a, s) => a + s.duration, 0);
+  perf.meta.effects = estimateEffectCost(spec);
   perf.meta.canvas = `${spec.canvas.width}x${spec.canvas.height}@${spec.canvas.fps}`;
 
   // 1. validation + deterministic repair

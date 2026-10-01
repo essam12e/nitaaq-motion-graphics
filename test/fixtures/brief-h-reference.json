@@ -1,0 +1,23 @@
+{
+  "request": "سوي لي فيديو موشن لخدمة استشارات مالية بنفس روح المرجع المرفق",
+  "title": "test-h-reference",
+  "language": "ar",
+  "dialect": "saudi",
+  "objective": "promote",
+  "industry": "financial consulting",
+  "platform": "tiktok",
+  "aspect": "9:16",
+  "duration": 18,
+  "tone": ["هادئ", "موثوق"],
+  "brand": null,
+  "reference": { "path": "reference-poster.png", "kind": "image", "note": "أبغى نفس الإحساس: مساحة فاضية وشكل كبير واحد" },
+  "audio": { "mode": "none", "sfx": false },
+  "content": {
+    "hook": "قراراتك المالية تحتاج وضوح",
+    "emphasis": ["وضوح", "خطة"],
+    "problem": "مصاريف متفرقة وأهداف بدون خطة",
+    "solution": "نبني لك خطة مالية واضحة خطوة بخطوة",
+    "steps": ["جلسة تعارف مجانية", "تحليل دخلك ومصاريفك", "خطة مكتوبة ومتابعة شهرية"],
+    "cta": { "text": "احجز جلستك المجانية", "button": "احجز الآن" }
+  }
+}

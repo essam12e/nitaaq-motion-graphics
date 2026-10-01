@@ -1,0 +1,25 @@
+{
+  "request": "سوي لي فيديو موشن لمحمصة قهوة مختصة، الألوان من الشعار",
+  "title": "test-g-brand-logo",
+  "language": "ar",
+  "dialect": "saudi",
+  "objective": "brand",
+  "industry": "specialty coffee",
+  "platform": "instagram-reels",
+  "aspect": "9:16",
+  "duration": 15,
+  "tone": ["دافئ", "فاخر"],
+  "brand": { "name": "بُن", "logo": "brand-logo-bun.png" },
+  "audio": { "mode": "none", "sfx": true },
+  "content": {
+    "hook": "قهوتك الصباحية تستاهل أكثر",
+    "emphasis": ["تستاهل", "طازجة"],
+    "solution": "بُن تحمّص حبوبك كل أسبوع وتوصلها طازجة",
+    "features": [
+      { "title": "تحميص أسبوعي" },
+      { "title": "حبوب مختارة" },
+      { "title": "توصيل نفس اليوم" }
+    ],
+    "cta": { "text": "اطلب من بُن اليوم", "button": "اطلب الآن" }
+  }
+}

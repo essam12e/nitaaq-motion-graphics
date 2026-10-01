@@ -248,6 +248,8 @@ export const DesignSchema = z.object({
   decorations: z.boolean().default(false),
   /** Why a normally-banned look is used (shown in QC instead of an error). */
   justification: z.string().max(300).optional(),
+  /** Render-cost budget set by the Director from the task class (LOW/MEDIUM/HIGH). */
+  effectBudget: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
 });
 
 export const MotionPersonalitySchema = z.enum(['premium', 'energetic', 'playful', 'corporate', 'cinematic', 'tech', 'sport']);

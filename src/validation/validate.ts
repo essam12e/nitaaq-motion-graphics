@@ -12,6 +12,7 @@ import { isKnownSfx } from '../audio/sfx-library';
 import { ASPECTS } from '../layout/canvas';
 import { hasArabic } from '../typography/arabic';
 import { buildTimeline } from '../core/timeline';
+import { estimateEffectCost } from '../perf/effect-budget';
 
 export type Severity = 'info' | 'warning' | 'error' | 'critical';
 
@@ -138,6 +139,8 @@ export function validateSpec(spec: VideoSpec, opts: ValidateOptions = {}): Issue
 
   // timing
   const total = totalDuration(spec);
+  const fx = estimateEffectCost(spec);
+  if (fx.overBudget) add({ severity: 'warning', code: 'EFFECT_BUDGET', path: 'design.effectBudget', message: `effect cost ${fx.score} (${fx.level}) is over the ${fx.budget} budget — ${fx.contributors.filter((c) => !c.source.startsWith('scenes')).map((c) => c.source).join(', ') || 'heavy scene families'}`, hint: 'use lighter families or a flatter style, or raise the budget for an ADVANCED brief' });
   if (total > 180) add({ severity: 'warning', code: 'DURATION_LONG', path: 'scenes', message: `total ${total.toFixed(1)}s — long for a motion ad` });
   return issues;
 }

@@ -94,10 +94,15 @@ export function buildPlan(input: PlanInput): CreativePlan {
   let beats = ARCS[brief.objective].filter((b) => supported.has(b) || b === 'hook' || b === 'cta');
   // comparison/data are strong when supplied even if the objective's arc omits them
   const c = brief.content;
-  const has: Partial<Record<Beat, boolean>> = { comparison: Boolean(c.comparison), data: Boolean(c.stats?.length || c.series || c.table), product: Boolean(input.assets.product || c.products?.length), demo: Boolean(c.flow?.length || c.form?.fields.length) };
-  for (const extra of ['comparison', 'data', 'product', 'demo'] as Beat[]) {
+  const has: Partial<Record<Beat, boolean>> = { comparison: Boolean(c.comparison), data: Boolean(c.stats?.length || c.series || c.table), product: Boolean(input.assets.product || c.products?.length), demo: Boolean(c.flow?.length || c.form?.fields.length), process: Boolean(c.steps?.length) };
+  // content the user supplied is never silently lost because the objective's arc omits its beat
+  for (const extra of ['comparison', 'data', 'product', 'demo', 'process'] as Beat[]) {
     if (has[extra] && supported.has(extra) && !beats.includes(extra)) beats.splice(Math.max(1, beats.length - 1), 0, extra);
   }
+  // several distinct product demos supplied (real screenshot, a form, a flow, integrations) → a second demo beat
+  const demoPayloads = [Boolean(input.assets.screenshot || c.ui?.url), Boolean(c.form?.fields.length), Boolean(c.flow?.length), (c.integrations?.length ?? 0) >= 3].filter(Boolean).length;
+  // …only while every scene still gets ≥3.3 s (demos need time to read)
+  if (supported.has('demo') && beats.includes('demo')) for (let k = 1; k < Math.min(demoPayloads, 3) && duration / (beats.filter((b) => b !== 'bridge').length + 1) >= 3.3; k++) beats.splice(beats.indexOf('demo') + 1, 0, 'demo');
   if (beats.includes('bridge') && !(beats.includes('problem') && beats.includes('solution'))) beats = beats.filter((b) => b !== 'bridge');
   // problem-solution already covers solution when both exist
   const maxScenes = Math.max(3, Math.min(14, voiceLed && input.voiceSegments ? Math.max(3, Math.min(input.voiceSegments, Math.round(duration / 1.8))) : Math.round(duration / SCENE_SECONDS[pace])));

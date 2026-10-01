@@ -76,8 +76,26 @@ export function detectPatterns(grey: Uint8Array | Uint8ClampedArray, w: number, 
     const y1 = Math.min(h, Math.ceil(r.y + r.height) + pad);
     for (let y = y0; y < y1; y++) masked.fill(1, y * w + x0, y * w + x1);
   }
+  // Bright marks on dark and dark marks on light are scanned separately: with
+  // high-contrast dots the halo around each dot also differs from the local mean,
+  // and an unsigned test would merge dot + halo into one large blob.
+  const pos = scanSign(L, blur, masked, w, h, T, 1);
+  const neg = scanSign(L, blur, masked, w, h, T, -1);
+  const score = (r: SignScan) => r.findings.length * 1000 + r.centroids;
+  const best = score(neg) > score(pos) ? neg : pos;
+  return { findings: best.findings, blobs: best.centroids, lattice: best.lattice, gridLines: best.gridLines };
+}
+
+interface SignScan {
+  findings: PatternFinding[];
+  centroids: number;
+  lattice: number;
+  gridLines: { cols: number; rows: number };
+}
+
+function scanSign(L: Float32Array, blur: Float32Array, masked: Uint8Array, w: number, h: number, T: number, sign: 1 | -1): SignScan {
   const on = new Uint8Array(w * h);
-  for (let i = 0; i < w * h; i++) if (!masked[i] && Math.abs(L[i] - blur[i]) > T) on[i] = 1;
+  for (let i = 0; i < w * h; i++) if (!masked[i] && sign * (L[i] - blur[i]) > T) on[i] = 1;
 
   // ── connected components (4-neighbour) → small round blobs
   const seen = new Uint8Array(w * h);
@@ -168,5 +186,5 @@ export function detectPatterns(grey: Uint8Array | Uint8ClampedArray, w: number, 
   if (centroids.length >= 30 && lattice < 0.35) findings.push({ kind: 'dot-lattice', count: centroids.length, regularity: Math.round((1 - lattice) * 100) / 100, message: `${centroids.length} small dots in a regular lattice` });
   else if (centroids.length >= 70) findings.push({ kind: 'particle-field', count: centroids.length, regularity: Math.round((1 - lattice) * 100) / 100, message: `${centroids.length} scattered small points (particle field)` });
   if (colL.count >= 4 && rowL.count >= 4 && colL.regular < 0.25 && rowL.regular < 0.25) findings.push({ kind: 'line-grid', count: colL.count + rowL.count, regularity: 1, message: `${colL.count}×${rowL.count} regularly spaced grid lines` });
-  return { findings, blobs: centroids.length, lattice: Math.round(lattice * 100) / 100, gridLines: { cols: colL.count, rows: rowL.count } };
+  return { findings, centroids: centroids.length, lattice: Math.round(lattice * 100) / 100, gridLines: { cols: colL.count, rows: rowL.count } };
 }
