@@ -1,0 +1,14 @@
+{
+  "request": "فيديو وايت بورد يشرح كيف تعمل الخدمة",
+  "title": "test-n-whiteboard",
+  "language": "ar", "dialect": "msa", "objective": "explain", "industry": "education",
+  "platform": "youtube", "aspect": "16:9", "duration": 20, "tone": ["تعليمي"],
+  "audio": { "mode": "none", "sfx": true },
+  "content": {
+    "hook": "كيف تتعلم مهارة جديدة في شهر؟",
+    "problem": "الدروس الطويلة تُنسى بسرعة",
+    "solution": "دروس قصيرة يومية مع تمارين",
+    "steps": ["اختر المهارة", "تعلم ١٠ دقائق يومياً", "طبّق مباشرة"],
+    "cta": { "text": "ابدأ أول درس مجاناً" }
+  }
+}

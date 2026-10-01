@@ -1,0 +1,34 @@
+{
+  "request": "Kinetic typography promo, bold and fast",
+  "title": "test-p-english-kinetic",
+  "language": "en",
+  "dialect": "msa",
+  "objective": "promote",
+  "industry": "creative studio",
+  "platform": "instagram-reels",
+  "aspect": "1:1",
+  "duration": 12,
+  "tone": [
+    "bold",
+    "energetic"
+  ],
+  "audio": {
+    "mode": "none",
+    "sfx": true
+  },
+  "content": {
+    "lines": [
+      "Ideas move fast",
+      "Your brand should too",
+      "Motion that means something"
+    ],
+    "emphasis": [
+      "fast",
+      "means"
+    ],
+    "cta": {
+      "text": "Book a call"
+    },
+    "hook": "Ideas move fast"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "request": "فيديو رسوم توضيحية فلات يشرح خدمة الدفع الآمن",
+  "title": "test-m-illustrated",
+  "language": "ar", "dialect": "msa", "objective": "explain", "industry": "fintech",
+  "platform": "instagram-reels", "aspect": "9:16", "duration": 20, "tone": ["ودود"],
+  "audio": { "mode": "none", "sfx": true },
+  "content": {
+    "hook": "الدفع لازم يكون سهل وآمن",
+    "problem": "عملاؤك يتركون السلة عند الدفع",
+    "solution": "بوابة دفع آمنة وسريعة",
+    "features": [{ "title": "حماية البيانات" }, { "title": "دفع سريع" }, { "title": "دعم فوري" }],
+    "steps": ["أضف المنتج", "ادفع بضغطة", "استلم التأكيد"],
+    "cta": { "text": "ابدأ مع بوابتنا" }
+  }
+}

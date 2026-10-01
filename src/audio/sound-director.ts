@@ -217,10 +217,10 @@ export function directSound(input: SoundDirectorInput): { cues: SfxCue[]; report
     });
     return scored.sort((a, b) => b.s - a.s)[0].f;
   };
-  const chooseVariant = (fam: SfxFamily, atSec: number, maxDur = Infinity): SfxVariant | undefined => {
+  const chooseVariant = (fam: SfxFamily, atSec: number, maxDur = Infinity, maxPeak = Infinity): SfxVariant | undefined => {
     const vs = byFamily.get(fam.id) ?? [];
     const scored = vs
-      .filter((v) => v.file !== lastFile && v.duration <= maxDur)
+      .filter((v) => v.file !== lastFile && v.duration <= maxDur && v.peakAt <= maxPeak)
       .map((v) => {
         const n = usedVar.get(v.id) ?? 0;
         let s = 1 - n * 0.6;
@@ -290,7 +290,8 @@ export function directSound(input: SoundDirectorInput): { cues: SfxCue[]; report
       push(e, fam, { ...bv, peakAt: bv.duration - 0.02 }, target, 'movement', 0.9, next ? `end→${next.e.type}` : 'completion');
       continue;
     }
-    const v = fam && chooseVariant(fam, e.syncSec);
+    // a file whose peak comes later than the anchor cannot start before 0 s and would land late
+    const v = fam && chooseVariant(fam, e.syncSec, Infinity, e.syncSec + 0.03);
     if (!fam || !v) {
       dropped.push({ type: e.type, at: e.syncSec, why: `no variant for ${intent}` });
       continue;

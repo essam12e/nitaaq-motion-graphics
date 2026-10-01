@@ -1,0 +1,64 @@
+{
+  "request": "فيديو يوضح تغطية فروعنا في المملكة",
+  "title": "test-l-map",
+  "language": "ar",
+  "dialect": "saudi",
+  "objective": "promote",
+  "industry": "logistics",
+  "platform": "youtube",
+  "aspect": "16:9",
+  "duration": 18,
+  "tone": [
+    "واثق"
+  ],
+  "brand": {
+    "name": "شحنة"
+  },
+  "audio": {
+    "mode": "none",
+    "sfx": true
+  },
+  "content": {
+    "hook": "نوصل لك وين ما كنت",
+    "map": {
+      "focus": "السعودية",
+      "regions": [
+        "الرياض",
+        "مكة المكرمة",
+        "المنطقة الشرقية"
+      ],
+      "locations": [
+        {
+          "name": "الرياض"
+        },
+        {
+          "name": "جدة"
+        },
+        {
+          "name": "الدمام"
+        }
+      ],
+      "routes": [
+        {
+          "from": "الرياض",
+          "to": "جدة"
+        },
+        {
+          "from": "الرياض",
+          "to": "الدمام"
+        }
+      ]
+    },
+    "features": [
+      {
+        "title": "توصيل خلال ٢٤ ساعة"
+      },
+      {
+        "title": "تتبع لحظي"
+      }
+    ],
+    "cta": {
+      "text": "اطلب الشحن الآن"
+    }
+  }
+}

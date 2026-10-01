@@ -35,6 +35,17 @@ const TESTS = [
   { key: '6', brief: 'brief-h-reference.json', what: 'Reference-driven style (principles extracted, not copied)' },
   { key: '7', brief: 'brief-e-long-arabic.json', what: 'Long Arabic text stress test, 4:5' },
   { key: '8', brief: 'brief-f-multi.json', what: 'Multi-format: 9:16 recomposed to 16:9 and 1:1 (re-laid-out, not cropped)' },
+  // v3 capabilities
+  { key: '9', brief: 'brief-i-logo-sting.json', what: 'Logo animation: structure-aware reveal of the user logo (single scene, logo unchanged)' },
+  { key: '10', brief: 'brief-j-launch-hype.json', what: 'Launch / hype film 9:16 with code-generated soundtrack (no user music)' },
+  { key: '11', brief: 'brief-k-data.json', what: 'Data story 4:5: sourced series → line, KPI counters (no fabricated numbers)' },
+  { key: '12', brief: 'brief-l-map.json', what: 'Map animation 16:9: Saudi regions, real cities, routes (Natural Earth data)' },
+  { key: '13', brief: 'brief-m-illustrated.json', what: 'Illustration mode 9:16: procedural flat illustrations + diagram' },
+  { key: '14', brief: 'brief-n-whiteboard.json', what: 'Whiteboard 16:9: progressive drawing / writing on a clean board' },
+  { key: '15', brief: 'brief-o-gsap-web.json', what: 'English web/UI film with an optional GSAP sequence (deterministic seek)' },
+  { key: '16', brief: 'brief-p-english-kinetic.json', what: 'English kinetic typography 1:1 + zero-asset JavaScript sequences' },
+  { key: '17', brief: 'bench-c-saas-launch.json', what: 'Mixed Arabic/English SaaS launch 16:9 with real screenshot + soundtrack' },
+  { key: '18', brief: 'bench-d-audio.json', what: 'User music 9:16: beat engine + Sound Director coordination (no soundtrack synthesis)' },
 ];
 
 const summary = (r: ProduceResult) => ({
@@ -50,6 +61,18 @@ const summary = (r: ProduceResult) => ({
   timings: { totalSec: r.perf.totalMs / 1000, qcSec: r.perf.qcMs / 1000, animaticSec: r.perf.animaticMs / 1000, renderSec: r.perf.productionRenderMs / 1000 },
 });
 
+/** What the Sound Director and the soundtrack actually did (from the project's own files). */
+const soundOf = (dir: string) => {
+  try {
+    const plan = JSON.parse(readFileSync(join(dir, 'sound-plan.json'), 'utf8'));
+    const qc = JSON.parse(readFileSync(join(dir, 'audio-qc.json'), 'utf8'));
+    const spec = JSON.parse(readFileSync(join(dir, 'video.json'), 'utf8'));
+    return { personality: plan.personality, cues: qc.stats.cues, uniqueFiles: qc.stats.uniqueFiles, maxSameFile: qc.stats.maxSameFile, consecutiveSameFile: qc.stats.consecutiveSameFile, maxPer10s: qc.stats.maxPer10s, syncErrorMaxMs: qc.stats.syncErrorMaxMs, dropped: plan.report?.dropped?.length ?? 0, events: plan.report?.events, music: spec.audio.music ? (spec.audio.music.src === 'soundtrack' ? `procedural ${spec.audio.soundtrack?.style} ${spec.audio.soundtrack?.bpm} BPM` : 'user music') : 'none', audioFindings: qc.issues.map((i: { code: string }) => i.code) };
+  } catch {
+    return null;
+  }
+};
+
 mkdirSync(out, { recursive: true });
 const results: Record<string, unknown>[] = [];
 for (const t of TESTS) {
@@ -60,7 +83,7 @@ for (const t of TESTS) {
   const t0 = Date.now();
   try {
     const perf = new Perf();
-    const d = await direct({ brief, baseDir: fixtures, projectDir, perf });
+    const d = await direct({ brief, baseDir: fixtures, projectDir, perf, assumeNoLogo: !brief.brand?.logo });
     if (d.status !== 'ready') throw new Error(`needs input: ${d.questions.map((q) => q.id).join(', ')}`);
     const r = await produce({ projectDir, profile, deliverTo: out, name: `test-${t.key}`, animatic, perf });
     const formats: Record<string, unknown>[] = [];
@@ -81,6 +104,7 @@ for (const t of TESTS) {
       brand: d.spec?.brand ? { source: d.spec.brand.source, primary: d.spec.brand.primary, accent: d.spec.brand.accent, logo: d.spec.brand.logo } : null,
       scenes: d.storyboard!.scenes.map((s) => `${s.family}/${s.variant}`),
       ...summary(r),
+      sound: soundOf(projectDir),
       formats,
       wallSeconds: Math.round((Date.now() - t0) / 100) / 10,
     });

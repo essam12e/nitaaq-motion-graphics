@@ -37,9 +37,10 @@ export interface VoiceTiming {
 
 const strip = (o: unknown) => JSON.parse(JSON.stringify(o)) as Record<string, unknown>;
 const wordsIn = (v: unknown): number => {
-  if (typeof v === 'string') return /\.(png|jpe?g|webp|svg)$/i.test(v) || /^https?:/.test(v) ? 0 : v.split(/\s+/).filter(Boolean).length;
+  // SVG path data / ids are not read on screen
+  if (typeof v === 'string') return /\.(png|jpe?g|webp|svg)$/i.test(v) || /^https?:/.test(v) || /^[MLHVCQZmlhvcqz][\d\s.,MLHVCQZmlhvcqz-]{8,}$/.test(v) ? 0 : v.split(/\s+/).filter(Boolean).length;
   if (Array.isArray(v)) return v.reduce((s, x) => s + wordsIn(x), 0);
-  if (v && typeof v === 'object') return Object.entries(v).reduce((s, [k, x]) => (k === 'source' || k === 'icon' || k === 'image' || k === 'logo' || k === 'highlight' ? s : s + wordsIn(x)), 0);
+  if (v && typeof v === 'object') return Object.entries(v).reduce((s, [k, x]) => (k === 'source' || k === 'icon' || k === 'image' || k === 'logo' || k === 'highlight' || k === 'structure' || k === 'd' || k === 'path' || k === 'land' || k === 'viewBox' || k === 'warnings' ? s : s + wordsIn(x)), 0);
   return 0;
 };
 const charsOfMain = (family: string, content: Record<string, unknown>): number => {

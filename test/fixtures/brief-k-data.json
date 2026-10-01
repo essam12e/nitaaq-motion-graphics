@@ -1,0 +1,58 @@
+{
+  "request": "فيديو بيانات يعرض نمو الطلبات خلال السنة",
+  "title": "test-k-data",
+  "language": "ar",
+  "dialect": "msa",
+  "objective": "educate",
+  "industry": "logistics",
+  "platform": "instagram-feed",
+  "aspect": "4:5",
+  "duration": 18,
+  "tone": [
+    "هادئ",
+    "موثوق"
+  ],
+  "brand": {
+    "name": "شحنة"
+  },
+  "audio": {
+    "mode": "none",
+    "sfx": true
+  },
+  "content": {
+    "hook": "طلباتنا تضاعفت هذا العام",
+    "series": {
+      "title": "الطلبات الشهرية (ألف)",
+      "labels": [
+        "الربع 1",
+        "الربع 2",
+        "الربع 3",
+        "الربع 4"
+      ],
+      "values": [
+        120,
+        180,
+        240,
+        340
+      ],
+      "source": "بيانات اختبار داخلية"
+    },
+    "stats": [
+      {
+        "value": 183,
+        "suffix": "%",
+        "label": "نمو سنوي",
+        "source": "بيانات اختبار داخلية"
+      },
+      {
+        "value": 98,
+        "suffix": "%",
+        "label": "توصيل في الموعد",
+        "source": "بيانات اختبار داخلية"
+      }
+    ],
+    "cta": {
+      "text": "اشحن مع شحنة"
+    }
+  }
+}

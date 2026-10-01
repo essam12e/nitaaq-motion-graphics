@@ -1,0 +1,16 @@
+{
+  "request": "Website walkthrough for our analytics web app, staggered UI motion",
+  "title": "test-o-gsap-web",
+  "language": "en", "dialect": "msa", "objective": "promote", "industry": "SaaS analytics",
+  "platform": "youtube", "aspect": "16:9", "duration": 18, "tone": ["tech", "clean"],
+  "brand": { "name": "Insightly" },
+  "audio": { "mode": "none", "sfx": true },
+  "preferences": { "gsap": true },
+  "content": {
+    "hook": "Your metrics, finally in one place",
+    "solution": "One dashboard for every KPI",
+    "features": [{ "title": "Live charts" }, { "title": "Smart alerts" }, { "title": "Slack reports" }, { "title": "Team spaces" }],
+    "ui": { "appName": "Insightly", "screenshot": "dashboard-screenshot.png", "headline": "Overview" },
+    "cta": { "text": "Start your free trial", "button": "Try free" }
+  }
+}

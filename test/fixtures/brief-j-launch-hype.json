@@ -1,0 +1,48 @@
+{
+  "request": "فيلم إطلاق تشويقي حماسي لتطبيق نبض، ٢٠ ثانية",
+  "title": "test-j-launch-hype",
+  "language": "ar",
+  "dialect": "saudi",
+  "objective": "announce",
+  "industry": "fitness app",
+  "platform": "tiktok",
+  "aspect": "9:16",
+  "duration": 20,
+  "tone": [
+    "حماس",
+    "جريء"
+  ],
+  "brand": {
+    "name": "نبض",
+    "colors": [
+      "#FF4D2E",
+      "#0A0A0D"
+    ]
+  },
+  "audio": {
+    "mode": "none",
+    "sfx": true,
+    "soundtrack": "sport"
+  },
+  "content": {
+    "hook": "شي جديد جاي",
+    "tease": "أسرع، أذكى، لك أنت",
+    "reveal": "نبض 2",
+    "launchDate": "١٥ أكتوبر",
+    "features": [
+      {
+        "title": "خطة يومية"
+      },
+      {
+        "title": "تمارين ١٥ دقيقة"
+      },
+      {
+        "title": "تتبع تقدمك"
+      }
+    ],
+    "cta": {
+      "text": "حمّل نبض يوم الإطلاق",
+      "button": "سجّل اهتمامك"
+    }
+  }
+}
