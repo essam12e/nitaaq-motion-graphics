@@ -25,6 +25,18 @@ import { detectSpeechSegments, probe, cleanVoice } from './audio';
 import { requireVoiceProvider, voiceProviders } from './tts';
 import { workspace } from './workspace';
 import type { CreativePlan } from '../schema/plan';
+import { classifyBrief, type Classification } from '../director/classify';
+import { directFilm, type MotionSpec } from '../director/creative';
+import { requestedPatterns } from '../design/patterns';
+import { analyzeReference, type ReferenceStyle } from '../reference/analyze';
+import { captureWebsite } from './capture';
+import { beatsFor } from './beats';
+import { writeAudioCues } from './beats';
+import { writeAssetsManifest } from './manifest';
+import { writeProjectBrief, writeDirectorFiles, writeAnimationGuide } from './project-files';
+import { cached, fileHash, hashOf } from '../cache/store';
+import { Perf } from '../perf/timer';
+import type { BeatAnalysis } from '../audio/beats';
 
 export interface DirectResult {
   status: 'ready' | 'needs-input';
@@ -34,16 +46,22 @@ export interface DirectResult {
   plan?: CreativePlan;
   storyboard?: PlannedStoryboard;
   spec?: VideoSpec;
+  classification?: Classification;
+  motion?: MotionSpec;
+  reference?: ReferenceStyle | null;
 }
 
-export async function direct(opts: { brief: unknown; baseDir: string; projectDir?: string; projectId?: string; assumeNoLogo?: boolean; cleanVoice?: boolean }): Promise<DirectResult> {
+export async function direct(opts: { brief: unknown; baseDir: string; projectDir?: string; projectId?: string; assumeNoLogo?: boolean; cleanVoice?: boolean; perf?: Perf }): Promise<DirectResult> {
+  const perf = opts.perf ?? new Perf();
   const ttsAvailable = voiceProviders().some((p) => p.available);
-  const { brief, questions, assumptions } = intake(opts.brief, { assumeNoLogo: opts.assumeNoLogo, ttsAvailable });
+  const { brief, questions, assumptions } = await perf.stage('intake', () => intake(opts.brief, { assumeNoLogo: opts.assumeNoLogo, ttsAvailable }));
   const projectId = slug(opts.projectId ?? brief.title ?? `video-${hashString(JSON.stringify(brief.content)).toString(36)}`);
   const projectDir = opts.projectDir ?? join(workspace().projects, projectId);
   if (questions.some((q) => q.blocking)) return { status: 'needs-input', questions, assumptions, projectDir };
   mkdirSync(projectDir, { recursive: true });
-  log.stage('INTAKE', `${brief.objective} · ${brief.platform} · ${brief.language}/${brief.dialect}`);
+  const cls = classifyBrief(brief);
+  perf.meta.taskClass = cls.class;
+  log.stage('INTAKE', `${brief.objective} · ${brief.platform} · ${brief.language}/${brief.dialect} · ${cls.class} (${cls.reasons.join('; ')})`);
 
   const abs = (p: string) => (isAbsolute(p) ? p : resolve(opts.baseDir, p));
   const assets: Record<string, AssetSpec> = {};
@@ -54,6 +72,16 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
     return id;
   };
   const c = brief.content;
+  const tAssets = Date.now();
+
+  // ── website capture (real screenshot of the user's site; never a fabricated UI)
+  if (brief.capture && c.ui?.url && !c.ui.screenshot && !brief.assets.some((a) => a.kind === 'screenshot')) {
+    const url = /^https?:|^file:/.test(c.ui.url) ? c.ui.url : `https://${c.ui.url}`;
+    const aspect0 = brief.aspect ?? (brief.platform === 'youtube' ? '16:9' : '9:16');
+    const shot = await perf.stage('capture', () => captureWebsite(url, join(projectDir, 'captures', 'site-capture.png'), { viewport: aspect0 === '16:9' ? 'desktop' : 'mobile' }));
+    c.ui.screenshot = shot.file;
+    assumptions.push(`website captured from ${url} (${shot.width}×${shot.height}); shown unchanged`);
+  }
 
   // ── user files (copied byte-identical; content refers to them by asset id)
   const byKind = (k: string) => brief.assets.filter((a) => a.kind === k);
@@ -69,19 +97,65 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
   if (c.categories) for (const [i, k] of c.categories.entries()) if (k.image) k.image = await add(k.image, 'image', `category-${i + 1}`);
   if (c.ui?.screens) for (const [i, s] of c.ui.screens.entries()) if (s.screenshot) s.screenshot = await add(s.screenshot, 'screenshot', `screen-${i + 1}`);
   log.stage('ASSETS', `${Object.keys(assets).length} user file(s) ingested unchanged`);
+  perf.mark('assets', Date.now() - tAssets);
+
+  // ── reference + beats run in parallel with brand analysis (independent inputs)
+  const referenceJob = (async (): Promise<ReferenceStyle | null> => {
+    const ref = brief.reference;
+    if (!ref || !cls.budget.referenceEngine) return null;
+    return perf.stage('reference', async () => {
+      let file = ref.path ? abs(ref.path) : undefined;
+      let kind = ref.kind;
+      if (!file && ref.url) {
+        const shot = await captureWebsite(ref.url, join(projectDir, 'captures', 'reference.png'), { viewport: 'desktop' });
+        file = shot.file;
+        kind = 'website';
+      }
+      if (!file) return null;
+      const r = await analyzeReference(file, kind, ref.url ?? ref.path);
+      log.stage('REFERENCE', `${r.kind}: ${r.mode}, ${r.mapping.density}, ${r.motion?.pacing ?? 'still'} → style ${r.mapping.style}, motion ${r.mapping.personality}`);
+      return r;
+    });
+  })();
+  const musicSrcAbs = brief.audio.music ? abs(brief.audio.music) : undefined;
+  const beatsJob = (async (): Promise<(BeatAnalysis & { source: string; hash: string }) | null> => {
+    if (!musicSrcAbs || !cls.budget.beatEngine) return null;
+    return perf.stage('beats', async () => {
+      const b = await beatsFor(musicSrcAbs);
+      log.stage('BEATS', `${b.bpm} BPM (confidence ${b.confidence}), ${b.beats.length} beats, ${b.downbeats.length} downbeats`);
+      return b;
+    });
+  })();
+  const reference = await referenceJob;
+  if (reference) {
+    if (!brief.style) {
+      brief.style = reference.mapping.style;
+      assumptions.push(`style ${reference.mapping.style} chosen from the reference (${reference.mapping.reason}); its layout, text and imagery are not copied`);
+    }
+    if (!brief.pace) brief.pace = reference.mapping.pace;
+  }
 
   // ── brand
+  const tBrand = Date.now();
   const styleId = pickStyle(brief).id;
   let brand: BrandProfile | null;
   if (logoId) {
     const rel = assets[logoId].src;
-    const r = await brandFromLogo(join(projectDir, rel), { projectRelativeLogo: rel, name: brief.brand?.name, tone: brief.tone, mode: STYLE_PRESETS[styleId]?.mode ?? 'auto' });
-    brand = { ...r.brand, style: styleId };
+    const lopts = { projectRelativeLogo: rel, name: brief.brand?.name, tone: brief.tone, mode: STYLE_PRESETS[styleId]?.mode ?? 'auto' } as const;
+    const r = await cached('brand', hashOf('logo-brand-v1', fileHash(join(projectDir, rel)), lopts), async () => (await brandFromLogo(join(projectDir, rel), lopts)).brand);
+    brand = { ...r, style: styleId };
     log.stage('BRAND', `from logo: primary ${brand.primary}, accent ${brand.accent}, ${brand.mode}`);
   } else {
     brand = generatedBrand(brief, styleId);
+    if (!brand && reference && !brief.brand?.colors?.length) {
+      // no brand at all: the reference's colour family (principle, not a copy) drives the palette
+      const colours = [reference.palette.accent, ...reference.palette.dominant.map((d) => d.hex)].filter((x, i, a) => a.indexOf(x) === i).slice(0, 3);
+      brand = generatedBrand({ ...brief, brand: { name: brief.brand?.name, colors: colours } } as Brief, styleId);
+      if (brand) assumptions.push(`palette derived from the reference colour family (${colours.join(', ')})`);
+    }
     log.stage('BRAND', brand ? `generated direction (${brand.source}) ${brand.primary}` : `style palette only (${styleId}); no logo is created`);
   }
+  perf.mark('brand', Date.now() - tBrand);
   // user font: file → verified & ingested; name → must be a bundled font (never silently substituted)
   const font = brief.brand?.font;
   if (font) {
@@ -98,6 +172,7 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
   }
 
   // ── audio
+  const tAudio = Date.now();
   const audio: AudioPlan = { mode: brief.audio.mode, sfx: brief.audio.sfx };
   let voiceTiming: { segments: { start: number; end: number }[]; end: number; transcript?: string[] } | undefined;
   const offset = 0.35;
@@ -136,22 +211,98 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
     const id = await add(brief.audio.music, 'audio', 'music');
     audio.music = { src: assets[id].src, duration: probe(join(projectDir, assets[id].src)).duration, license: brief.audio.musicLicense ?? 'user-supplied' };
   }
+  perf.mark('audio', Date.now() - tAudio);
 
-  // ── plan → storyboard → video.json
+  const beats = await beatsJob;
+
+  // ── plan → storyboard → creative direction → video.json
+  const tDir = Date.now();
   const recipeAssets = { logo: logoId, product: productId, screenshot: shotId, images };
   const plan = buildPlan({ brief, brand, assets: recipeAssets, voiceDuration: voiceTiming ? voiceTiming.end : undefined, voiceSegments: voiceTiming?.segments.length });
   log.stage('DIRECTOR', `${plan.visualStyle} (${plan.styleReason}), ${plan.pace}, ${plan.duration}s, arc: ${plan.narrativeArc.map((a) => a.beat).join(' → ')}`);
   const seed = brief.preferences.seed ?? hashString(JSON.stringify(brief.content));
   const ctx = recipeCtx({ brief, brand, assets: recipeAssets }, plan.aspect as '9:16');
-  const storyboard = buildStoryboard(plan, ctx, { seed, voice: voiceTiming, prefer: brief.preferences.prefer, avoid: brief.preferences.avoid });
-  if (storyboard.scenes.length < 2) throw new MotionError({ code: 'INPUT_INVALID', what: 'Not enough content to direct a video', why: 'The brief only supports one scene.', action: 'Add at least a hook and a CTA (and ideally features, a product or a problem/solution).' });
+  let chapters: { title: string; scenes: string[] }[] = [];
+  let board: PlannedStoryboard;
+  if (brief.chapters && brief.chapters.length > 1) {
+    const r = chapterBoards(brief, plan, brand, recipeAssets, seed);
+    board = r.storyboard;
+    chapters = r.chapters;
+  } else board = buildStoryboard(plan, ctx, { seed, voice: voiceTiming, prefer: brief.preferences.prefer, avoid: brief.preferences.avoid });
+  if (board.scenes.length < 2) throw new MotionError({ code: 'INPUT_INVALID', what: 'Not enough content to direct a video', why: 'The brief only supports one scene.', action: 'Add at least a hook and a CTA (and ideally features, a product or a problem/solution).' });
+  const film = directFilm({ brief, plan, storyboard: board, seed, referenceEnergy: reference?.motion?.energy, beats: beats && beats.confidence > 0.15 ? beats : null, voiceLed: Boolean(voiceTiming) });
+  const storyboard = film.storyboard;
   log.stage('STORYBOARD', storyboard.scenes.map((s) => `${s.family}/${s.variant} ${s.duration}s`).join(' | '));
-  const spec = compileSpec({ brief, plan, storyboard, brand, assets, audio, projectId, seed });
+  log.stage('DIRECTOR', `motion ${film.motion.personality} (${film.motion.personalityReason}); hero ${film.motion.heroScene ?? '—'}; camera ${film.motion.cameraBudget.used}/${film.motion.cameraBudget.allowed}${film.motion.beatSync ? `; ${film.motion.beatSync.aligned} cuts on beat @${film.motion.beatSync.bpm} BPM` : ''}`);
+  const patterns = requestedPatterns([brief.request, ...brief.preferences.prefer].join(' '));
+  if (patterns.length) assumptions.push(`pattern background allowed because it was requested: ${patterns.join(', ')}`);
+  const spec = compileSpec({
+    brief,
+    plan,
+    storyboard,
+    brand,
+    assets,
+    audio,
+    projectId,
+    seed,
+    motion: film.motion,
+    design: { allowPatterns: patterns, justification: patterns.length ? `requested in the brief: ${brief.request.slice(0, 120)}` : undefined },
+    loop: brief.loop,
+    beatSync: film.motion.beatSync && beats ? { bpm: beats.bpm, offset: beats.beats[0] ?? 0, aligned: film.motion.beatSync.aligned } : null,
+    reference: reference ? { source: reference.source, kind: reference.kind === 'ui' ? 'image' : reference.kind, motionEnergy: reference.motion?.energy, visualDensity: reference.mapping.density, appliedTo: ['style', 'pace', 'motion personality', ...(brand?.source === 'generated' || brand?.source === 'user' ? [] : [])] } : undefined,
+  });
+  if (chapters.length) spec.timeline.chapters = chapters.map((ch, i) => ({ id: `chapter-${i + 1}`, title: ch.title, startScene: ch.scenes[0] }));
+  perf.mark('director', Date.now() - tDir);
 
   writeFileSync(join(projectDir, 'brief.json'), JSON.stringify(brief, null, 2));
-  writeFileSync(join(projectDir, 'plan.json'), JSON.stringify({ ...plan, assumptions }, null, 2));
-  writeFileSync(join(projectDir, 'storyboard.json'), JSON.stringify({ totalDuration: storyboard.totalDuration, scenes: storyboard.scenes.map(({ content: _c, ...s }) => s) }, null, 2));
+  writeFileSync(join(projectDir, 'plan.json'), JSON.stringify({ ...plan, assumptions, taskClass: cls }, null, 2));
   writeFileSync(join(projectDir, 'video.json'), JSON.stringify(spec, null, 2));
+  writeDirectorFiles(projectDir, { spec, storyboard: { totalDuration: storyboard.totalDuration, scenes: storyboard.scenes.map(({ content: _c, ...s }) => s) }, shotlist: film.shotlist, motion: film.motion, reference, beats });
+  writeAssetsManifest(projectDir, spec);
+  writeAudioCues(projectDir, spec, beats);
+  writeProjectBrief(projectDir, { brief, plan, cls, motion: film.motion, assumptions, reference, spec });
+  if (chapters.length) writeAnimationGuide(projectDir, spec, film.motion, chapters);
   if (!existsSync(join(projectDir, 'video.json'))) throw new MotionError({ code: 'INPUT_INVALID', what: 'Could not write video.json', where: projectDir });
-  return { status: 'ready', questions, assumptions, projectDir, plan, storyboard, spec };
+  return { status: 'ready', questions, assumptions, projectDir, plan, storyboard, spec, classification: cls, motion: film.motion, reference };
+}
+
+/**
+ * Long-form: each chapter is directed as its own short sequence (title + points),
+ * all in the film's style; only the last chapter keeps the CTA.
+ */
+function chapterBoards(brief: Brief, plan: CreativePlan, brand: BrandProfile | null, assets: { logo?: string; product?: string; screenshot?: string; images: string[] }, seed: string | number): { storyboard: PlannedStoryboard; chapters: { title: string; scenes: string[] }[] } {
+  const list = brief.chapters!;
+  const per = Math.max(12, plan.duration / list.length);
+  const scenes: PlannedStoryboard['scenes'] = [];
+  const chapters: { title: string; scenes: string[] }[] = [];
+  list.forEach((ch, i) => {
+    const last = i === list.length - 1;
+    const sub: Brief = {
+      ...brief,
+      style: plan.visualStyle,
+      pace: plan.pace,
+      duration: per,
+      chapters: undefined,
+      content: {
+        ...(i === 0 ? brief.content : { hook: ch.title, cta: brief.content.cta, emphasis: [] }),
+        hook: i === 0 ? brief.content.hook : ch.title,
+        ...(ch.points.length ? (ch.points.length >= 3 ? { steps: ch.points } : { features: ch.points.map((p) => ({ title: p })) }) : {}),
+        cta: brief.content.cta,
+      } as Brief['content'],
+    };
+    const subPlan = buildPlan({ brief: sub, brand, assets });
+    const ctx = recipeCtx({ brief: sub, brand, assets }, plan.aspect as '9:16');
+    const b = buildStoryboard({ ...subPlan, visualStyle: plan.visualStyle }, ctx, { seed: `${seed}:ch${i}` });
+    const keep = last ? b.scenes : b.scenes.filter((s) => s.beat !== 'cta');
+    if (!last && keep.length) keep[keep.length - 1].transition = 'crossfade';
+    const ids: string[] = [];
+    for (const s of keep) {
+      const id = `c${i + 1}-${s.id}`;
+      ids.push(id);
+      scenes.push({ ...s, id });
+    }
+    chapters.push({ title: ch.title, scenes: ids });
+  });
+  scenes[scenes.length - 1].transition = 'none';
+  return { storyboard: { totalDuration: scenes.reduce((a, s) => a + s.duration, 0), scenes }, chapters };
 }

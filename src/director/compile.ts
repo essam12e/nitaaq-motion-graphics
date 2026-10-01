@@ -9,6 +9,7 @@ import { VideoSchema, SCHEMA_VERSION, type AssetSpec, type BrandProfile, type Vi
 import { ASPECTS } from '../layout/canvas';
 import { hashString } from '../core/rng';
 import type { PlannedStoryboard } from './storyboard';
+import type { MotionSpec } from './creative';
 
 type Aspect = '9:16' | '16:9' | '1:1' | '4:5';
 
@@ -37,6 +38,12 @@ export function compileSpec(input: {
   audio: AudioPlan;
   projectId: string;
   seed: string | number;
+  motion?: MotionSpec;
+  design?: { allowPatterns: ('dots' | 'grid' | 'halftone' | 'bokeh' | 'stripes' | 'lines' | 'particles')[]; decorations?: boolean; justification?: string };
+  loop?: boolean;
+  beatSync?: { bpm: number; offset: number; aligned: number } | null;
+  reference?: { source: string; kind: 'image' | 'video' | 'website'; motionEnergy?: number; visualDensity?: 'sparse' | 'balanced' | 'dense'; appliedTo: string[] };
+  effects?: 'LOW' | 'MEDIUM' | 'HIGH';
 }): VideoSpec {
   const { brief, plan, storyboard, audio } = input;
   const aspect = plan.aspect as Aspect;
@@ -52,7 +59,7 @@ export function compileSpec(input: {
     duration: s.duration,
     content: s.content,
     layout: {},
-    motion: { intensity: s.intensity, camera: s.camera },
+    motion: { intensity: s.intensity, camera: s.camera, ...(input.motion ? { jobs: input.motion.scenes[i]?.jobs } : {}) },
     transition: s.transition === 'none' ? undefined : { type: s.transition, duration: s.transitionDuration },
     sfx: 'auto' as const,
     purpose: s.purpose,
@@ -92,7 +99,7 @@ export function compileSpec(input: {
       music: audio.music
         ? {
             src: audio.music.src,
-            volume: voiceLed ? 0.32 : 0.55,
+            volume: brief.audio.musicVolume ?? (voiceLed ? 0.32 : 0.55),
             fadeIn: 0.8,
             fadeOut: 1.5,
             loop: true,
@@ -102,9 +109,13 @@ export function compileSpec(input: {
             license: audio.music.license,
           }
         : undefined,
-      sfx: { enabled: audio.sfx, intensity: sfxIntensity, volume: voiceLed ? 0.45 : 0.6, overrides: {} },
+      sfx: { enabled: audio.sfx, intensity: brief.audio.sfxIntensity ?? sfxIntensity, volume: brief.audio.sfxVolume ?? (voiceLed ? 0.45 : 0.6), overrides: {} },
     },
     scenes,
+    design: { allowPatterns: input.design?.allowPatterns ?? [], decorations: input.design?.decorations ?? false, justification: input.design?.justification },
+    motion: { personality: input.motion?.personality, seed: input.seed },
+    timeline: { seamlessLoop: Boolean(input.loop), chapters: [], beatSync: input.beatSync ?? undefined },
+    ...(input.reference ? { reference: input.reference } : {}),
     captions: { enabled: false, position: 'bottom' as const, cues: [] },
     metadata: {
       generator: 'director' as const,

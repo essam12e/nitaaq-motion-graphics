@@ -7,6 +7,15 @@ import type React from 'react';
 import type { z } from 'zod';
 import type { Aspect } from '../layout/canvas';
 import type { Beat } from '../schema/plan';
+import type { ElementKind } from '../motion/physics';
+
+export type PerformanceCost = 'LOW' | 'MEDIUM' | 'HIGH';
+export interface MotionRecommendation {
+  /** Element kinds this family animates (physics comes from the film's personality per element). */
+  elements: ElementKind[];
+  /** Motion jobs this family is good at. */
+  jobs: string[];
+}
 
 export type SceneCategory = 'typography' | 'brand' | 'ui' | 'mobile' | 'commerce' | 'data' | 'media' | 'infographic' | 'cinematic' | 'social' | 'cta';
 
@@ -63,6 +72,33 @@ export interface SceneManifest<P = Record<string, unknown>> {
   example: P;
   /** Fields the Studio inspector exposes as text inputs (dot paths). */
   editable?: string[];
+  /** Render cost (DOM complexity, media, blur). Defaults by category when omitted. */
+  cost?: PerformanceCost;
+  /** Motion recommendation. Defaults by category when omitted. */
+  motion?: MotionRecommendation;
+}
+
+const DEFAULT_COST: Record<SceneCategory, PerformanceCost> = { typography: 'LOW', brand: 'LOW', cta: 'LOW', social: 'LOW', infographic: 'LOW', data: 'MEDIUM', ui: 'MEDIUM', mobile: 'MEDIUM', commerce: 'MEDIUM', media: 'HIGH', cinematic: 'HIGH' };
+const DEFAULT_MOTION: Record<SceneCategory, MotionRecommendation> = {
+  typography: { elements: ['hero-title', 'text'], jobs: ['establish-hierarchy', 'stop-the-scroll'] },
+  brand: { elements: ['logo', 'hero-title'], jobs: ['brand-recall'] },
+  ui: { elements: ['dashboard', 'panel', 'cursor', 'card'], jobs: ['show-how-it-works'] },
+  mobile: { elements: ['device', 'notification', 'button'], jobs: ['show-how-it-works'] },
+  commerce: { elements: ['product', 'card', 'button'], jobs: ['show-the-product'] },
+  data: { elements: ['chart', 'number'], jobs: ['make-the-number-land'] },
+  media: { elements: ['panel', 'camera'], jobs: ['show-the-product'] },
+  infographic: { elements: ['card', 'icon'], jobs: ['sequence-benefits'] },
+  cinematic: { elements: ['hero-title', 'camera'], jobs: ['create-tension', 'hero-moment'] },
+  social: { elements: ['card', 'notification'], jobs: ['build-trust'] },
+  cta: { elements: ['button', 'logo'], jobs: ['direct-action', 'resolve'] },
+};
+
+/** Family cost, defaulted by category. */
+export function costOf(m: SceneManifest<any>): PerformanceCost {
+  return m.cost ?? DEFAULT_COST[m.category];
+}
+export function motionOf(m: SceneManifest<any>): MotionRecommendation {
+  return m.motion ?? DEFAULT_MOTION[m.category];
 }
 
 export interface SceneComponentProps<P = Record<string, unknown>> {

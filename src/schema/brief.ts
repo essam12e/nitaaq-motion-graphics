@@ -62,7 +62,26 @@ export const BriefSchema = z.object({
   tone: z.array(z.string()).default([]),
   pace: z.enum(['slow', 'medium', 'fast']).optional(),
   style: z.string().optional(),
-  quality: z.enum(['preview', 'draft', 'production']).default('production'),
+  quality: z.enum(['preview', 'animatic', 'draft', 'production']).default('production'),
+  /** Motion personality for the whole film (otherwise picked from tone/style/reference). */
+  motion: z.enum(['premium', 'energetic', 'playful', 'corporate', 'cinematic', 'tech', 'sport']).optional(),
+  /** Seamless loop: the last frame flows back into the first. */
+  loop: z.boolean().default(false),
+  /** Extra output formats recomposed from the same film (not cropped), e.g. ["16:9","1:1"]. */
+  formats: z.array(AspectSchema).optional(),
+  /** Style reference: principles are extracted (palette, rhythm, density…), never copied. */
+  reference: z
+    .object({
+      path: z.string().optional(),
+      url: z.string().optional(),
+      kind: z.enum(['image', 'video', 'website', 'ui']).optional(),
+      note: z.string().optional(),
+    })
+    .optional(),
+  /** Capture the website in content.ui.url as a real screenshot (no fabricated UI). */
+  capture: z.boolean().default(false),
+  /** Long-form: chapters, each a short film sharing one ANIMATION_GUIDE.md. */
+  chapters: z.array(z.object({ title: z.string(), points: z.array(z.string()).default([]) })).optional(),
   /** Brand: `null` means the user said they have no logo/identity; undefined means not asked yet. */
   brand: z
     .object({
@@ -81,6 +100,11 @@ export const BriefSchema = z.object({
       music: z.string().optional(),
       musicLicense: z.string().optional(),
       sfx: z.boolean().default(true),
+      sfxIntensity: z.number().min(0).max(1).optional(),
+      sfxVolume: z.number().min(0).max(1).optional(),
+      musicVolume: z.number().min(0).max(1).optional(),
+      /** Align cuts to the music's beats (default on when music is supplied and there is no voice). */
+      beatSync: z.boolean().optional(),
       /** Optional transcript lines of the user's voiceover, in order. */
       transcript: z.array(z.string()).optional(),
     })
@@ -123,6 +147,16 @@ export const BriefSchema = z.object({
       })
       .optional(),
     messages: z.array(z.string()).optional(),
+    /** Product journey as states for a shared-element flow (search → result → product → cart → checkout → success). */
+    flow: z
+      .array(z.object({ kind: z.enum(['logo', 'search', 'result', 'product', 'cart', 'checkout', 'success']), label: z.string(), value: z.string().optional(), items: z.array(z.string()).optional() }))
+      .optional(),
+    /** Tools/apps the product connects with (names only — no third-party logos are drawn). */
+    integrations: z.array(z.string()).optional(),
+    /** A small table of the user's own data. */
+    table: z.object({ columns: z.array(z.string()), rows: z.array(z.array(z.string())), highlightRow: z.number().int().optional(), source: z.string().optional() }).optional(),
+    /** A form the video fills in (sign-up, booking, request). */
+    form: z.object({ fields: z.array(z.object({ label: z.string(), value: z.string() })), button: z.string(), done: z.string().optional() }).optional(),
     cta: z.object({
       text: z.string().min(1),
       button: z.string().optional(),

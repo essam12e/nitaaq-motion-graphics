@@ -83,5 +83,5 @@ export function generatedBrand(brief: Brief, styleId: string): BrandProfile | nu
   };
 }
 
-export const LOGO_QUESTION_AR = 'هل لديك شعار أو هوية بصرية تريد استخدامها في الفيديو؟ إذا كان لديك شعار، ارفعه وسأستخرج منه ألوان الهوية تلقائياً. إذا لم يكن لديك شعار، سأصمم لك اتجاهاً بصرياً مناسباً بدون إضافة شعار وهمي.';
+export const LOGO_QUESTION_AR = 'هل عندك شعار أو هوية بصرية تبغى نعتمدها في الفيديو؟ إذا عندك أرسل الشعار، وإذا ما عندك أكمل لك بهوية بصرية مناسبة للمحتوى.';
 export const LOGO_QUESTION_EN = 'Do you have a logo or brand identity to use in the video? If so, upload it and I will extract the brand colours automatically. If not, I will create a fitting visual direction without adding a fake logo.';

@@ -54,6 +54,18 @@ const ICONS_BY_HINT: [RegExp, string][] = [
   [/سحاب|cloud/i, 'Cloud'],
   [/تنبيه|notif|إشعار/i, 'Bell'],
 ];
+/** Journey states from a product brief (only the user's own product, name and price). */
+function flowFromProduct(c: RecipeCtx) {
+  const p = c.brief.content.product!;
+  const ar = c.lang !== 'en';
+  return [
+    { kind: 'search' as const, label: ar ? 'ابحث' : 'Search', value: p.name },
+    { kind: 'product' as const, label: p.name, value: p.price, image: c.assets.product },
+    { kind: 'cart' as const, label: c.brief.content.cta.button ?? (ar ? 'أضفته للسلة' : 'Added to cart'), value: '1' },
+    { kind: 'success' as const, label: ar ? 'تم الطلب' : 'Order placed' },
+  ];
+}
+
 export function iconFor(text: string, fallback = 'CircleCheck'): string {
   for (const [re, icon] of ICONS_BY_HINT) if (re.test(text)) return icon;
   return fallback;
@@ -112,6 +124,13 @@ export const RECIPES: Recipe[] = [
   { family: 'app-walkthrough', beats: ['demo', 'process'], weight: 1.2, visual: 'app screens step by step', when: (c) => (c.brief.content.ui?.screens?.length ?? 0) >= 2, message: () => 'app walkthrough', build: (c) => ({ title: c.brief.content.solution, screens: clip(c.brief.content.ui?.screens, 4).map((s) => ({ ...s, appName: c.brief.content.ui?.appName ?? c.brandName })) }) },
 
   // ───────── features
+  { family: 'state-flow', beats: ['demo', 'process'], weight: 1.6, visual: 'one element morphing through the product journey', when: (c) => (c.brief.content.flow?.length ?? 0) >= 2 || Boolean(c.brief.objective === 'sell' && c.assets.product && c.brief.content.product?.name && c.brief.content.product?.price), message: () => 'product journey', build: (c) => ({ title: c.brief.content.solution, states: c.brief.content.flow?.length ? clip(c.brief.content.flow, 7).map((s) => (s.kind === 'product' && c.assets.product ? { ...s, image: c.assets.product } : s)) : flowFromProduct(c) }), variants: () => ['morph-trail', 'morph'] },
+  { family: 'workflow', beats: ['process'], weight: 1.2, visual: 'connected steps lighting up', when: (c) => (c.brief.content.steps?.length ?? 0) >= 3 && /saas|automation|أتمت|منصة|platform|app|تطبيق|نظام|system|workflow/i.test(`${c.brief.industry} ${c.brief.request}`), message: (c) => c.brief.content.steps!.join(' ← '), build: (c) => ({ steps: clip(c.brief.content.steps, 6).map((s) => ({ label: s, icon: iconFor(s, 'CircleCheck') })) }) },
+  { family: 'integration-hub', beats: ['feature', 'demo'], weight: 1.3, visual: 'product connected to the tools it integrates with', when: (c) => (c.brief.content.integrations?.length ?? 0) >= 3, message: (c) => c.brief.content.integrations!.join('، '), build: (c) => ({ title: c.brief.content.ui?.headline, center: c.brandName ?? c.brief.content.ui?.appName ?? '•', centerLogo: c.assets.logo, apps: clip(c.brief.content.integrations, 8).map((a) => ({ label: a, icon: iconFor(a, 'Plug') })) }) },
+  { family: 'data-table', beats: ['data', 'comparison'], weight: 1.3, visual: "a table of the user's data", when: (c) => Boolean(c.brief.content.table && c.brief.content.table.columns.length >= 2 && c.brief.content.table.rows.length >= 2), message: () => 'table', build: (c) => { const t = c.brief.content.table!; return { columns: t.columns.slice(0, 4), rows: t.rows.slice(0, 6).map((r) => r.slice(0, 4)), highlightRow: t.highlightRow, source: t.source }; } },
+  { family: 'product-details', beats: ['feature'], weight: 1.35, visual: 'product with callouts to its features', when: (c) => Boolean(c.assets.product && (c.brief.content.features?.length ?? 0) >= 2), message: (c) => c.brief.content.features!.map((f) => f.title).join('، '), build: (c) => ({ image: c.assets.product, name: c.brief.content.product?.name, specs: clip(c.brief.content.features, 4).map((f) => f.title), price: undefined }) },
+  { family: 'form-fill', beats: ['demo', 'process'], weight: 1.4, visual: 'a form filled in and submitted', when: (c) => Boolean(c.brief.content.form?.fields.length), message: (c) => c.brief.content.form!.button, build: (c) => ({ title: c.brief.content.solution, fields: clip(c.brief.content.form!.fields, 4), button: c.brief.content.form!.button, done: c.brief.content.form!.done }) },
+  { family: 'landing-page', beats: ['demo'], weight: 1.15, visual: 'landing page in a browser', when: (c) => Boolean(c.brief.content.ui?.headline && (c.brief.content.ui.url || c.assets.screenshot)), message: (c) => c.brief.content.ui!.headline!, build: (c) => ({ url: c.brief.content.ui?.url, screenshot: c.assets.screenshot, pageTitle: c.brief.content.ui!.headline, pageSubtitle: c.brief.content.ui?.subline, pageCta: c.brief.content.cta.button, features: clip(c.brief.content.features?.map((f) => f.title), 3) }) },
   { family: 'feature-set', beats: ['feature'], weight: 1.5, visual: 'features with icons', when: (c) => (c.brief.content.features?.length ?? 0) >= 2, message: (c) => c.brief.content.features!.map((f) => f.title).join('، '), build: (c) => ({ title: c.brief.content.solution && (c.brief.content.features?.length ?? 0) <= 4 ? undefined : undefined, features: clip(c.brief.content.features, 6).map((f) => ({ title: f.title, text: f.description, icon: f.icon ?? iconFor(`${f.title} ${f.description ?? ''}`, 'Sparkles') })) }), variants: (c) => {
     const n = c.brief.content.features?.length ?? 0;
     if (c.orientation === 'portrait') return n <= 3 ? ['stack', 'staggered', 'spotlight', 'carousel'] : ['stack', 'grid', 'masonry', 'spotlight'];

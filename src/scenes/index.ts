@@ -18,9 +18,10 @@ import * as infographic from './infographic/infographic-scenes';
 import * as cinematic from './cinematic/cinematic-scenes';
 import * as social from './social/social-scenes';
 import * as cta from './cta/cta-scenes';
+import * as flow from './flow/flow-scenes';
 
 const isScene = (x: unknown): x is SceneModule => Boolean(x && typeof x === 'object' && 'manifest' in x && 'Component' in x);
-const GROUPS: Record<string, unknown>[] = [moreTypography, brand, ui, mobile, commerce, data, media, infographic, cinematic, social, cta];
+const GROUPS: Record<string, unknown>[] = [moreTypography, brand, ui, mobile, commerce, data, media, infographic, cinematic, social, cta, flow];
 
 export const BUILTIN_SCENES: SceneModule[] = [kineticTitle, wordImpact, lineReveal, ...GROUPS.flatMap((g) => Object.values(g).filter(isScene))];
 
@@ -28,6 +29,15 @@ for (const m of BUILTIN_SCENES) if (!SceneRegistry.has(m.manifest.id)) SceneRegi
 
 /** Friendly names the Director / users may type. */
 const ALIASES: Record<string, string> = {
+  'shared-element': 'state-flow',
+  journey: 'state-flow',
+  automation: 'workflow',
+  integrations: 'integration-hub',
+  table: 'data-table',
+  'order-complete': 'order-success',
+  specs: 'product-details',
+  form: 'form-fill',
+  landing: 'landing-page',
   title: 'kinetic-title',
   headline: 'kinetic-title',
   hook: 'word-impact',

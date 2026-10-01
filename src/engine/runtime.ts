@@ -21,7 +21,9 @@ export interface Runtime {
 export const USER_FONT_FAMILY = 'AMD User Font';
 
 export function buildRuntime(spec: VideoSpec): Runtime {
-  const tokens = resolveStyle(spec.style.preset, spec.brand, spec.style.overrides);
+  const styled = resolveStyle(spec.style.preset, spec.brand, spec.style.overrides);
+  // the Director's film-level personality wins over the style default (one way of moving per film)
+  const tokens = spec.motion?.personality ? { ...styled, motion: { ...styled.motion, personality: spec.motion.personality } } : styled;
   const canvas = makeCanvasProfile(spec.canvas.width, spec.canvas.height, spec.safeArea.preset, spec.safeArea.margin);
   const timeline = buildTimeline(spec.scenes, spec.canvas.fps);
   const userFonts: { family: string; src: string }[] = [];

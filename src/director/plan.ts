@@ -94,8 +94,8 @@ export function buildPlan(input: PlanInput): CreativePlan {
   let beats = ARCS[brief.objective].filter((b) => supported.has(b) || b === 'hook' || b === 'cta');
   // comparison/data are strong when supplied even if the objective's arc omits them
   const c = brief.content;
-  const has: Partial<Record<Beat, boolean>> = { comparison: Boolean(c.comparison), data: Boolean(c.stats?.length || c.series), product: Boolean(input.assets.product || c.products?.length) };
-  for (const extra of ['comparison', 'data', 'product'] as Beat[]) {
+  const has: Partial<Record<Beat, boolean>> = { comparison: Boolean(c.comparison), data: Boolean(c.stats?.length || c.series || c.table), product: Boolean(input.assets.product || c.products?.length), demo: Boolean(c.flow?.length || c.form?.fields.length) };
+  for (const extra of ['comparison', 'data', 'product', 'demo'] as Beat[]) {
     if (has[extra] && supported.has(extra) && !beats.includes(extra)) beats.splice(Math.max(1, beats.length - 1), 0, extra);
   }
   if (beats.includes('bridge') && !(beats.includes('problem') && beats.includes('solution'))) beats = beats.filter((b) => b !== 'bridge');
@@ -144,7 +144,7 @@ export function buildPlan(input: PlanInput): CreativePlan {
     ],
     audioStrategy: {
       mode: audioMode,
-      music: brief.audio.music ? `user/licensed track${brief.audio.musicLicense ? ` (${brief.audio.musicLicense})` : ''}, ducked under voice` : 'none (no music supplied — nothing is downloaded)',
+      music: brief.audio.music ? `user/licensed track${brief.audio.musicLicense ? ` (${brief.audio.musicLicense})` : ''}${audioMode !== 'none' ? ', ducked under voice' : ', cuts aligned to its beats'}` : 'none (no music supplied — nothing is downloaded)',
       sfx: brief.audio.sfx ? `library SFX at ${pace === 'fast' ? 'medium-high' : 'medium'} intensity, synced to scene accents` : 'off',
       voice: audioMode === 'user-voice' ? 'user voiceover, scenes synced to speech segments' : audioMode === 'tts' ? 'premium TTS (requires a configured provider)' : 'none',
     },

@@ -9,6 +9,11 @@
  *   nitaaq render   <projectDir|video.json> [--profile preview|animatic|draft|production] [--out file.mp4] [--no-cache]
  *   nitaaq quality  <projectDir|video.json> [--video file.mp4]
  *   nitaaq brand    <logo> [--name …]
+ *   nitaaq recompose <projectDir> [--aspects 9:16,16:9,1:1,4:5] [--render false]  → re-laid-out formats (not crops)
+ *   nitaaq beats    <audio>                   → BPM, beats, downbeats, onsets, energy (cached by hash)
+ *   nitaaq reference <image|video|url>        → reference_style.json (principles, never copied)
+ *   nitaaq capture  <url> [--mobile]           → real website screenshot
+ *   nitaaq classify <brief.json>               → SIMPLE / STANDARD / ADVANCED / LONG_FORM + budget
  *   nitaaq cache    [summary|clear [namespace]]
  *   nitaaq preflight [--full] | scenes [--json] | styles | schema-export [--out dir] | voices
  *
@@ -28,10 +33,18 @@ import { validateSpec, summarize } from '../src/validation/validate';
 import { repairSpec } from '../src/validation/repair';
 import { loadSpec, nodeValidateOptions, renderVideo, closeBrowser, RENDER_PROFILES, type RenderProfile } from '../src/node/render';
 import { cacheSummary, clearCache } from '../src/cache/store';
+import { Perf } from '../src/perf/timer';
 import { runQuality } from '../src/qc/quality';
 import { produce } from '../src/node/produce';
 import { direct } from '../src/node/direct';
-import { preflight } from '../src/node/preflight';
+import { preflightFast } from '../src/node/preflight';
+import { recomposeProject } from '../src/node/recompose';
+import { beatsFor } from '../src/node/beats';
+import { analyzeReference } from '../src/reference/analyze';
+import { captureWebsite } from '../src/node/capture';
+import { classifyBrief } from '../src/director/classify';
+import { intake } from '../src/director/intake';
+import type { Aspect } from '../src/layout/canvas';
 import { brandFromLogo } from '../src/brand/logo-analyzer';
 import { voiceProviders } from '../src/node/tts';
 import { workspace, ROOT } from '../src/node/workspace';
@@ -66,7 +79,8 @@ const out = (o: unknown) => process.stdout.write(JSON.stringify(o, null, 2) + '\
 async function main(): Promise<number> {
   switch (cmd) {
     case 'preflight': {
-      const r = preflight();
+      const r = preflightFast({ full: flag('full') === 'true' });
+      log.info('PREFLIGHT', `${r.cached ? 'cached result (nothing changed since the last full check)' : 'full check'} in ${r.ms} ms`);
       for (const c of r.checks) log.info('PREFLIGHT', `${c.ok ? '✓' : c.level === 'optional' ? '·' : '✗'} ${c.id}: ${c.detail}${!c.ok && c.action ? ` → ${c.action}` : ''}`);
       log.info('PREFLIGHT', r.ok ? 'ready' : 'not ready — fix the ✗ items above');
       return r.ok ? 0 : 1;
@@ -76,7 +90,8 @@ async function main(): Promise<number> {
       const file = pos[0];
       if (!file) throw new Error(`Usage: nitaaq ${cmd} <brief.json>`);
       const brief = JSON.parse(readFileSync(file, 'utf8'));
-      const r = await direct({ brief, baseDir: dirname(resolve(file)), projectDir: flag('project') ? resolve(flag('project')!) : undefined, assumeNoLogo: flag('no-logo') === 'true', cleanVoice: flag('clean-voice') === 'true' });
+      const perf = new Perf();
+      const r = await direct({ brief, baseDir: dirname(resolve(file)), projectDir: flag('project') ? resolve(flag('project')!) : undefined, assumeNoLogo: flag('no-logo') === 'true', cleanVoice: flag('clean-voice') === 'true', perf });
       if (r.status === 'needs-input') {
         out({ status: 'needs-input', questions: r.questions });
         return 2;
@@ -86,13 +101,21 @@ async function main(): Promise<number> {
         out({ status: 'ready', project: r.projectDir, assumptions: r.assumptions, scenes: r.storyboard!.scenes.map((s) => `${s.family}/${s.variant} ${s.duration}s`) });
         return 0;
       }
-      const res = await produce({ projectDir: r.projectDir, profile: profileOf('production'), deliverTo: flag('out') ? resolve(flag('out')!) : undefined, name: flag('name'), animatic: flag('animatic') === 'true' });
-      out({ ok: res.ok, delivered: res.delivered, report: join(r.projectDir, 'quality_report.json'), performance: join(r.projectDir, 'performance_report.json'), summary: res.report?.summary, scores: res.report?.scores, repairs: res.repairs.length, totalSec: Math.round(res.perf.totalMs / 100) / 10 });
-      return res.ok ? 0 : 1;
+      const res = await produce({ projectDir: r.projectDir, profile: profileOf('production'), deliverTo: flag('out') ? resolve(flag('out')!) : undefined, name: flag('name'), animatic: flag('animatic') === 'true' ? true : undefined, perf });
+      const extra = (brief.formats ?? []).filter((a: string) => a !== r.spec!.canvas.aspect) as Aspect[];
+      const formats = [];
+      if (res.ok && extra.length) {
+        for (const m of recomposeProject(r.projectDir, extra)) {
+          const fr = await produce({ projectDir: m.dir, profile: profileOf('production'), deliverTo: flag('out') ? resolve(flag('out')!) : undefined, name: `${flag('name') ?? r.spec!.project.id}-${m.aspect.replace(':', 'x')}` });
+          formats.push({ aspect: m.aspect, ok: fr.ok, delivered: fr.delivered, scores: fr.report?.scores });
+        }
+      }
+      out({ ok: res.ok && formats.every((f) => f.ok), delivered: res.delivered, formats, report: join(r.projectDir, 'quality_report.json'), performance: join(r.projectDir, 'performance_report.json'), summary: res.report?.summary, scores: res.report?.scores, repairs: res.repairs.length, totalSec: Math.round(res.perf.totalMs / 100) / 10 });
+      return res.ok && formats.every((f) => f.ok) ? 0 : 1;
     }
     case 'produce': {
       const p = project(pos[0]);
-      const res = await produce({ projectDir: p.dir, profile: profileOf('production'), deliverTo: flag('out') ? resolve(flag('out')!) : undefined, name: flag('name'), animatic: flag('animatic') === 'true' });
+      const res = await produce({ projectDir: p.dir, profile: profileOf('production'), deliverTo: flag('out') ? resolve(flag('out')!) : undefined, name: flag('name'), animatic: flag('animatic') === 'true' ? true : flag('no-animatic') === 'true' ? false : undefined });
       out({ ok: res.ok, delivered: res.delivered, animatic: res.animatic, summary: res.report?.summary, scores: res.report?.scores, failed: res.report?.acceptance.filter((a) => !a.ok).map((a) => a.rule), repairs: res.repairs.length, passes: res.passes, totalSec: Math.round(res.perf.totalMs / 100) / 10 });
       return res.ok ? 0 : 1;
     }
@@ -101,6 +124,54 @@ async function main(): Promise<number> {
       const res = await produce({ projectDir: p.dir, stopAfterAnimatic: true });
       out({ ok: res.ok, animatic: res.animatic, contactSheet: res.report?.contactSheet, phoneView: res.report?.phoneSheet, scores: res.report?.scores, critique: res.report?.critique, totalSec: Math.round(res.perf.totalMs / 100) / 10 });
       return res.ok ? 0 : 1;
+    }
+    case 'recompose': {
+      const p = project(pos[0]);
+      const aspects = (flag('aspects') ?? '9:16,16:9,1:1').split(',').map((x) => x.trim()) as Aspect[];
+      const made = recomposeProject(p.dir, aspects);
+      if (flag('render') === 'false') {
+        out(made);
+        return 0;
+      }
+      const results = [];
+      for (const m of made) {
+        const res = await produce({ projectDir: m.dir, profile: profileOf('production'), deliverTo: flag('out') ? resolve(flag('out')!) : undefined, name: `${flag('name') ?? basename(p.dir)}-${m.aspect.replace(':', 'x')}` });
+        results.push({ aspect: m.aspect, ok: res.ok, delivered: res.delivered, scores: res.report?.scores, changes: m.changes, totalSec: Math.round(res.perf.totalMs / 100) / 10 });
+      }
+      out(results);
+      return results.every((r) => r.ok) ? 0 : 1;
+    }
+    case 'beats': {
+      if (!pos[0]) throw new Error('Usage: nitaaq beats <audio file>');
+      const b = await beatsFor(resolve(pos[0]));
+      const { energy: _e, ...rest } = b;
+      out({ ...rest, beats: b.beats.length > 24 ? [...b.beats.slice(0, 24), '…'] : b.beats });
+      return 0;
+    }
+    case 'reference': {
+      if (!pos[0]) throw new Error('Usage: nitaaq reference <image|video|https://site> [--out reference_style.json]');
+      let file = resolve(pos[0]);
+      let kind: 'website' | undefined;
+      if (/^https?:/.test(pos[0])) {
+        file = (await captureWebsite(pos[0], join(workspace().cache, 'captures', 'reference.png'))).file;
+        kind = 'website';
+      }
+      const r = await analyzeReference(file, kind, pos[0]);
+      if (flag('out')) writeFileSync(resolve(flag('out')!), JSON.stringify(r, null, 2));
+      out(r);
+      return 0;
+    }
+    case 'capture': {
+      if (!pos[0]) throw new Error('Usage: nitaaq capture <https://site> [--out file.png] [--mobile]');
+      const r = await captureWebsite(pos[0], resolve(flag('out') ?? 'site-capture.png'), { viewport: flag('mobile') === 'true' ? 'mobile' : 'desktop' });
+      out(r);
+      return 0;
+    }
+    case 'classify': {
+      if (!pos[0]) throw new Error('Usage: nitaaq classify <brief.json>');
+      const { brief } = intake(JSON.parse(readFileSync(pos[0], 'utf8')), { assumeNoLogo: true });
+      out(classifyBrief(brief));
+      return 0;
     }
     case 'cache': {
       if (pos[0] === 'clear') {

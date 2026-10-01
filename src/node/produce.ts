@@ -13,7 +13,7 @@
  * Every stage is timed into performance_report.json; quality_report.json and
  * review_log.md are written to the project folder (project memory).
  */
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { VideoSpec } from '../schema/video';
 import { MotionError } from '../core/errors';
@@ -25,6 +25,7 @@ import { structuralQc, finalQc, type QualityReport, type StructuralQc } from '..
 import { applyQcRepairs, blockingUnrepairable } from '../qc/repair-loop';
 import { Perf } from '../perf/timer';
 import { renderConcurrency } from './render';
+import { writeAssetsManifest } from './manifest';
 
 export interface ProduceResult {
   ok: boolean;
@@ -52,6 +53,18 @@ export interface ProduceOptions {
   /** Stop after structural QC + sheets (+ animatic): no production render. */
   stopAfterAnimatic?: boolean;
   perf?: Perf;
+  /** Probe frames per scene (classifier budget: 2 for SIMPLE/LONG_FORM, 3 otherwise). */
+  perScene?: number;
+}
+
+/** Budget recorded by the Director (plan.json → taskClass), when the project was directed. */
+function directorBudget(projectDir: string): { perScene?: number; animatic?: boolean; cls?: string } {
+  try {
+    const p = JSON.parse(readFileSync(join(projectDir, 'plan.json'), 'utf8')) as { taskClass?: { class: string; budget: { qcPerScene: number; animatic: boolean } } };
+    return p.taskClass ? { perScene: p.taskClass.budget.qcPerScene, animatic: p.taskClass.budget.animatic, cls: p.taskClass.class } : {};
+  } catch {
+    return {};
+  }
 }
 
 const save = (file: string, spec: VideoSpec) => writeFileSync(file, JSON.stringify(spec, null, 2));
@@ -63,6 +76,9 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
   const hardCap = Math.max(normalPasses, opts.maxPasses ?? 3);
   const specFile = join(opts.projectDir, 'video.json');
   let spec: VideoSpec = loadSpec(specFile);
+  const budget = directorBudget(opts.projectDir);
+  const perScene = opts.perScene ?? budget.perScene ?? 3;
+  if (budget.cls) perf.meta.taskClass = budget.cls;
   const allRepairs: RepairEntry[] = [];
   perf.meta.project = spec.project.id;
   perf.meta.profile = profile;
@@ -93,7 +109,7 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
   let passes = 0;
   let st: StructuralQc | null = null;
   const structural = async (pass: number) => {
-    const r = await perf.stage('qc-structure', () => structuralQc({ spec, projectDir: opts.projectDir, outDir: join(qcDir, `pass-${pass}`), pass, perScene: 3 }), `pass ${pass}`);
+    const r = await perf.stage('qc-structure', () => structuralQc({ spec, projectDir: opts.projectDir, outDir: join(qcDir, `pass-${pass}`), pass, perScene }), `pass ${pass}`);
     perf.mark('contact-sheet', r.report.timings.sheetMs ?? 0, { note: 'included in qc-structure' });
     return r;
   };
@@ -115,13 +131,14 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
 
   // 3. optional animatic (timing/story review at a fraction of the cost)
   let animatic: string | null = null;
-  if (opts.animatic || opts.stopAfterAnimatic) {
+  if (opts.animatic ?? (opts.stopAfterAnimatic || budget.animatic)) {
     const out = join(renders, `${spec.project.id}-animatic.mp4`);
     const r = await perf.stage('animatic', () => renderVideo({ spec, projectDir: opts.projectDir, output: out, profile: 'animatic' }));
     animatic = r.output;
     log.stage('RENDER', `animatic ${(r.bytes / 1e6).toFixed(2)} MB in ${(r.renderMs / 1000).toFixed(1)}s${r.cached ? ' (cached)' : ''} → ${out}`);
   }
   if (opts.stopAfterAnimatic) {
+    writeAssetsManifest(opts.projectDir, spec);
     const report = st!.report;
     writeProjectMemory(opts.projectDir, spec, report, perf, allRepairs, passes, profile, null);
     return { ok: report.passed, video: null, delivered: null, animatic, report, render: null, repairs: allRepairs, validation: rep.remaining, passes, specFile, perf: perf.report() };
@@ -161,6 +178,7 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
     if (report?.phoneSheet && existsSync(report.phoneSheet)) copyFileSync(report.phoneSheet, join(dest, `${name}.phone-view.png`));
     log.stage('COMPLETE', `delivered ${delivered}`);
   } else log.stage('QUALITY', `NOT delivered — ${report?.acceptance.filter((a) => !a.ok).map((a) => a.rule).join('; ') || 'see report'}; ${join(qcDir, 'final', 'quality-report.json')}`, 'error');
+  writeAssetsManifest(opts.projectDir, spec);
   writeProjectMemory(opts.projectDir, spec, report, perf, allRepairs, passes, profile, delivered);
   return { ok, video: render?.output ?? null, delivered, animatic, report, render, repairs: allRepairs, validation: rep.remaining, passes, specFile, perf: perf.report() };
 }

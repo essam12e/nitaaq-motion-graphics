@@ -3,7 +3,8 @@
  * done. Every failed check says what to do next. API keys are reported only as
  * present/absent — never printed.
  */
-import { accessSync, constants, existsSync, mkdirSync } from 'node:fs';
+import { accessSync, constants, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { getJson, setJson, hashOf, fileHash } from '../cache/store';
 import { join } from 'node:path';
 import { findFfmpeg } from './audio';
 import { findBrowser } from './bundle';
@@ -61,4 +62,34 @@ export function preflight(): { ok: boolean; checks: PreflightCheck[] } {
   const avail = tts.filter((p) => p.available);
   add({ id: 'tts', ok: avail.length > 0, level: 'optional', detail: avail.length ? `premium voice: ${avail.map((p) => p.label).join(', ')}` : 'no premium voice provider configured (videos without voice or with your own recording still work)', action: avail.length ? undefined : 'Optional: set ELEVENLABS_API_KEY or OPENAI_API_KEY in the environment.' });
   return { ok: checks.every((c) => c.ok || c.level === 'optional'), checks };
+}
+
+/**
+ * Incremental preflight: the full check (~1.5 s: font parsing, ffmpeg probe) runs
+ * only when something it depends on changed — Node version, package-lock, ffmpeg
+ * and browser paths, the font folder. Otherwise the last good result is reused.
+ */
+export function preflightKey(): string {
+  const lock = join(ROOT, 'package-lock.json');
+  const fontsDir = join(ROOT, 'public', 'fonts');
+  const fontsStamp = existsSync(fontsDir) ? readdirSync(fontsDir).map((f) => `${f}:${statSync(join(fontsDir, f)).size}`).join('|') : 'none';
+  let ff = 'none';
+  try {
+    ff = findFfmpeg().ffmpeg;
+  } catch {
+    /* reported by the full check */
+  }
+  return hashOf('preflight-v1', process.versions.node, existsSync(lock) ? fileHash(lock) : 'nolock', ff, findBrowser() ?? 'remotion', fontsStamp, workspace(), voiceProviders().map((p) => `${p.id}:${p.available}`));
+}
+
+export function preflightFast(opts: { full?: boolean } = {}): { ok: boolean; checks: PreflightCheck[]; cached: boolean; ms: number } {
+  const t0 = Date.now();
+  const key = preflightKey();
+  if (!opts.full) {
+    const hit = getJson<{ ok: boolean; checks: PreflightCheck[] }>('preflight', key);
+    if (hit?.ok) return { ...hit, cached: true, ms: Date.now() - t0 };
+  }
+  const r = preflight();
+  if (r.ok) setJson('preflight', key, r);
+  return { ...r, cached: false, ms: Date.now() - t0 };
 }

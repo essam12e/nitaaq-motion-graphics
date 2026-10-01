@@ -23,7 +23,9 @@ export type ErrorCode =
   | 'WORKSPACE_UNWRITABLE'
   | 'BRIEF_INVALID'
   | 'REPAIR_AMBIGUOUS'
-  | 'INPUT_INVALID';
+  | 'INPUT_INVALID'
+  | 'REFERENCE_UNREADABLE'
+  | 'CAPTURE_FAILED';
 
 export interface MotionErrorInit {
   code: ErrorCode;

@@ -30,7 +30,7 @@ interface Px {
   b: number;
 }
 
-function kmeans(pixels: Px[], k: number, iterations = 12): { c: Px; n: number }[] {
+export function kmeans(pixels: Px[], k: number, iterations = 12): { c: Px; n: number }[] {
   if (pixels.length === 0) return [];
   k = Math.min(k, pixels.length);
   // Deterministic init: spread over luminance-sorted samples.
