@@ -57,7 +57,6 @@ export function Media(p: MediaProps) {
         boxShadow: p.shadow ? `0 ${2 * canvas.u}px ${6 * canvas.u}px ${alpha(t.shadow.color, 0.25 + 0.4 * t.shadow.strength)}` : undefined,
         border: p.frame ? `${Math.max(2, canvas.u * 0.35)}px solid ${alpha(t.palette.textPrimary, 0.12)}` : undefined,
         ...p.style,
-        ...(handedOff ? { opacity: 0 } : {}),
       }}
     >
       {url ? (
@@ -74,6 +73,9 @@ export function Media(p: MediaProps) {
             // Product/logo shadows follow the alpha shape (drop-shadow), never alter pixels.
             ...(role === 'product' && p.shadow ? { filter: `drop-shadow(0 ${2.5 * canvas.u}px ${3 * canvas.u}px ${alpha('#000000', 0.35)})` } : {}),
             ...p.imgStyle,
+            // during a shared-element transition only the asset itself is handed to the film-level layer;
+            // its card/frame stays and fades with its scene, so nothing pops in or out
+            ...(handedOff ? { opacity: 0 } : {}),
           }}
         />
       ) : null}
