@@ -9,7 +9,7 @@
   "aspect": "9:16",
   "duration": 18,
   "tone": ["حديث", "واثق"],
-  "brand": { "name": "موعد", "logo": "../test/fixtures/test-logo.png" },
+  "brand": { "name": "موعد", "logo": "../public/demo/logo.png" },
   "audio": { "mode": "none", "sfx": true },
   "content": {
     "hook": "مواعيدك صارت فوضى؟",

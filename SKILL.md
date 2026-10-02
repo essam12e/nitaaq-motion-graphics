@@ -33,7 +33,7 @@ Voice: ask only if the user mentions it. `none` (default) · `user-voice` (their
 
 ## 2. Write brief.json (truthful copy only)
 
-Schema `schemas/brief.schema.json`; examples in `examples/` and `test/fixtures/brief-*.json`.
+Schema `schemas/brief.schema.json`; examples in `examples/` (the full repo also has `test/fixtures/brief-*.json`).
 
 - Short motion copy in the user's dialect; `emphasis` words must appear in the copy.
 - Numbers, charts, tables, testimonials, ratings: **only** if the user gave them, each with its real `source`.

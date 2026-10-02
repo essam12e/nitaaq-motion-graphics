@@ -25,7 +25,7 @@
       { "title": "تصدير PDF", "description": "بضغطة زر" }
     ],
     "series": { "title": "زمن إعداد التقرير (دقائق)", "labels": ["يدوي", "Excel", "Insightly"], "values": [180, 95, 12], "source": "قياس داخلي — بيانات اختبار للعرض" },
-    "ui": { "url": "app.insightly.io", "appName": "Insightly", "screenshot": "../test/fixtures/dashboard-screenshot.png", "menu": ["Overview", "Reports", "Alerts"], "headline": "Overview" },
+    "ui": { "url": "app.insightly.io", "appName": "Insightly", "screenshot": "../public/demo/screenshot.png", "menu": ["Overview", "Reports", "Alerts"], "headline": "Overview" },
     "cta": { "text": "ابدأ تجربتك المجانية اليوم", "button": "Start free trial", "url": "https://insightly.io", "qr": "https://insightly.io" }
   }
 }
