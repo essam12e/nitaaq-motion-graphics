@@ -289,7 +289,9 @@ export async function structuralQc(opts: { spec: VideoSpec; projectDir: string; 
       const tb = { ...base, scene: t.scene || s.scene, sceneIndex: ownIdx >= 0 ? ownIdx : base.sceneIndex, element: `${t.role}:"${t.text.slice(0, 32)}"` };
       if (t.fit === 'fail') add('structure', { ...tb, severity: t.critical ? 'critical' : 'error', code: 'TEXT_FIT_FAIL', message: `text does not fit its box even at minimum size (${t.reason ?? 'overflow'})`, repair: { action: 'shrink-text' } });
       // an invisible line (before its entrance) cannot visibly clip; its settled frames are sampled as holds
-      if (t.overflowX && t.opacity > 0.05) add('structure', { ...tb, severity: t.critical ? 'critical' : 'error', code: 'TEXT_OVERFLOW', message: 'a text line is wider than its container', repair: { action: 'shrink-text' } });
+      // overflow is judged on settled (hold) frames: containers that grow during an entrance or a transition
+      // are briefly narrower than the text fitted for their final size
+      if (hold && t.overflowX && t.opacity > 0.05) add('structure', { ...tb, severity: t.critical ? 'critical' : 'error', code: 'TEXT_OVERFLOW', message: 'a text line is wider than its container', repair: { action: 'shrink-text' } });
       if (t.arabic && Math.abs(t.letterSpacing) > 0.01) add('structure', { ...tb, severity: 'error', code: 'ARABIC_LETTER_SPACING', message: `letter-spacing ${t.letterSpacing}px on Arabic text breaks joining` });
       if (t.splitGlyphs) add('structure', { ...tb, severity: 'critical', code: 'ARABIC_SPLIT_GLYPHS', message: 'Arabic word split into single-letter elements (broken ligatures)' });
       if (t.arabic && t.direction !== 'rtl' && /^[؀-ۿ]/.test(t.text)) add('structure', { ...tb, severity: 'error', code: 'RTL_DIRECTION', message: 'Arabic text laid out left-to-right' });
