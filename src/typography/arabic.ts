@@ -31,6 +31,10 @@ export function baseDirection(s: string, fallback: 'rtl' | 'ltr' = 'rtl'): 'rtl'
   const a = (s.match(ARABIC_G) ?? []).length;
   const l = (s.match(LATIN_G) ?? []).length;
   if (a === 0 && l === 0) return fallback;
+  // an Arabic sentence that carries a long Latin name («مع Insightly») is still Arabic:
+  // the first strong character decides when Arabic is present at all
+  const first = s.match(/[\u0600-\u06FFA-Za-z]/)?.[0];
+  if (a > 0 && first && /[\u0600-\u06FF]/.test(first)) return 'rtl';
   return a >= l * 0.35 ? 'rtl' : 'ltr';
 }
 

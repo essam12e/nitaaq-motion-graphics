@@ -19,7 +19,7 @@ import { closeBrowser } from '../src/node/render';
 import { ROOT, workspace } from '../src/node/workspace';
 
 const arg = (k: string) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : undefined; };
-const STYLES = arg('styles')?.split(',') ?? ['saudi-modern', 'tech', 'saas', 'ai-futuristic', 'neon', 'ecommerce', 'luxury', 'minimal'];
+const STYLES = arg('styles')?.split(',') ?? ['saudi-modern', 'tech', 'saas', 'ai-futuristic', 'neon', 'ecommerce', 'luxury', 'minimal', 'illustration', 'whiteboard', 'launch-hype'];
 const FAMILIES = ['kinetic-title', 'feature-set', 'cta-button'];
 const out = join(workspace().output, 'dot-regression');
 const snap = join(ROOT, 'test', 'visual', 'dots');

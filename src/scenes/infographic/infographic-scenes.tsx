@@ -121,7 +121,7 @@ export const featureSet = defineScene<FSC>(
               return (
                 <div style={{ position: 'relative', width: w, height: h }}>
                   <svg width={w} height={h} style={{ position: 'absolute', inset: 0 }}>
-                    <ellipse cx={w / 2} cy={h / 2} rx={(w / 2 - cardW / 2) * 0.96} ry={(h / 2 - u * 8) * 0.9} fill="none" stroke={alpha(t.palette.primary, 0.3)} strokeWidth={u * 0.25} strokeDasharray={`${u} ${u * 1.5}`} strokeDashoffset={-s * u * 4} />
+                    <ellipse cx={w / 2} cy={h / 2} rx={(w / 2 - cardW / 2) * 0.96} ry={(h / 2 - u * 8) * 0.9} fill="none" stroke={alpha(t.palette.primary, 0.22)} strokeWidth={u * 0.22} pathLength={1} strokeDasharray={1} strokeDashoffset={1 - clamp(s / 1.2)} />
                   </svg>
                   <div style={{ position: 'absolute', left: w / 2, top: h / 2, transform: `translate(-50%, -50%) scale(${centerP})`, width: Math.min(w * 0.42, R * 0.9) }}>
                     {c.title ? <HeadlineBlock title={c.title} highlight={c.highlight} role="title" size={6} maxLines={3} maxWidth={Math.min(w * 0.42, R * 0.9)} animate="none" /> : <Icon name="Sparkles" size={u * 10} treatment="filled" />}

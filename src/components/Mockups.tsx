@@ -111,7 +111,7 @@ export function UiRow({ label, value, icon, width, active = 0 }: { label: string
     <div style={{ display: 'flex', alignItems: 'center', gap: h * 0.3, height: h, padding: `0 ${h * 0.3}px`, borderRadius: h * 0.25, background: active > 0 ? alpha(ui.primary, 0.14 * active) : 'transparent' }}>
       {icon ? <Icon name={icon} size={h * 0.4} color={active > 0.5 ? ui.primary : ui.muted} treatment="plain" /> : null}
       <div style={{ flex: 1, minWidth: 0, display: 'flex' }}>
-        <Text text={label} role="label" size={(h * 0.34) / canvas.u} minSize={Math.min(2.2, (h * 0.26) / canvas.u)} maxLines={1} animate="none" align="start" color={ui.text} weight={500} maxWidth={width - h * (icon ? 1.3 : 0.6) - (value ? h * 2.4 : 0)} />
+        <Text text={label} role="label" size={(h * 0.36) / canvas.u} minSize={Math.min(2.2, (h * 0.26) / canvas.u)} maxLines={1} animate="none" align="start" color={ui.text} weight={500} maxWidth={width - h * (icon ? 1.3 : 0.6) - (value ? h * 2.4 : 0)} />
       </div>
       {value ? <span style={{ fontSize: h * 0.32, color: ui.muted, fontFamily: fonts.latin, direction: 'ltr' }}>{value}</span> : null}
     </div>

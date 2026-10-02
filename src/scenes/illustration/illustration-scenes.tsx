@@ -343,7 +343,7 @@ function Whiteboard({ content: c, variant }: { content: WC; variant: string }) {
               <div key={i} style={{ display: 'flex', flexDirection: land ? 'column' : 'row-reverse', alignItems: 'center', gap: u * 1.6, opacity: show ? 1 : 0, width: land ? size * 1.15 : L.safe.width * 0.9 }}>
                 {variant === 'draw' && st.subject ? <Illustration id={st.subject} size={size} style="line" mono ink={INK} draw={k} /> : null}
                 <div style={{ position: 'relative', direction: 'rtl', clipPath: `inset(0 0 0 ${(1 - (variant === 'write' ? k : written)) * 100}%)`, flex: land ? undefined : 1 }}>
-                  <Text text={st.text} role={variant === 'write' ? 'title' : 'label'} size={variant === 'write' ? 6 : 3.8} animate="none" color={INK} maxLines={2} align={land ? 'center' : 'start'} />
+                  <Text text={st.text} role={variant === 'write' ? 'title' : 'label'} size={variant === 'write' ? 6 : 3.8} minSize={2.6} animate="none" color={INK} maxLines={2} align={land ? 'center' : 'start'} maxWidth={land ? size * 1.1 : L.safe.width * 0.86} />
                   <svg width="100%" height={u * 1.6} viewBox="0 0 100 10" preserveAspectRatio="none" style={{ display: 'block' }}>
                     <path d="M98,6 C70,3 40,8 2,5" fill="none" stroke={t.palette.accent} strokeWidth={2.2} strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - clamp(((variant === 'write' ? k : written) - 0.6) / 0.4)} vectorEffect="non-scaling-stroke" />
                   </svg>

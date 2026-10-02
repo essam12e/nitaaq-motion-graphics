@@ -140,6 +140,8 @@ export function buildStoryboard(plan: CreativePlan, ctx: RecipeCtx, opts: { seed
     if (family === 'state-flow') return 'flow';
     if (family === 'data-table') return 'table';
     if (['process-steps', 'workflow', 'timeline'].includes(family)) return 'steps';
+    // a whiteboard writes out the brief's steps (or features) — the same payload as a steps/features scene
+    if (family === 'whiteboard') return ctx.brief.content.steps?.length ? 'steps' : ctx.brief.content.features?.length ? 'features' : null;
     if (['feature-set', 'icon-list', 'product-details'].includes(family)) return 'features';
     return null;
   };
@@ -162,17 +164,37 @@ export function buildStoryboard(plan: CreativePlan, ctx: RecipeCtx, opts: { seed
     // after problem-solution, the "solution" beat must add something new (a brand moment), not repeat the line
     if (beat === 'solution' && picked.some((p) => p.r.family === 'problem-solution')) cands = cands.filter((r) => r.family === 'logo-reveal' || r.family === 'brand-intro');
     if (!cands.length) return;
+    const catOf = (f: string) => SceneRegistry.get(f)!.manifest.category;
+    // later middle beats that can ONLY be cards (no other category available) cannot break the template
+    const onlyCards = (b: (typeof beats)[number]) =>
+      RECIPES.filter((r) => r.beats.includes(b) && SceneRegistry.has(r.family) && SceneRegistry.get(r.family)!.manifest.aspectRatios.includes(aspect) && !avoid.includes(r.family) && moduleOk(r.family) && r.when(ctx)).every((r) => catOf(r.family) === 'infographic');
+    // a bridge after the problem disappears when problem-solution (cards) is picked, so it can't be relied on
+    // and a solution beat after it only survives as a brand moment (logo-reveal / brand-intro)
+    const brandSolution = RECIPES.some((r) => r.beats.includes('solution') && (r.family === 'logo-reveal' || r.family === 'brand-intro') && SceneRegistry.has(r.family) && !avoid.includes(r.family) && moduleOk(r.family) && r.when(ctx));
+    const rest = beats.slice(bi + 1).filter((b, k) => !skip.has(bi + 1 + k) && !(beat === 'problem' && (b === 'bridge' || (b === 'solution' && !brandSolution))));
+    const templateRisk =
+      picked.length >= 1 &&
+      catOf(picked[0].r.family) === 'typography' &&
+      picked.slice(1).every((p) => catOf(p.r.family) === 'infographic') &&
+      rest[rest.length - 1] === 'cta' &&
+      rest.slice(0, -1).every((b) => b !== 'cta' && onlyCards(b));
+    // the same family with the same content twice in one film is a repeated scene, not a new beat
+    const seen = new Set(picked.map((p) => `${p.r.family}|${JSON.stringify(p.content)}`));
     const scored = cands
-      .filter((r) => r.family !== prev?.r.family)
+      .filter((r) => r.family !== prev?.r.family && !seen.has(`${r.family}|${JSON.stringify(strip(r.build(ctx)))}`))
       .map((r) => {
         const m = SceneRegistry.get(r.family)!.manifest;
         let w = r.weight;
         const uses = usedFamilies.get(r.family) ?? 0;
         if (uses) w *= 0.25 / uses;
         if (m.category === prevCat) w *= 0.6;
+        // never three scenes of one category in a row when there is a choice
+        if (m.category === prevCat && picked.length >= 2 && catOf(picked[picked.length - 2].r.family) === prevCat) w *= 0.3;
+        // banned look «heading → cards → CTA»: the last middle scene breaks the template when it can
+        if (templateRisk && m.category === 'infographic') w *= 0.12;
         if (prefer.includes(r.family)) w *= 2.2;
         const pay = payloadOf(r.family);
-        if (pay) w *= shown.has(pay) ? 0.4 : pay === 'screenshot' ? 1.8 : 1.5; // the user's real screenshot first
+        if (pay) w *= shown.has(pay) ? 0.12 : pay === 'screenshot' ? 1.8 : 1.5; // the user's real screenshot first
         // match the beat's energy
         w *= 1 - Math.abs(m.energy - BEAT_ENERGY[beat]) * 0.5;
         // copy longer than every variant of the family can hold → strongly prefer roomier families
@@ -187,6 +209,9 @@ export function buildStoryboard(plan: CreativePlan, ctx: RecipeCtx, opts: { seed
       })
       .sort((a, b) => b.w - a.w);
     if (!scored.length) return;
+    // a beat whose best option would only re-show steps/features already on screen is dropped, not repeated
+    const topPay = payloadOf(scored[0].r.family);
+    if (topPay && (topPay === 'steps' || topPay === 'features') && shown.has(topPay)) return;
     const r = scored[0].r;
     const content = strip(r.build(ctx));
     const m = SceneRegistry.get(r.family)!.manifest;
@@ -198,6 +223,41 @@ export function buildStoryboard(plan: CreativePlan, ctx: RecipeCtx, opts: { seed
     if (pay) shown.add(pay);
     if (r.family === 'problem-solution') beats.forEach((b, j) => j > bi && b === 'bridge' && skip.add(j));
   });
+
+  // A kinetic script (content.lines) is told ONCE across the film: when several scenes picked up the
+  // whole script, the lines are split between them in order instead of repeating every line in every scene.
+  const script = ctx.brief.content.lines ?? [];
+  if (script.length >= 2) {
+    const carriers = picked
+      .map((p, i) => ({ p, i }))
+      .filter(({ p }) => {
+        const ls = (p.content as { lines?: unknown }).lines;
+        return Array.isArray(ls) && ls.length === script.length && ls.every((l, k) => typeof l === 'string' && script[k].startsWith(l));
+      });
+    if (carriers.length >= 2) {
+      const tryK = (k: number) => {
+        const out: { i: number; content: Record<string, unknown> }[] = [];
+        for (let g = 0; g < k; g++) {
+          const { p, i } = carriers[g];
+          const all = (p.content as { lines: string[] }).lines;
+          const part = all.slice(Math.round((g * all.length) / k), Math.round(((g + 1) * all.length) / k));
+          const hl = (p.content as { highlight?: string[] }).highlight?.filter((h) => part.some((l) => l.includes(h)));
+          const content = { ...(p.content as Record<string, unknown>), lines: part, highlight: hl?.length ? hl : undefined };
+          if (!SceneRegistry.get(p.r.family)!.manifest.content.safeParse(strip(content)).success) return null;
+          out.push({ i, content: strip(content) as Record<string, unknown> });
+        }
+        return out;
+      };
+      for (let k = Math.min(carriers.length, script.length); k >= 1; k--) {
+        const plan2 = tryK(k);
+        if (!plan2) continue;
+        for (const { i, content } of plan2) picked[i] = { ...picked[i], content, message: (content.lines as string[]).join(' / ') };
+        const drop = new Set(carriers.slice(k).map((c) => c.i));
+        for (let i = picked.length - 1; i >= 0; i--) if (drop.has(i)) picked.splice(i, 1);
+        break;
+      }
+    }
+  }
 
   const usedVariants = new Map<string, string[]>();
   const pace = plan.pace;

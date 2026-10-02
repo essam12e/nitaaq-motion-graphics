@@ -9,6 +9,7 @@ describe('Arabic text handling', () => {
     expect(detectScript('لوحة Dashboard')).toBe('mixed');
     expect(baseDirection('Dashboard واحد يكفي')).toBe('rtl');
     expect(baseDirection('Start free trial', 'rtl')).toBe('ltr');
+    expect(baseDirection('مع Insightly')).toBe('rtl');
   });
   it('converts numerals only when asked', () => {
     expect(toNumerals('خصم 30%', 'arabic-indic')).toContain('٣٠');

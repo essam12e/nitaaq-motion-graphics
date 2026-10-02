@@ -38,8 +38,8 @@ Safe, deterministic spec changes only: shrink text/layout, add a scrim, extend a
 
 ## Measurement notes
 
-- **Text overflow** is measured, not estimated: the probe measures each text node's real width with a DOM `Range` (spaces included) scaled to the line's layout width; only text with opacity > 0.05 is checked, and the finding targets the scene that owns the text.
-- **Particle fields** are only reported when the blobs are spread over the frame (≥ 12 of 36 grid cells, across ≥ 3 columns and ≥ 3 rows), and diagram shapes (`data-qc="box"`) are masked, so circles in a process diagram are not mistaken for a pattern.
+- **Text overflow** is measured, not estimated: the probe measures each text node's real width with a DOM `Range` (spaces included) scaled to the line's layout width; line masks hug their content, so a line wider than its box is measured instead of silently clipped; only text with opacity > 0.05 is checked, and the finding targets the scene that owns the text.
+- **Particle fields** are only reported when the blobs are spread over the frame (≥ 12 of 36 grid cells, across ≥ 3 columns and ≥ 3 rows), and diagram shapes and map drawings (`data-qc="box"`) are masked, so circles in a process diagram or coastline islands on a map are not mistaken for a pattern.
 
 ## Outputs
 

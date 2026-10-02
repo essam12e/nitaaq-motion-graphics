@@ -105,6 +105,8 @@ export function collectProbe(frame: number, width: number, height: number): Prob
           w += Number.isFinite(tw) && tw > 0 ? tw : (n.textContent ?? '').length * fontPx * 0.26;
         }
       }
+      // (line masks are inline-block and hug their content, so their offsetWidth above is the real
+      // line width; scrollWidth is NOT used: it includes words moved by entrance transforms)
       if (w > h.clientWidth * 1.01 + 2) overflowX = true;
     }
     const arabic = el.getAttribute('data-qc-arabic') === '1';

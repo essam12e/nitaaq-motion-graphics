@@ -62,6 +62,9 @@ function MapStory({ content: c, variant }: { content: MC; variant: string }) {
     </div>
   );
   return (
+    <>
+    {/* the whole frame is map drawing (context land runs past the svg box): QC must not read coastline islands as a pattern */}
+    <div data-qc="box" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
     <Stage gap={u * 2}>
       {c.title ? <Text text={c.title} role="title" size={6.2} /> : null}
       <div style={{ position: 'relative', width: W, height: H, transform: `scale(${cam})` }}>
@@ -98,6 +101,7 @@ function MapStory({ content: c, variant }: { content: MC; variant: string }) {
         <Text text={`المصدر: ${g.source}`} role="caption" size={2.4} animate="none" maxLines={1} align="start" />
       </div>
     </Stage>
+    </>
   );
 }
 

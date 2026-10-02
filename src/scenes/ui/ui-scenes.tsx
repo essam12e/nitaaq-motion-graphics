@@ -169,13 +169,13 @@ export const dashboard = defineScene<DC>(
           return (
             <div style={{ width: W, height: H, transform: `perspective(2400px) rotateX(${(1 - enter) * 14}deg) translateY(${(1 - enter) * u * 8}px)`, opacity: clamp(enter * 1.4), borderRadius: u * 2.2, background: ui.page, border: `1px solid ${ui.line}`, boxShadow: `0 ${u * 3}px ${u * 8}px rgba(0,0,0,0.35)`, display: 'flex', overflow: 'hidden' }}>
               {sidebar ? (
-                <div style={{ width: W * 0.24, background: ui.panel, borderInlineEnd: `1px solid ${ui.line}`, padding: u * 2, display: 'flex', flexDirection: 'column', gap: u * 0.8 }}>
+                <div style={{ width: W * 0.27, background: ui.panel, borderInlineEnd: `1px solid ${ui.line}`, padding: u * 2, display: 'flex', flexDirection: 'column', gap: u * 0.8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: u, marginBottom: u * 2 }}>
                     <div style={{ width: u * 4, height: u * 4, borderRadius: u, background: ui.primary }} />
                     {c.appName ? <Text text={c.appName} role="label" size={(u * 2.6) / v.canvas.u} minSize={1.6} animate="none" align="start" color={ui.text} maxLines={1} maxWidth={W * 0.14} /> : null}
                   </div>
                   {menu.map((label, i) => (
-                    <UiRow key={i} label={label} icon={['LayoutDashboard', 'ShoppingBag', 'Users', 'FileText', 'Settings', 'Bell'][i % 6]} width={W * 0.2} active={i === 0 ? 1 : 0} />
+                    <UiRow key={i} label={label} icon={['LayoutDashboard', 'ShoppingBag', 'Users', 'FileText', 'Settings', 'Bell'][i % 6]} width={W * 0.23} active={i === 0 ? 1 : 0} />
                   ))}
                 </div>
               ) : null}

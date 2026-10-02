@@ -94,7 +94,12 @@ export function Text(props: TextProps) {
   const maxLines = props.maxLines ?? layout?.maxLines ?? r.lines;
   const minPx = Math.max((props.minSize ?? r.min) * u * Math.min(1, scale), 2 * u);
   const maxPx = Math.max(minPx, (props.size ?? r.size) * u * scale);
-  const hlPad = hlStyle === 'box' ? 0.4 : hlStyle === 'marker' ? 0.12 : 0;
+  // the fitter must reserve room for the highlight style that is actually drawn: a text-motion family
+  // may draw its own (e.g. a box) instead of the style token's
+  const animateEarly = props.animate ?? (role === 'headline' || role === 'title' || role === 'cta' ? 'words' : 'lines');
+  const famEarly = TextMotionRegistry.get(props.motion ?? (props.entrance === undefined && animateEarly !== 'none' ? scene?.scene.motion?.text?.[roleGroupOf(role)] : undefined));
+  const drawnHl = famEarly?.highlight && famEarly.highlight !== 'pulse' ? famEarly.highlight : hlStyle;
+  const hlPad = drawnHl === 'box' ? 0.4 : drawnHl === 'marker' ? 0.12 : 0;
 
   const fit = useMemo(
     () =>
@@ -109,11 +114,13 @@ export function Text(props: TextProps) {
         lineHeight,
         weight,
         family,
-        latinFamily: v.fonts.latin,
+        // Latin runs switch to the Latin font only inside RTL lines (see Word `latin`); an LTR text renders
+        // every word in its own family, so measuring Latin tokens with the Latin font would mis-size the lines
+        latinFamily: dir === 'rtl' ? v.fonts.latin : undefined,
         highlightPad: hlPad,
         measure: canvasMeasure,
       }),
-    [text, props.highlight?.join('|'), maxWidth, props.maxHeight, maxLines, maxPx, minPx, lineHeight, weight, family, v.fonts.latin, hlPad],
+    [text, props.highlight?.join('|'), maxWidth, props.maxHeight, maxLines, maxPx, minPx, lineHeight, weight, family, v.fonts.latin, hlPad, dir],
   );
 
   const color = props.color ?? layout?.textColor ?? (role === 'caption' || role === 'body' || role === 'eyebrow' ? t.palette.textSecondary : t.palette.textPrimary);
@@ -194,8 +201,11 @@ export function Text(props: TextProps) {
       });
       if (unit === 'line' && fam!.mask)
         return (
-          <div key={li} style={{ whiteSpace: 'nowrap', overflow: 'hidden', padding: '0.2em 0.06em', margin: '-0.2em -0.06em' }}>
-            <div style={{ whiteSpace: 'nowrap', ...lineStyle }}>{runs}</div>
+          <div key={li} style={{ whiteSpace: 'nowrap' }}>
+            {/* the mask hugs the line (inline-block): it hides the reveal, never the end of a line that is wider than the box */}
+            <div style={{ display: 'inline-block', verticalAlign: 'top', overflow: 'hidden', padding: '0.2em 0.06em', margin: '-0.2em -0.06em' }}>
+              <div style={{ whiteSpace: 'nowrap', ...lineStyle }}>{runs}</div>
+            </div>
           </div>
         );
       return (
