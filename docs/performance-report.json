@@ -1,0 +1,1274 @@
+{
+  "label": "v3 after",
+  "machine": {
+    "node": "v22.22.0",
+    "cpus": 4
+  },
+  "generatedAt": "2026-10-02T03:50:20.102Z",
+  "cases": {
+    "a": {
+      "brief": "bench-a-typography.json",
+      "what": "10 s typography"
+    },
+    "b": {
+      "brief": "bench-b-product.json",
+      "what": "20 s product ad"
+    },
+    "c": {
+      "brief": "bench-c-saas-launch.json",
+      "what": "30 s SaaS / launch"
+    },
+    "d": {
+      "brief": "bench-d-audio.json",
+      "what": "30 s audio-driven"
+    }
+  },
+  "groups": {
+    "planning": [
+      "intake",
+      "classify",
+      "director",
+      "storyboard",
+      "compile",
+      "creative",
+      "modules",
+      "sound-director"
+    ],
+    "preprocessing": [
+      "assets",
+      "brand",
+      "fonts",
+      "audio",
+      "beats",
+      "reference",
+      "capture",
+      "soundtrack",
+      "sfx-library",
+      "brand-motion",
+      "map-data",
+      "logo-structure"
+    ],
+    "sound": [
+      "sound"
+    ],
+    "validation": [
+      "validation"
+    ],
+    "qc": [
+      "qc-structure",
+      "qc-final",
+      "contact-sheet",
+      "audio-qc",
+      "shared-elements"
+    ],
+    "animatic": [
+      "animatic"
+    ],
+    "render": [
+      "render"
+    ]
+  },
+  "note": "Measured on the same 4-core container as the v2 baseline (before = v2 at 0dbe6ad, measured 2026-10-01). Every run is a fresh Node process. cold = cache cleared; warm = cache kept, new project; repeat = same project re-directed and re-produced, nothing changed; edit = cache kept, new project, one copy change. Times are wall-clock seconds of direct()+produce() including the animatic.",
+  "comparison": [
+    {
+      "case": "a",
+      "run": "cold",
+      "afterSec": 40.2,
+      "beforeSec": 71.6,
+      "ok": true,
+      "overall": 100,
+      "change": "-44%"
+    },
+    {
+      "case": "a",
+      "run": "warm",
+      "afterSec": 2.5,
+      "beforeSec": 2.1,
+      "ok": true,
+      "overall": 100,
+      "change": "16%"
+    },
+    {
+      "case": "a",
+      "run": "repeat",
+      "afterSec": 1.5,
+      "beforeSec": 2.2,
+      "ok": true,
+      "overall": 100,
+      "change": "-30%"
+    },
+    {
+      "case": "b",
+      "run": "cold",
+      "afterSec": 78.4,
+      "beforeSec": 112.6,
+      "ok": true,
+      "overall": 99,
+      "change": "-30%"
+    },
+    {
+      "case": "b",
+      "run": "warm",
+      "afterSec": 3.2,
+      "beforeSec": 5.0,
+      "ok": true,
+      "overall": 99,
+      "change": "-36%"
+    },
+    {
+      "case": "b",
+      "run": "repeat",
+      "afterSec": 3.2,
+      "beforeSec": 4.1,
+      "ok": true,
+      "overall": 99,
+      "change": "-21%"
+    },
+    {
+      "case": "c",
+      "run": "cold",
+      "afterSec": 84.3,
+      "beforeSec": 112.0,
+      "ok": true,
+      "overall": 100,
+      "change": "-25%"
+    },
+    {
+      "case": "c",
+      "run": "warm",
+      "afterSec": 5.4,
+      "beforeSec": 5.7,
+      "ok": true,
+      "overall": 100,
+      "change": "-5%"
+    },
+    {
+      "case": "c",
+      "run": "repeat",
+      "afterSec": 3.1,
+      "beforeSec": 5.3,
+      "ok": true,
+      "overall": 100,
+      "change": "-42%"
+    },
+    {
+      "case": "d",
+      "run": "cold",
+      "afterSec": 73.1,
+      "beforeSec": 235.0,
+      "ok": true,
+      "overall": 100,
+      "change": "-69%"
+    },
+    {
+      "case": "d",
+      "run": "warm",
+      "afterSec": 3.2,
+      "beforeSec": 11.6,
+      "ok": true,
+      "overall": 100,
+      "change": "-72%"
+    },
+    {
+      "case": "d",
+      "run": "repeat",
+      "afterSec": 3.1,
+      "beforeSec": 11.8,
+      "ok": true,
+      "overall": 100,
+      "change": "-74%"
+    },
+    {
+      "case": "a",
+      "run": "edit",
+      "afterSec": 40.0,
+      "beforeSec": 40.7,
+      "ok": true,
+      "overall": 100,
+      "change": "-2%"
+    },
+    {
+      "case": "b",
+      "run": "edit",
+      "afterSec": 77.0,
+      "beforeSec": 107.7,
+      "ok": true,
+      "overall": 98,
+      "change": "-29%"
+    },
+    {
+      "case": "c",
+      "run": "edit",
+      "afterSec": 87.7,
+      "beforeSec": 114.1,
+      "ok": true,
+      "overall": 99,
+      "change": "-23%"
+    },
+    {
+      "case": "d",
+      "run": "edit",
+      "afterSec": 66.8,
+      "beforeSec": 221.3,
+      "ok": true,
+      "overall": 100,
+      "change": "-70%"
+    }
+  ],
+  "results": [
+    {
+      "case": "a",
+      "run": "cold",
+      "ok": true,
+      "totalMs": 40190,
+      "directMs": 1115,
+      "groups": {
+        "planning": 24,
+        "preprocessing": 2,
+        "sound": 1090,
+        "validation": 4,
+        "qc": 4700,
+        "animatic": 8030,
+        "render": 26393
+      },
+      "stages": {
+        "intake": 3,
+        "assets": 1,
+        "brand": 1,
+        "audio": 0,
+        "modules": 8,
+        "director": 13,
+        "sound": 1090,
+        "validation": 4,
+        "qc-structure": 3095,
+        "contact-sheet": 101,
+        "animatic": 8030,
+        "render": 26393,
+        "qc-final": 1504
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 41360
+    },
+    {
+      "case": "a",
+      "run": "warm",
+      "ok": true,
+      "totalMs": 2453,
+      "directMs": 1108,
+      "groups": {
+        "planning": 26,
+        "preprocessing": 2,
+        "sound": 1082,
+        "validation": 3,
+        "qc": 1428,
+        "animatic": 2,
+        "render": 2
+      },
+      "stages": {
+        "intake": 3,
+        "assets": 1,
+        "brand": 1,
+        "audio": 0,
+        "modules": 11,
+        "director": 12,
+        "sound": 1082,
+        "validation": 3,
+        "qc-structure": 165,
+        "contact-sheet": 109,
+        "animatic": 2,
+        "render": 2,
+        "qc-final": 1154
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 3780
+    },
+    {
+      "case": "a",
+      "run": "repeat",
+      "ok": true,
+      "totalMs": 1525,
+      "directMs": 71,
+      "groups": {
+        "planning": 26,
+        "preprocessing": 2,
+        "sound": 47,
+        "validation": 3,
+        "qc": 1532,
+        "animatic": 2,
+        "render": 4
+      },
+      "stages": {
+        "intake": 3,
+        "assets": 1,
+        "brand": 1,
+        "audio": 0,
+        "modules": 9,
+        "director": 14,
+        "sound": 47,
+        "validation": 3,
+        "qc-structure": 181,
+        "contact-sheet": 109,
+        "animatic": 2,
+        "render": 4,
+        "qc-final": 1242
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 2831
+    },
+    {
+      "case": "b",
+      "run": "cold",
+      "ok": true,
+      "totalMs": 78430,
+      "directMs": 95,
+      "groups": {
+        "planning": 22,
+        "preprocessing": 21,
+        "sound": 56,
+        "validation": 4,
+        "qc": 16026,
+        "animatic": 17939,
+        "render": 44728
+      },
+      "stages": {
+        "intake": 3,
+        "assets": 18,
+        "brand": 3,
+        "audio": 0,
+        "modules": 3,
+        "director": 16,
+        "sound": 56,
+        "validation": 4,
+        "qc-structure": 10280,
+        "contact-sheet": 417,
+        "shared-elements": 2045,
+        "animatic": 17939,
+        "render": 44728,
+        "qc-final": 3284
+      },
+      "overall": 99,
+      "critical": 0,
+      "wallMs": 79799
+    },
+    {
+      "case": "b",
+      "run": "warm",
+      "ok": true,
+      "totalMs": 3215,
+      "directMs": 91,
+      "groups": {
+        "planning": 22,
+        "preprocessing": 22,
+        "sound": 47,
+        "validation": 4,
+        "qc": 3512,
+        "animatic": 3,
+        "render": 3
+      },
+      "stages": {
+        "intake": 3,
+        "assets": 19,
+        "brand": 3,
+        "audio": 0,
+        "modules": 3,
+        "director": 16,
+        "sound": 47,
+        "validation": 4,
+        "qc-structure": 703,
+        "contact-sheet": 419,
+        "shared-elements": 3,
+        "animatic": 3,
+        "render": 3,
+        "qc-final": 2387
+      },
+      "overall": 99,
+      "critical": 0,
+      "wallMs": 4436
+    },
+    {
+      "case": "b",
+      "run": "repeat",
+      "ok": true,
+      "totalMs": 3246,
+      "directMs": 96,
+      "groups": {
+        "planning": 22,
+        "preprocessing": 20,
+        "sound": 53,
+        "validation": 5,
+        "qc": 3506,
+        "animatic": 3,
+        "render": 5
+      },
+      "stages": {
+        "intake": 3,
+        "assets": 17,
+        "brand": 3,
+        "audio": 0,
+        "modules": 3,
+        "director": 16,
+        "sound": 53,
+        "validation": 5,
+        "qc-structure": 694,
+        "contact-sheet": 390,
+        "shared-elements": 5,
+        "animatic": 3,
+        "render": 5,
+        "qc-final": 2417
+      },
+      "overall": 99,
+      "critical": 0,
+      "wallMs": 4443
+    },
+    {
+      "case": "c",
+      "run": "cold",
+      "ok": true,
+      "totalMs": 84346,
+      "directMs": 2474,
+      "groups": {
+        "planning": 29,
+        "preprocessing": 24,
+        "sound": 2415,
+        "validation": 5,
+        "qc": 12487,
+        "animatic": 18300,
+        "render": 51307
+      },
+      "stages": {
+        "intake": 2,
+        "assets": 23,
+        "brand": 1,
+        "audio": 0,
+        "modules": 10,
+        "director": 17,
+        "sound": 2415,
+        "validation": 5,
+        "qc-structure": 8905,
+        "contact-sheet": 273,
+        "animatic": 18300,
+        "render": 51307,
+        "qc-final": 3309
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 85631
+    },
+    {
+      "case": "c",
+      "run": "warm",
+      "ok": true,
+      "totalMs": 5442,
+      "directMs": 2436,
+      "groups": {
+        "planning": 34,
+        "preprocessing": 32,
+        "sound": 2361,
+        "validation": 5,
+        "qc": 3236,
+        "animatic": 3,
+        "render": 3
+      },
+      "stages": {
+        "intake": 5,
+        "assets": 30,
+        "brand": 2,
+        "audio": 0,
+        "modules": 11,
+        "director": 18,
+        "sound": 2361,
+        "validation": 5,
+        "qc-structure": 507,
+        "contact-sheet": 260,
+        "animatic": 3,
+        "render": 3,
+        "qc-final": 2469
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 6711
+    },
+    {
+      "case": "c",
+      "run": "repeat",
+      "ok": true,
+      "totalMs": 3115,
+      "directMs": 91,
+      "groups": {
+        "planning": 27,
+        "preprocessing": 23,
+        "sound": 45,
+        "validation": 4,
+        "qc": 3246,
+        "animatic": 3,
+        "render": 6
+      },
+      "stages": {
+        "intake": 2,
+        "assets": 22,
+        "brand": 1,
+        "audio": 0,
+        "modules": 9,
+        "director": 16,
+        "sound": 45,
+        "validation": 4,
+        "qc-structure": 548,
+        "contact-sheet": 257,
+        "animatic": 3,
+        "render": 6,
+        "qc-final": 2441
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 4321
+    },
+    {
+      "case": "d",
+      "run": "cold",
+      "ok": true,
+      "totalMs": 73145,
+      "directMs": 517,
+      "groups": {
+        "planning": 23,
+        "preprocessing": 509,
+        "sound": 54,
+        "validation": 4,
+        "qc": 12149,
+        "animatic": 14632,
+        "render": 46140
+      },
+      "stages": {
+        "intake": 3,
+        "assets": 1,
+        "brand": 2,
+        "audio": 69,
+        "beats": 437,
+        "modules": 3,
+        "director": 17,
+        "sound": 54,
+        "validation": 4,
+        "qc-structure": 8724,
+        "contact-sheet": 333,
+        "animatic": 14632,
+        "render": 46140,
+        "qc-final": 3092
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 74392
+    },
+    {
+      "case": "d",
+      "run": "warm",
+      "ok": true,
+      "totalMs": 3199,
+      "directMs": 180,
+      "groups": {
+        "planning": 25,
+        "preprocessing": 168,
+        "sound": 73,
+        "validation": 4,
+        "qc": 3334,
+        "animatic": 4,
+        "render": 4
+      },
+      "stages": {
+        "intake": 3,
+        "assets": 1,
+        "brand": 2,
+        "audio": 81,
+        "beats": 84,
+        "modules": 3,
+        "director": 19,
+        "sound": 73,
+        "validation": 4,
+        "qc-structure": 686,
+        "contact-sheet": 347,
+        "animatic": 4,
+        "render": 4,
+        "qc-final": 2301
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 4437
+    },
+    {
+      "case": "d",
+      "run": "repeat",
+      "ok": true,
+      "totalMs": 3099,
+      "directMs": 166,
+      "groups": {
+        "planning": 22,
+        "preprocessing": 149,
+        "sound": 69,
+        "validation": 3,
+        "qc": 3210,
+        "animatic": 3,
+        "render": 3
+      },
+      "stages": {
+        "intake": 2,
+        "assets": 0,
+        "brand": 3,
+        "audio": 71,
+        "beats": 75,
+        "modules": 3,
+        "director": 17,
+        "sound": 69,
+        "validation": 3,
+        "qc-structure": 634,
+        "contact-sheet": 305,
+        "animatic": 3,
+        "render": 3,
+        "qc-final": 2271
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 4224
+    },
+    {
+      "case": "a",
+      "run": "edit",
+      "ok": true,
+      "totalMs": 39982,
+      "directMs": 1092,
+      "groups": {
+        "planning": 25,
+        "preprocessing": 2,
+        "sound": 1066,
+        "validation": 3,
+        "qc": 5181,
+        "animatic": 8360,
+        "render": 25402
+      },
+      "stages": {
+        "intake": 3,
+        "assets": 1,
+        "brand": 1,
+        "audio": 0,
+        "modules": 9,
+        "director": 13,
+        "sound": 1066,
+        "validation": 3,
+        "qc-structure": 3533,
+        "contact-sheet": 99,
+        "animatic": 8360,
+        "render": 25402,
+        "qc-final": 1549
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 41160
+    },
+    {
+      "case": "b",
+      "run": "edit",
+      "ok": true,
+      "totalMs": 76973,
+      "directMs": 103,
+      "groups": {
+        "planning": 22,
+        "preprocessing": 21,
+        "sound": 59,
+        "validation": 4,
+        "qc": 15539,
+        "animatic": 17211,
+        "render": 44442
+      },
+      "stages": {
+        "intake": 2,
+        "assets": 18,
+        "brand": 3,
+        "audio": 0,
+        "modules": 3,
+        "director": 17,
+        "sound": 59,
+        "validation": 4,
+        "qc-structure": 10010,
+        "contact-sheet": 372,
+        "shared-elements": 1791,
+        "animatic": 17211,
+        "render": 44442,
+        "qc-final": 3366
+      },
+      "overall": 98,
+      "critical": 0,
+      "wallMs": 78182
+    },
+    {
+      "case": "c",
+      "run": "edit",
+      "ok": true,
+      "totalMs": 87688,
+      "directMs": 2519,
+      "groups": {
+        "planning": 42,
+        "preprocessing": 27,
+        "sound": 2445,
+        "validation": 4,
+        "qc": 15873,
+        "animatic": 18152,
+        "render": 51637
+      },
+      "stages": {
+        "intake": 4,
+        "assets": 25,
+        "brand": 2,
+        "audio": 0,
+        "modules": 12,
+        "director": 26,
+        "sound": 2445,
+        "validation": 4,
+        "qc-structure": 11898,
+        "contact-sheet": 546,
+        "animatic": 18152,
+        "render": 51637,
+        "qc-final": 3429
+      },
+      "overall": 99,
+      "critical": 0,
+      "wallMs": 89029
+    },
+    {
+      "case": "d",
+      "run": "edit",
+      "ok": true,
+      "totalMs": 66824,
+      "directMs": 163,
+      "groups": {
+        "planning": 21,
+        "preprocessing": 160,
+        "sound": 59,
+        "validation": 4,
+        "qc": 3614,
+        "animatic": 15465,
+        "render": 47856
+      },
+      "stages": {
+        "intake": 2,
+        "assets": 1,
+        "brand": 2,
+        "audio": 77,
+        "beats": 80,
+        "modules": 3,
+        "director": 16,
+        "sound": 59,
+        "validation": 4,
+        "qc-structure": 539,
+        "contact-sheet": 317,
+        "animatic": 15465,
+        "render": 47856,
+        "qc-final": 2758
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 68124
+    }
+  ],
+  "before": [
+    {
+      "case": "a",
+      "run": "cold",
+      "ok": true,
+      "totalMs": 71618,
+      "directMs": 28,
+      "groups": {
+        "planning": 17,
+        "preprocessing": 3,
+        "validation": 4,
+        "qc": 37676,
+        "animatic": 9171,
+        "render": 24905
+      },
+      "stages": {
+        "intake": 4,
+        "assets": 1,
+        "brand": 2,
+        "audio": 0,
+        "director": 13,
+        "validation": 4,
+        "qc-structure": 35311,
+        "contact-sheet": 210,
+        "animatic": 9171,
+        "render": 24905,
+        "qc-final": 2155
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 73278
+    },
+    {
+      "case": "a",
+      "run": "warm",
+      "ok": true,
+      "totalMs": 2106,
+      "directMs": 28,
+      "groups": {
+        "planning": 17,
+        "preprocessing": 2,
+        "validation": 5,
+        "qc": 2269,
+        "animatic": 3,
+        "render": 3
+      },
+      "stages": {
+        "intake": 5,
+        "assets": 1,
+        "brand": 1,
+        "audio": 0,
+        "director": 12,
+        "validation": 5,
+        "qc-structure": 393,
+        "contact-sheet": 207,
+        "animatic": 3,
+        "render": 3,
+        "qc-final": 1669
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 3798
+    },
+    {
+      "case": "a",
+      "run": "repeat",
+      "ok": true,
+      "totalMs": 2181,
+      "directMs": 25,
+      "groups": {
+        "planning": 14,
+        "preprocessing": 2,
+        "validation": 4,
+        "qc": 2330,
+        "animatic": 4,
+        "render": 3
+      },
+      "stages": {
+        "intake": 2,
+        "assets": 1,
+        "brand": 1,
+        "audio": 0,
+        "director": 12,
+        "validation": 4,
+        "qc-structure": 451,
+        "contact-sheet": 199,
+        "animatic": 4,
+        "render": 3,
+        "qc-final": 1680
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 3666
+    },
+    {
+      "case": "b",
+      "run": "cold",
+      "ok": true,
+      "totalMs": 112629,
+      "directMs": 65,
+      "groups": {
+        "planning": 25,
+        "preprocessing": 30,
+        "validation": 5,
+        "qc": 18705,
+        "animatic": 24250,
+        "render": 70028
+      },
+      "stages": {
+        "intake": 4,
+        "assets": 25,
+        "brand": 5,
+        "audio": 0,
+        "director": 21,
+        "validation": 5,
+        "qc-structure": 13108,
+        "contact-sheet": 471,
+        "animatic": 24250,
+        "render": 70028,
+        "qc-final": 5126
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 114409
+    },
+    {
+      "case": "b",
+      "run": "warm",
+      "ok": true,
+      "totalMs": 5050,
+      "directMs": 60,
+      "groups": {
+        "planning": 22,
+        "preprocessing": 30,
+        "validation": 6,
+        "qc": 5504,
+        "animatic": 3,
+        "render": 4
+      },
+      "stages": {
+        "intake": 5,
+        "assets": 27,
+        "brand": 3,
+        "audio": 0,
+        "director": 17,
+        "validation": 6,
+        "qc-structure": 1012,
+        "contact-sheet": 537,
+        "animatic": 3,
+        "render": 4,
+        "qc-final": 3955
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 6779
+    },
+    {
+      "case": "b",
+      "run": "repeat",
+      "ok": true,
+      "totalMs": 4106,
+      "directMs": 56,
+      "groups": {
+        "planning": 19,
+        "preprocessing": 29,
+        "validation": 5,
+        "qc": 4463,
+        "animatic": 3,
+        "render": 11
+      },
+      "stages": {
+        "intake": 3,
+        "assets": 25,
+        "brand": 4,
+        "audio": 0,
+        "director": 16,
+        "validation": 5,
+        "qc-structure": 869,
+        "contact-sheet": 443,
+        "animatic": 3,
+        "render": 11,
+        "qc-final": 3151
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 5731
+    },
+    {
+      "case": "c",
+      "run": "cold",
+      "ok": true,
+      "totalMs": 111970,
+      "directMs": 57,
+      "groups": {
+        "planning": 16,
+        "preprocessing": 33,
+        "validation": 5,
+        "qc": 20210,
+        "animatic": 23488,
+        "render": 68501
+      },
+      "stages": {
+        "intake": 2,
+        "assets": 32,
+        "brand": 1,
+        "audio": 0,
+        "director": 14,
+        "validation": 5,
+        "qc-structure": 13697,
+        "contact-sheet": 351,
+        "animatic": 23488,
+        "render": 68501,
+        "qc-final": 6162
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 113656
+    },
+    {
+      "case": "c",
+      "run": "warm",
+      "ok": true,
+      "totalMs": 5712,
+      "directMs": 72,
+      "groups": {
+        "planning": 20,
+        "preprocessing": 43,
+        "validation": 5,
+        "qc": 6022,
+        "animatic": 3,
+        "render": 7
+      },
+      "stages": {
+        "intake": 4,
+        "assets": 41,
+        "brand": 2,
+        "audio": 0,
+        "director": 16,
+        "validation": 5,
+        "qc-structure": 816,
+        "contact-sheet": 411,
+        "animatic": 3,
+        "render": 7,
+        "qc-final": 4795
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 7655
+    },
+    {
+      "case": "c",
+      "run": "repeat",
+      "ok": true,
+      "totalMs": 5349,
+      "directMs": 64,
+      "groups": {
+        "planning": 20,
+        "preprocessing": 35,
+        "validation": 6,
+        "qc": 5657,
+        "animatic": 4,
+        "render": 7
+      },
+      "stages": {
+        "intake": 3,
+        "assets": 34,
+        "brand": 1,
+        "audio": 0,
+        "director": 17,
+        "validation": 6,
+        "qc-structure": 810,
+        "contact-sheet": 400,
+        "animatic": 4,
+        "render": 7,
+        "qc-final": 4447
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 7032
+    },
+    {
+      "case": "d",
+      "run": "cold",
+      "ok": false,
+      "totalMs": 235046,
+      "directMs": 608,
+      "groups": {
+        "planning": 20,
+        "preprocessing": 674,
+        "validation": 6,
+        "qc": 67939,
+        "animatic": 24112,
+        "render": 144657
+      },
+      "stages": {
+        "intake": 3,
+        "assets": 1,
+        "brand": 2,
+        "audio": 96,
+        "beats": 575,
+        "director": 17,
+        "validation": 6,
+        "qc-structure": 53594,
+        "contact-sheet": 2342,
+        "animatic": 24112,
+        "render": 144657,
+        "qc-final": 12003
+      },
+      "overall": 59,
+      "critical": 1,
+      "wallMs": 236703
+    },
+    {
+      "case": "d",
+      "run": "warm",
+      "ok": false,
+      "totalMs": 11574,
+      "directMs": 164,
+      "groups": {
+        "planning": 28,
+        "preprocessing": 248,
+        "validation": 6,
+        "qc": 13718,
+        "animatic": 4,
+        "render": 11
+      },
+      "stages": {
+        "intake": 3,
+        "assets": 0,
+        "brand": 2,
+        "audio": 121,
+        "beats": 125,
+        "director": 25,
+        "validation": 6,
+        "qc-structure": 4051,
+        "contact-sheet": 2352,
+        "animatic": 4,
+        "render": 11,
+        "qc-final": 7315
+      },
+      "overall": 59,
+      "critical": 1,
+      "wallMs": 13410
+    },
+    {
+      "case": "d",
+      "run": "repeat",
+      "ok": false,
+      "totalMs": 11756,
+      "directMs": 131,
+      "groups": {
+        "planning": 22,
+        "preprocessing": 192,
+        "validation": 5,
+        "qc": 13904,
+        "animatic": 6,
+        "render": 14
+      },
+      "stages": {
+        "intake": 4,
+        "assets": 1,
+        "brand": 3,
+        "audio": 92,
+        "beats": 96,
+        "director": 18,
+        "validation": 5,
+        "qc-structure": 4076,
+        "contact-sheet": 2326,
+        "animatic": 6,
+        "render": 14,
+        "qc-final": 7502
+      },
+      "overall": 59,
+      "critical": 1,
+      "wallMs": 13486
+    },
+    {
+      "case": "a",
+      "run": "edit",
+      "ok": true,
+      "totalMs": 40723,
+      "directMs": 25,
+      "groups": {
+        "planning": 18,
+        "preprocessing": 2,
+        "validation": 4,
+        "qc": 8126,
+        "animatic": 8787,
+        "render": 23932
+      },
+      "stages": {
+        "intake": 3,
+        "assets": 1,
+        "brand": 1,
+        "audio": 0,
+        "director": 15,
+        "validation": 4,
+        "qc-structure": 5837,
+        "contact-sheet": 203,
+        "animatic": 8787,
+        "render": 23932,
+        "qc-final": 2086
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 42197
+    },
+    {
+      "case": "b",
+      "run": "edit",
+      "ok": true,
+      "totalMs": 107733,
+      "directMs": 61,
+      "groups": {
+        "planning": 19,
+        "preprocessing": 34,
+        "validation": 5,
+        "qc": 17249,
+        "animatic": 24080,
+        "render": 66782
+      },
+      "stages": {
+        "intake": 3,
+        "assets": 31,
+        "brand": 3,
+        "audio": 0,
+        "director": 16,
+        "validation": 5,
+        "qc-structure": 12547,
+        "contact-sheet": 482,
+        "animatic": 24080,
+        "render": 66782,
+        "qc-final": 4220
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 109414
+    },
+    {
+      "case": "c",
+      "run": "edit",
+      "ok": true,
+      "totalMs": 114139,
+      "directMs": 72,
+      "groups": {
+        "planning": 21,
+        "preprocessing": 42,
+        "validation": 5,
+        "qc": 20185,
+        "animatic": 24536,
+        "render": 69660
+      },
+      "stages": {
+        "intake": 4,
+        "assets": 40,
+        "brand": 2,
+        "audio": 0,
+        "director": 17,
+        "validation": 5,
+        "qc-structure": 14009,
+        "contact-sheet": 363,
+        "animatic": 24536,
+        "render": 69660,
+        "qc-final": 5813
+      },
+      "overall": 100,
+      "critical": 0,
+      "wallMs": 115759
+    },
+    {
+      "case": "d",
+      "run": "edit",
+      "ok": false,
+      "totalMs": 221329,
+      "directMs": 152,
+      "groups": {
+        "planning": 29,
+        "preprocessing": 226,
+        "validation": 5,
+        "qc": 65302,
+        "animatic": 21156,
+        "render": 136911
+      },
+      "stages": {
+        "intake": 3,
+        "assets": 1,
+        "brand": 2,
+        "audio": 110,
+        "beats": 113,
+        "director": 26,
+        "validation": 5,
+        "qc-structure": 53208,
+        "contact-sheet": 2251,
+        "animatic": 21156,
+        "render": 136911,
+        "qc-final": 9843
+      },
+      "overall": 59,
+      "critical": 2,
+      "wallMs": 222928
+    }
+  ]
+}
