@@ -55,7 +55,7 @@ When the user gives a character (a sheet, several PNG poses, a layered SVG, one 
 - Phone / chat beats use `content.ui`; product beats need `content.product.image`; chart beats need `stats` / `series` with `source`.
 - One PNG: say plainly what it can do (camera, framing, breathing, 2.5D, typography) and what it cannot (new gestures, expressions, lip sync). Never promise impossible actions; the engine never fakes them.
 - Never redraw, recolour, stretch or restyle the character; never upload the artwork anywhere.
-- Review `qc/character-acting.png` (from `animatic`) and `character_direction.md` before the final render. Docs: `docs/CHARACTER_ENGINE.md` (+ FORMAT, POSES, RIGGING, QC, PERFORMANCE, TROUBLESHOOTING).
+- Review `qc/character-acting.png` (from `animatic`) and `character_direction.md` before the final render. Docs: `docs/CHARACTER_ENGINE.md` (format, poses, rigging, QC, performance and troubleshooting are in `docs/CHARACTER_*.md`, or appended to CHARACTER_ENGINE.md in the claude.ai upload).
 
 ## 3. Run
 
