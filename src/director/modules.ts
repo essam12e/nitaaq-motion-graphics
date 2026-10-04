@@ -32,6 +32,7 @@ const has = (re: RegExp, ...parts: (string | undefined)[]) => re.test(parts.filt
 /** Recognise the production genre (explicit `genre` wins). */
 export function classifyGenre(brief: Brief): GenreDecision {
   if (brief.genre && brief.genre !== 'auto') return { genre: brief.genre, reason: 'requested', explicit: true };
+  if (brief.character) return { genre: 'character', reason: 'a character performs the film (character art supplied)', explicit: false };
   const c = brief.content;
   const req = [brief.request, brief.industry, ...(brief.tone ?? [])].join(' ');
   const blocks = contentBlocks(brief);
@@ -111,6 +112,13 @@ const MODULES: ModuleDef[] = [
   { id: 'gsap', title: 'Web Animation / GSAP', scenes: ['gsap-sequence'], needs: (c) => (c.brief.preferences.gsap || (c.genre === 'web-ui' && c.brief.preferences.gsap !== false) ? 'complex staggered UI timeline' : null) },
   { id: 'soundtrack', title: 'Code-Generated Soundtrack', needs: (c) => wantsSoundtrack(c), load: () => import('../audio/soundtrack/compose') },
   { id: 'beat-engine', title: 'Beat engine', needs: (c) => (c.hasMusic && c.brief.audio.beatSync !== false ? 'music supplied' : null) },
+  {
+    id: 'character',
+    title: 'Character Motion Engine',
+    scenes: ['character-stage', 'character-phone', 'character-product', 'character-data', 'character-cta'],
+    needs: (c) => (c.brief.character ? 'character art supplied — a character performs the script' : null),
+    load: () => import('../node/character/film'),
+  },
   { id: 'reference', title: 'Reference analysis', needs: (c) => (c.brief.reference ? 'style reference supplied' : null) },
 ];
 for (const m of MODULES) if (!ModuleRegistry.has(m.id)) ModuleRegistry.register(m);

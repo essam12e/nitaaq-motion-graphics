@@ -42,6 +42,20 @@ export interface ProbeMedia {
   opacity: number;
 }
 
+export interface ProbeCharacter {
+  scene: string;
+  pose: string;
+  mode: string;
+  size: string;
+  pxPerHead: number;
+  mirror: boolean;
+  side: string;
+  textSide: string;
+  rect: { x: number; y: number; width: number; height: number };
+  head: { x: number; y: number; width: number; height: number };
+  opacity: number;
+}
+
 export interface ProbeResult {
   frame: number;
   scenes: { id: string; type: string; variant: string; opacity: number }[];
@@ -49,6 +63,8 @@ export interface ProbeResult {
   media: ProbeMedia[];
   /** Large visual containers (device/browser frames, cards) for composition checks. */
   boxes: { scene: string; rect: { x: number; y: number; width: number; height: number }; opacity: number }[];
+  /** Characters on screen (Character Motion Engine): art + head boxes after every transform. */
+  characters?: ProbeCharacter[];
   errors: { scene: string; error: string }[];
   fonts: unknown;
   debugOverlay: boolean;
@@ -151,6 +167,23 @@ export function collectProbe(frame: number, width: number, height: number): Prob
     };
   });
   const boxes = Array.from(document.querySelectorAll('[data-qc="box"]')).map((el) => ({ scene: sceneOf(el), rect: rectOf(el), opacity: effOpacity(el) }));
+  const characters: ProbeCharacter[] = Array.from(document.querySelectorAll('[data-qc="character"]')).map((el) => {
+    const art = el.querySelector('[data-qc-art]') ?? el;
+    const head = el.querySelector('[data-qc-head-marker]');
+    return {
+      scene: sceneOf(el),
+      pose: el.getAttribute('data-qc-pose') ?? '',
+      mode: el.getAttribute('data-qc-mode') ?? '',
+      size: el.getAttribute('data-qc-size') ?? '',
+      pxPerHead: Number(el.getAttribute('data-qc-px-per-head') ?? 0),
+      mirror: el.getAttribute('data-qc-mirror') === '1',
+      side: el.getAttribute('data-qc-side') ?? '',
+      textSide: el.getAttribute('data-qc-text-side') ?? '',
+      rect: rectOf(art),
+      head: head ? rectOf(head) : rectOf(art),
+      opacity: effOpacity(art),
+    };
+  });
   const errors = Array.from(document.querySelectorAll('[data-qc="scene-error"]')).map((el) => ({
     scene: el.getAttribute('data-qc-scene') ?? '',
     error: el.getAttribute('data-qc-error') ?? 'unknown',
@@ -161,6 +194,7 @@ export function collectProbe(frame: number, width: number, height: number): Prob
     texts,
     media,
     boxes,
+    characters,
     errors,
     fonts: (window as unknown as { __AMD_FONTS?: unknown }).__AMD_FONTS ?? null,
     debugOverlay: Boolean(document.querySelector('[data-qc="debug-overlay"]')),

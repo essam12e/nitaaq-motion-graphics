@@ -7,11 +7,14 @@ brief.json ─► INTAKE (few questions; logo question asked when no logo) ─�
    ─► GENRE (ad / product / launch / logo / data / map / explainer / whiteboard / illustrated / kinetic …)
    ─► MODULE SELECTION (core always on; map / soundtrack / gsap / logo / variants import()-ed only if needed)
    │
+   ├─► CHARACTER (brief.character → package: poses / rig / bible / pose library, cached by hash; lazy module)
    ├─► BRAND (logo → palette + logo structure, cached)  ├─► REFERENCE (→ reference_style.json)
    ├─► ASSETS (byte-identical copies)                   ├─► BEATS (music → beats.json, cached)
    │                                                    └─► CAPTURE (site → real screenshot)   [parallel, lazy]
    ▼
 PLAN (arc, pace, style) ─► STORYBOARD (recipes → families; user material never dropped)
+   │   character film: CHARACTER DIRECTOR (line → intent → phases, pose, shot, camera, pose cut) replaces the recipes;
+   │   pose cuts become transitions; the CHARACTER ACTOR's exact event anchors feed the Sound Director
    ─► CREATIVE DIRECTOR (personality, motion jobs, hero, camera budget, beat sync)
    ─► TEXT MOTION PLAN + TRANSITION ENGINE (meaning-driven, shared elements planned)
    ─► COMPILE → video.json + project memory files
@@ -34,11 +37,12 @@ PLAN (arc, pace, style) ─► STORYBOARD (recipes → families; user material n
 | Reference / perf / cache | `src/reference/`, `src/perf/`, `src/cache/` | reference analysis, stage timer + effect budget, content-addressed cache. |
 | Motion | `src/motion/`, `src/text-motion/`, `src/transitions/` | physics presets (12), Animation Principles Engine (mass, anticipation, follow-through, arcs, squash, sound anchors), text-motion registry (27 families) + planner, transition registry (30) + meaning-driven chooser. |
 | Audio | `src/audio/` | beat engine, motion events + anchors, SFX family registry (32 families, 180 variants, synthesised), Sound Director, mix, procedural soundtrack (`soundtrack/compose.ts`, 8 styles). |
+| Character | `src/character/`, `src/node/character/`, `src/scenes/character/`, `src/qc/character-qc.ts` | Pure: schema (package format), director (line reading, state machine, shot plan, cuts), actor (springs, anticipation, overlap, secondary motion, idle, talk, exact event anchors), layout (pixels-per-head placement, RTL screen direction), rig + gestures (2D rig solve, arm reach, face states), library (missing-pose strategy, complexity), semantics + silhouette (pose classification, fingerprint). Node: package (prepare, cache, library), ingest (sheet detection, matte), svg (layered SVG → rig), film (character storyboard, events), preview (acting sheet). 5 scene families. See CHARACTER_ENGINE.md. |
 | Brand / illustration / maps | `src/brand/`, `src/illustration/`, `src/maps/` | brand-motion.json, logo structure + reveal choice, illustration registry (seeded vector art), GeoJSON projection and route paths. |
 | Design rules | `design/banned-patterns.json`, `src/design/` | banned generic looks (spec level), clean background kinds and pattern fallback. |
 | Node orchestration | `src/node/` | `direct` (ingest files byte-identical, logo analysis, voice probe/segmentation, TTS, reference + beats in parallel, capture), `recompose` (multi-aspect), `capture` (website screenshot), `beats` (decode + cues), `manifest`, `project-files` (memory files), `render`, `produce` (validation → QC passes → shared rects → sound stage → render → QC → repair loop), `sound` (film events, sfx-history, plan files), `shared-rects` (measured shared-element rects), `brand-motion-store`, `logo-structure`, `preflight`, `audio` (ffprobe, silencedetect, loudness, cleanup), `tts` (VoiceProvider), `fonts` (Arabic coverage check), `assets`, `workspace`, `bundle` (cached Remotion bundle). |
 | Engine (React/Remotion) | `src/engine/` | `VideoComposition` knows only the SceneRegistry: timeline, transitions, background/texture, per-scene layout scale/offset, audio (voice, music with ducking, SFX), QC probe (qc mode only). |
-| Scenes | `src/scenes/` | 88 families / 257 variants as plugins: `defineScene(manifest, Component)`; manifest = Zod content schema, variants, durations, beats, energy, SFX cues, aspect preferences, text capacity, example. `SceneRegistry.register/alias`. |
+| Scenes | `src/scenes/` | 93 families / 268 variants as plugins: `defineScene(manifest, Component)`; manifest = Zod content schema, variants, durations, beats, energy, SFX cues, aspect preferences, text capacity, example. `SceneRegistry.register/alias`. |
 | Design system | `src/styles/`, `src/typography/`, `src/layout/`, `src/motion/`, `src/components/`, `src/brand/` | Style tokens (24 presets), font registry (11 families, local woff2), Arabic shaping helpers + text fitter, canvas profiles and platform safe areas, motion primitives (easing, springs, camera, parallax, count-up), shared components (Text, Surface, Icon, Media, mockups), colour science (OKLCH, WCAG contrast), logo analyzer + palette derivation. |
 | QC | `src/qc/` | `quality.ts` (structural + final technical QC, scores, acceptance, critique, contact + phone sheets), `audio-qc.ts` (SFX repetition / density / sync / voice clash + motion variety), `pattern-detect.ts` (dot/grid/particle detector), `probes.ts` (cached parallel DOM probes), `repair-loop.ts` (finding → safe spec change). See QUALITY.md. |
 | Validation | `src/validation/` | Static validation (issues with severity) + deterministic repair with a repair log. |
@@ -66,7 +70,7 @@ PLAN (arc, pace, style) ─► STORYBOARD (recipes → families; user material n
 
 ## Paths
 
-`MOTION_WORKSPACE` (default `./workspace`), `MOTION_UPLOADS`, `MOTION_OUTPUT`, `MOTION_CACHE`. Projects live in `<workspace>/projects/<id>/` with `brief.json`, `plan.json`, `video.json`, the memory files (`project_brief.md`, `brand.json`, `reference_style.json`, `assets_manifest.json`, `storyboard.json`, `shotlist.json`, `motion_spec.json`, `audio_cues.json`, `beats.json`, `sound-plan.json`, `audio-qc.json`, `brand-motion.json`, `quality_report.json`, `performance_report.json`, `review_log.md`, `ANIMATION_GUIDE.md` for long-form), `assets/`, `audio/`, `fonts/`, `qc/`, `renders/`. Cache: `.cache/nitaaq-motion/` (see PERFORMANCE.md).
+`MOTION_WORKSPACE` (default `./workspace`), `MOTION_UPLOADS`, `MOTION_OUTPUT`, `MOTION_CACHE`. Projects live in `<workspace>/projects/<id>/` with `brief.json`, `plan.json`, `video.json`, the memory files (`project_brief.md`, `brand.json`, `reference_style.json`, `assets_manifest.json`, `storyboard.json`, `shotlist.json`, `motion_spec.json`, `audio_cues.json`, `beats.json`, `sound-plan.json`, `audio-qc.json`, `brand-motion.json`, `quality_report.json`, `performance_report.json`, `review_log.md`, `ANIMATION_GUIDE.md` for long-form), `assets/`, `audio/`, `fonts/`, `qc/`, `renders/`. Cache: `.cache/nitaaq-motion/` (see PERFORMANCE.md); prepared characters in `.cache/nitaaq-motion/characters/<hash>/`, saved ones in `<workspace>/characters/<name>/`.
 
 ## Claude Code and Codex
 

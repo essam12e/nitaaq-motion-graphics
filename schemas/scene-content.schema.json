@@ -3306,5 +3306,2958 @@
       "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
+  },
+  "data-table": {
+    "variants": [
+      "rows",
+      "highlight"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 24
+            }
+          },
+          "minItems": 2,
+          "maxItems": 6
+        },
+        "highlightRow": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "columns",
+        "rows"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "form-fill": {
+    "variants": [
+      "card",
+      "phone"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 24
+              },
+              "value": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 36
+              }
+            },
+            "required": [
+              "label",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 4
+        },
+        "button": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "done": {
+          "type": "string",
+          "maxLength": 40
+        }
+      },
+      "required": [
+        "fields",
+        "button"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "integration-hub": {
+    "variants": [
+      "orbit",
+      "columns"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "center": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30
+        },
+        "centerLogo": {
+          "type": "string"
+        },
+        "apps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20
+              },
+              "icon": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 3,
+          "maxItems": 8
+        }
+      },
+      "required": [
+        "center",
+        "apps"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "landing-page": {
+    "variants": [
+      "scroll",
+      "hero"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "screenshot": {
+          "type": "string"
+        },
+        "pageTitle": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "pageSubtitle": {
+          "type": "string",
+          "maxLength": 140
+        },
+        "pageCta": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "maxItems": 3
+        }
+      },
+      "required": [
+        "pageTitle"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "order-success": {
+    "variants": [
+      "card",
+      "full"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "orderId": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "eta": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "button": {
+          "type": "string",
+          "maxLength": 28
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "product-details": {
+    "variants": [
+      "callouts",
+      "list"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "specs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 36
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "price": {
+          "type": "string",
+          "maxLength": 24
+        }
+      },
+      "required": [
+        "image",
+        "specs"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "state-flow": {
+    "variants": [
+      "morph",
+      "morph-trail"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "states": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "logo",
+                  "search",
+                  "result",
+                  "product",
+                  "cart",
+                  "checkout",
+                  "success"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "value": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "image": {
+                "type": "string"
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 32
+                },
+                "maxItems": 3
+              }
+            },
+            "required": [
+              "kind",
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 7
+        }
+      },
+      "required": [
+        "states"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "workflow": {
+    "variants": [
+      "path",
+      "stack"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 36
+              },
+              "icon": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 3,
+          "maxItems": 6
+        }
+      },
+      "required": [
+        "steps"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "kinetic-mixed": {
+    "variants": [
+      "stacked",
+      "interlock"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "arabic": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "english": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "arabic",
+        "english"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "kinetic-number": {
+    "variants": [
+      "count",
+      "roll",
+      "split"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "prefix": {
+          "type": "string",
+          "maxLength": 8
+        },
+        "suffix": {
+          "type": "string",
+          "maxLength": 16
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        }
+      },
+      "required": [
+        "value",
+        "label",
+        "source"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "kinetic-replace": {
+    "variants": [
+      "slot"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "prefix": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "words": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20
+          },
+          "minItems": 2,
+          "maxItems": 6
+        },
+        "suffix": {
+          "type": "string",
+          "maxLength": 50
+        }
+      },
+      "required": [
+        "prefix",
+        "words"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "kinetic-sequence": {
+    "variants": [
+      "impact",
+      "build",
+      "rhythm"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "minItems": 1,
+          "maxItems": 6
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "lines"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "kinetic-stack": {
+    "variants": [
+      "centered",
+      "offset"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "minItems": 2,
+          "maxItems": 5
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "kicker": {
+          "type": "string",
+          "maxLength": 40
+        }
+      },
+      "required": [
+        "lines"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "logo-animation": {
+    "variants": [
+      "mask",
+      "stroke",
+      "shape-assembly",
+      "scale",
+      "spotlight",
+      "light-sweep",
+      "split-assembly",
+      "typography-reveal",
+      "icon-wordmark",
+      "depth",
+      "minimal-premium",
+      "energetic"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "logo": {
+          "type": "string"
+        },
+        "tagline": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "structure": {
+          "type": "object",
+          "properties": {
+            "layout": {
+              "type": "string"
+            },
+            "contentBox": {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "w": {
+                  "type": "number"
+                },
+                "h": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "x",
+                "y",
+                "w",
+                "h"
+              ],
+              "additionalProperties": false
+            },
+            "parts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "symbol",
+                      "wordmark"
+                    ]
+                  },
+                  "rect": {
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "w": {
+                        "type": "number"
+                      },
+                      "h": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y",
+                      "w",
+                      "h"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "role",
+                  "rect"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            },
+            "symmetry": {
+              "type": "object",
+              "properties": {
+                "horizontal": {
+                  "type": "number"
+                },
+                "vertical": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "horizontal",
+                "vertical"
+              ],
+              "additionalProperties": false
+            },
+            "dominantDirection": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "layout",
+            "contentBox",
+            "symmetry",
+            "dominantDirection"
+          ],
+          "additionalProperties": false
+        },
+        "revealReason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "feature-montage": {
+    "variants": [
+      "flash",
+      "rail"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "minItems": 2,
+          "maxItems": 8
+        },
+        "image": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 80
+        }
+      },
+      "required": [
+        "features"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "product-detail": {
+    "variants": [
+      "macro",
+      "callouts",
+      "specs"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "value": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "at": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "y": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 5
+        }
+      },
+      "required": [
+        "image",
+        "details"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "product-hero": {
+    "variants": [
+      "drop-land",
+      "rim-light",
+      "dark-reveal"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "price": {
+          "type": "string",
+          "maxLength": 24
+        }
+      },
+      "required": [
+        "image"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "tease-reveal": {
+    "variants": [
+      "slit",
+      "countdown",
+      "word-tease"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "tease": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "maxItems": 3
+        },
+        "reveal": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "image": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "maxLength": 40
+        }
+      },
+      "required": [
+        "reveal"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "map-story": {
+    "variants": [
+      "focus",
+      "regions",
+      "pins",
+      "route"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 140
+        },
+        "geo": {
+          "type": "object",
+          "properties": {
+            "viewBox": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "land": {
+              "type": "string"
+            },
+            "focus": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "label",
+                    "path"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "regions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "cx": {
+                    "type": "number"
+                  },
+                  "cy": {
+                    "type": "number"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "path",
+                  "cx",
+                  "cy"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            },
+            "pins": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "value": {
+                    "type": "string"
+                  },
+                  "capital": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                },
+                "required": [
+                  "id",
+                  "label",
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            },
+            "routes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string"
+                  },
+                  "to": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "length": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "from",
+                  "to",
+                  "path",
+                  "length"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            },
+            "source": {
+              "type": "string"
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            }
+          },
+          "required": [
+            "viewBox",
+            "land",
+            "focus",
+            "source"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "geo"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "diagram-flow": {
+    "variants": [
+      "linear",
+      "hub",
+      "cycle"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              },
+              "subject": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 6
+        },
+        "center": {
+          "type": "string",
+          "maxLength": 32
+        }
+      },
+      "required": [
+        "nodes"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "illustration-scene": {
+    "variants": [
+      "hero",
+      "trio",
+      "explain"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "subject": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 40
+              }
+            },
+            "required": [
+              "subject"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 3
+        },
+        "style": {
+          "type": "string",
+          "enum": [
+            "flat",
+            "line",
+            "duotone"
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "whiteboard": {
+    "variants": [
+      "draw",
+      "write"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "subject": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 4
+        }
+      },
+      "required": [
+        "steps"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "zero-asset-sequence": {
+    "variants": [
+      "shapes",
+      "lines",
+      "orbit"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "minItems": 1,
+          "maxItems": 3
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "seed": {
+          "type": [
+            "string",
+            "number"
+          ]
+        }
+      },
+      "required": [
+        "lines"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "data-story": {
+    "variants": [
+      "bar",
+      "line",
+      "share",
+      "change",
+      "big-number"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "insight": {
+          "type": "string",
+          "maxLength": 140
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 24
+          },
+          "minItems": 1,
+          "maxItems": 8
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 1,
+          "maxItems": 8
+        },
+        "prefix": {
+          "type": "string",
+          "maxLength": 8
+        },
+        "suffix": {
+          "type": "string",
+          "maxLength": 12
+        },
+        "decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "emphasis": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "labels",
+        "values",
+        "source"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "gsap-sequence": {
+    "variants": [
+      "stagger-grid",
+      "cascade"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 36
+              },
+              "value": {
+                "type": "string",
+                "maxLength": 20
+              }
+            },
+            "required": [
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 8
+        },
+        "emphasis": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "character-cta": {
+    "variants": [
+      "button",
+      "logo"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "line": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sub": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "shot": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "poseId": {
+              "type": "string"
+            },
+            "line": {
+              "type": "string"
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "left",
+                "right",
+                "center"
+              ]
+            },
+            "textSide": {
+              "type": "string",
+              "enum": [
+                "left",
+                "right",
+                "top",
+                "bottom"
+              ]
+            },
+            "mirror": {
+              "type": "boolean",
+              "default": false
+            },
+            "camera": {
+              "type": "object",
+              "properties": {
+                "size": {
+                  "type": "string",
+                  "enum": [
+                    "wide",
+                    "medium",
+                    "medium-close",
+                    "close"
+                  ]
+                },
+                "move": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "push",
+                    "pull",
+                    "drift",
+                    "handheld"
+                  ]
+                }
+              },
+              "required": [
+                "size",
+                "move"
+              ],
+              "additionalProperties": true
+            },
+            "phases": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "phase": {
+                    "type": "string"
+                  },
+                  "from": {
+                    "type": "number"
+                  },
+                  "to": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "phase",
+                  "from",
+                  "to"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "cut": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": true
+            },
+            "intent": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string"
+                },
+                "gesture": {
+                  "type": "string"
+                },
+                "gaze": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "state",
+                "gesture",
+                "gaze"
+              ],
+              "additionalProperties": true
+            },
+            "idle": {
+              "type": "string"
+            },
+            "talk": {
+              "type": "number"
+            },
+            "lockFace": {
+              "type": "boolean"
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "subtle",
+                "normal",
+                "exaggerated"
+              ]
+            },
+            "enter": {
+              "type": "boolean"
+            },
+            "exit": {
+              "type": "boolean",
+              "default": false
+            },
+            "overlay": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "poseId",
+            "line",
+            "side",
+            "textSide",
+            "camera",
+            "phases",
+            "cut",
+            "intent",
+            "idle",
+            "talk",
+            "lockFace",
+            "motion",
+            "enter"
+          ],
+          "additionalProperties": true
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "anchors": {
+                "type": "object",
+                "properties": {
+                  "start": {
+                    "type": "number"
+                  },
+                  "peak": {
+                    "type": "number"
+                  },
+                  "contact": {
+                    "type": "number"
+                  },
+                  "settle": {
+                    "type": "number"
+                  },
+                  "completion": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "start",
+                  "peak",
+                  "contact",
+                  "settle",
+                  "completion"
+                ],
+                "additionalProperties": false
+              },
+              "importance": {
+                "type": "number"
+              },
+              "direction": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "anchors",
+              "importance"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "speech": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "number"
+              },
+              "end": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "button": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "contact": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "logo": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "line",
+        "shot"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "character-data": {
+    "variants": [
+      "stat",
+      "bars"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "line": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sub": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "shot": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "poseId": {
+              "type": "string"
+            },
+            "line": {
+              "type": "string"
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "left",
+                "right",
+                "center"
+              ]
+            },
+            "textSide": {
+              "type": "string",
+              "enum": [
+                "left",
+                "right",
+                "top",
+                "bottom"
+              ]
+            },
+            "mirror": {
+              "type": "boolean",
+              "default": false
+            },
+            "camera": {
+              "type": "object",
+              "properties": {
+                "size": {
+                  "type": "string",
+                  "enum": [
+                    "wide",
+                    "medium",
+                    "medium-close",
+                    "close"
+                  ]
+                },
+                "move": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "push",
+                    "pull",
+                    "drift",
+                    "handheld"
+                  ]
+                }
+              },
+              "required": [
+                "size",
+                "move"
+              ],
+              "additionalProperties": true
+            },
+            "phases": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "phase": {
+                    "type": "string"
+                  },
+                  "from": {
+                    "type": "number"
+                  },
+                  "to": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "phase",
+                  "from",
+                  "to"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "cut": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": true
+            },
+            "intent": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string"
+                },
+                "gesture": {
+                  "type": "string"
+                },
+                "gaze": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "state",
+                "gesture",
+                "gaze"
+              ],
+              "additionalProperties": true
+            },
+            "idle": {
+              "type": "string"
+            },
+            "talk": {
+              "type": "number"
+            },
+            "lockFace": {
+              "type": "boolean"
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "subtle",
+                "normal",
+                "exaggerated"
+              ]
+            },
+            "enter": {
+              "type": "boolean"
+            },
+            "exit": {
+              "type": "boolean",
+              "default": false
+            },
+            "overlay": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "poseId",
+            "line",
+            "side",
+            "textSide",
+            "camera",
+            "phases",
+            "cut",
+            "intent",
+            "idle",
+            "talk",
+            "lockFace",
+            "motion",
+            "enter"
+          ],
+          "additionalProperties": true
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "anchors": {
+                "type": "object",
+                "properties": {
+                  "start": {
+                    "type": "number"
+                  },
+                  "peak": {
+                    "type": "number"
+                  },
+                  "contact": {
+                    "type": "number"
+                  },
+                  "settle": {
+                    "type": "number"
+                  },
+                  "completion": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "start",
+                  "peak",
+                  "contact",
+                  "settle",
+                  "completion"
+                ],
+                "additionalProperties": false
+              },
+              "importance": {
+                "type": "number"
+              },
+              "direction": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "anchors",
+              "importance"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "speech": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "number"
+              },
+              "end": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "stat": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "number"
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            },
+            "prefix": {
+              "type": "string"
+            },
+            "suffix": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "value",
+            "label",
+            "source"
+          ],
+          "additionalProperties": false
+        },
+        "series": {
+          "type": "object",
+          "properties": {
+            "labels": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 2,
+              "maxItems": 6
+            },
+            "values": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 6
+            },
+            "suffix": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "labels",
+            "values",
+            "source"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "line",
+        "shot"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "character-phone": {
+    "variants": [
+      "phone",
+      "chat",
+      "typing"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "line": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sub": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "shot": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "poseId": {
+              "type": "string"
+            },
+            "line": {
+              "type": "string"
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "left",
+                "right",
+                "center"
+              ]
+            },
+            "textSide": {
+              "type": "string",
+              "enum": [
+                "left",
+                "right",
+                "top",
+                "bottom"
+              ]
+            },
+            "mirror": {
+              "type": "boolean",
+              "default": false
+            },
+            "camera": {
+              "type": "object",
+              "properties": {
+                "size": {
+                  "type": "string",
+                  "enum": [
+                    "wide",
+                    "medium",
+                    "medium-close",
+                    "close"
+                  ]
+                },
+                "move": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "push",
+                    "pull",
+                    "drift",
+                    "handheld"
+                  ]
+                }
+              },
+              "required": [
+                "size",
+                "move"
+              ],
+              "additionalProperties": true
+            },
+            "phases": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "phase": {
+                    "type": "string"
+                  },
+                  "from": {
+                    "type": "number"
+                  },
+                  "to": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "phase",
+                  "from",
+                  "to"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "cut": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": true
+            },
+            "intent": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string"
+                },
+                "gesture": {
+                  "type": "string"
+                },
+                "gaze": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "state",
+                "gesture",
+                "gaze"
+              ],
+              "additionalProperties": true
+            },
+            "idle": {
+              "type": "string"
+            },
+            "talk": {
+              "type": "number"
+            },
+            "lockFace": {
+              "type": "boolean"
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "subtle",
+                "normal",
+                "exaggerated"
+              ]
+            },
+            "enter": {
+              "type": "boolean"
+            },
+            "exit": {
+              "type": "boolean",
+              "default": false
+            },
+            "overlay": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "poseId",
+            "line",
+            "side",
+            "textSide",
+            "camera",
+            "phases",
+            "cut",
+            "intent",
+            "idle",
+            "talk",
+            "lockFace",
+            "motion",
+            "enter"
+          ],
+          "additionalProperties": true
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "anchors": {
+                "type": "object",
+                "properties": {
+                  "start": {
+                    "type": "number"
+                  },
+                  "peak": {
+                    "type": "number"
+                  },
+                  "contact": {
+                    "type": "number"
+                  },
+                  "settle": {
+                    "type": "number"
+                  },
+                  "completion": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "start",
+                  "peak",
+                  "contact",
+                  "settle",
+                  "completion"
+                ],
+                "additionalProperties": false
+              },
+              "importance": {
+                "type": "number"
+              },
+              "direction": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "anchors",
+              "importance"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "speech": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "number"
+              },
+              "end": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "screen": {
+          "type": "object",
+          "properties": {
+            "appName": {
+              "type": "string",
+              "maxLength": 30
+            },
+            "headline": {
+              "type": "string",
+              "maxLength": 60
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "maxItems": 4
+            },
+            "button": {
+              "type": "string",
+              "maxLength": 24
+            },
+            "screenshot": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "enum": [
+                  "me",
+                  "them"
+                ]
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              }
+            },
+            "required": [
+              "from",
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 5
+        },
+        "contact": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "typed": {
+          "type": "string",
+          "maxLength": 80
+        }
+      },
+      "required": [
+        "line",
+        "shot"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "character-product": {
+    "variants": [
+      "present"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "line": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sub": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "shot": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "poseId": {
+              "type": "string"
+            },
+            "line": {
+              "type": "string"
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "left",
+                "right",
+                "center"
+              ]
+            },
+            "textSide": {
+              "type": "string",
+              "enum": [
+                "left",
+                "right",
+                "top",
+                "bottom"
+              ]
+            },
+            "mirror": {
+              "type": "boolean",
+              "default": false
+            },
+            "camera": {
+              "type": "object",
+              "properties": {
+                "size": {
+                  "type": "string",
+                  "enum": [
+                    "wide",
+                    "medium",
+                    "medium-close",
+                    "close"
+                  ]
+                },
+                "move": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "push",
+                    "pull",
+                    "drift",
+                    "handheld"
+                  ]
+                }
+              },
+              "required": [
+                "size",
+                "move"
+              ],
+              "additionalProperties": true
+            },
+            "phases": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "phase": {
+                    "type": "string"
+                  },
+                  "from": {
+                    "type": "number"
+                  },
+                  "to": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "phase",
+                  "from",
+                  "to"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "cut": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": true
+            },
+            "intent": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string"
+                },
+                "gesture": {
+                  "type": "string"
+                },
+                "gaze": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "state",
+                "gesture",
+                "gaze"
+              ],
+              "additionalProperties": true
+            },
+            "idle": {
+              "type": "string"
+            },
+            "talk": {
+              "type": "number"
+            },
+            "lockFace": {
+              "type": "boolean"
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "subtle",
+                "normal",
+                "exaggerated"
+              ]
+            },
+            "enter": {
+              "type": "boolean"
+            },
+            "exit": {
+              "type": "boolean",
+              "default": false
+            },
+            "overlay": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "poseId",
+            "line",
+            "side",
+            "textSide",
+            "camera",
+            "phases",
+            "cut",
+            "intent",
+            "idle",
+            "talk",
+            "lockFace",
+            "motion",
+            "enter"
+          ],
+          "additionalProperties": true
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "anchors": {
+                "type": "object",
+                "properties": {
+                  "start": {
+                    "type": "number"
+                  },
+                  "peak": {
+                    "type": "number"
+                  },
+                  "contact": {
+                    "type": "number"
+                  },
+                  "settle": {
+                    "type": "number"
+                  },
+                  "completion": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "start",
+                  "peak",
+                  "contact",
+                  "settle",
+                  "completion"
+                ],
+                "additionalProperties": false
+              },
+              "importance": {
+                "type": "number"
+              },
+              "direction": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "anchors",
+              "importance"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "speech": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "number"
+              },
+              "end": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "product": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "price": {
+          "type": "string",
+          "maxLength": 30
+        }
+      },
+      "required": [
+        "line",
+        "shot",
+        "product"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "character-stage": {
+    "variants": [
+      "side",
+      "bubble",
+      "title"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "line": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sub": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "shot": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "poseId": {
+              "type": "string"
+            },
+            "line": {
+              "type": "string"
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "left",
+                "right",
+                "center"
+              ]
+            },
+            "textSide": {
+              "type": "string",
+              "enum": [
+                "left",
+                "right",
+                "top",
+                "bottom"
+              ]
+            },
+            "mirror": {
+              "type": "boolean",
+              "default": false
+            },
+            "camera": {
+              "type": "object",
+              "properties": {
+                "size": {
+                  "type": "string",
+                  "enum": [
+                    "wide",
+                    "medium",
+                    "medium-close",
+                    "close"
+                  ]
+                },
+                "move": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "push",
+                    "pull",
+                    "drift",
+                    "handheld"
+                  ]
+                }
+              },
+              "required": [
+                "size",
+                "move"
+              ],
+              "additionalProperties": true
+            },
+            "phases": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "phase": {
+                    "type": "string"
+                  },
+                  "from": {
+                    "type": "number"
+                  },
+                  "to": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "phase",
+                  "from",
+                  "to"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "cut": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": true
+            },
+            "intent": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string"
+                },
+                "gesture": {
+                  "type": "string"
+                },
+                "gaze": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "state",
+                "gesture",
+                "gaze"
+              ],
+              "additionalProperties": true
+            },
+            "idle": {
+              "type": "string"
+            },
+            "talk": {
+              "type": "number"
+            },
+            "lockFace": {
+              "type": "boolean"
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "subtle",
+                "normal",
+                "exaggerated"
+              ]
+            },
+            "enter": {
+              "type": "boolean"
+            },
+            "exit": {
+              "type": "boolean",
+              "default": false
+            },
+            "overlay": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "poseId",
+            "line",
+            "side",
+            "textSide",
+            "camera",
+            "phases",
+            "cut",
+            "intent",
+            "idle",
+            "talk",
+            "lockFace",
+            "motion",
+            "enter"
+          ],
+          "additionalProperties": true
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "anchors": {
+                "type": "object",
+                "properties": {
+                  "start": {
+                    "type": "number"
+                  },
+                  "peak": {
+                    "type": "number"
+                  },
+                  "contact": {
+                    "type": "number"
+                  },
+                  "settle": {
+                    "type": "number"
+                  },
+                  "completion": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "start",
+                  "peak",
+                  "contact",
+                  "settle",
+                  "completion"
+                ],
+                "additionalProperties": false
+              },
+              "importance": {
+                "type": "number"
+              },
+              "direction": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "anchors",
+              "importance"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "speech": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "number"
+              },
+              "end": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "line",
+        "shot"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
   }
 }

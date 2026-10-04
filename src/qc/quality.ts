@@ -29,6 +29,7 @@ import type { ProbeResult as DomProbe, ProbeText } from '../engine/QCProbe';
 import { log } from '../core/logger';
 import { sampleFrames, collectProbes, type Sample } from './probes';
 import { detectPatterns, type Rect } from './pattern-detect';
+import { characterStructuralQc, characterPixelQc } from './character-qc';
 import { checkBannedPatterns } from '../design/banned';
 import { cached, fileHash, hashOf } from '../cache/store';
 import { resolveStyle } from '../styles/resolve';
@@ -132,7 +133,7 @@ async function pixelContrast(png: string, rect: Rect, textHex: string, scale: nu
 /** Rectangles to ignore in pattern detection: text (Arabic i'jam dots), media, cards. */
 function patternMasks(p: DomProbe | undefined, scale: number): Rect[] {
   if (!p) return [];
-  const all = [...p.texts.filter((t) => t.opacity > 0.05).map((t) => t.rect), ...p.media.filter((m) => m.opacity > 0.05).map((m) => m.rect), ...(p.boxes ?? []).filter((b) => b.opacity > 0.05).map((b) => b.rect)];
+  const all = [...p.texts.filter((t) => t.opacity > 0.05).map((t) => t.rect), ...p.media.filter((m) => m.opacity > 0.05).map((m) => m.rect), ...(p.boxes ?? []).filter((b) => b.opacity > 0.05).map((b) => b.rect), ...(p.characters ?? []).filter((c) => c.opacity > 0.05).map((c) => c.rect)];
   return all.map((r) => ({ x: r.x * scale, y: r.y * scale, width: r.width * scale, height: r.height * scale }));
 }
 
@@ -328,6 +329,7 @@ export async function structuralQc(opts: { spec: VideoSpec; projectDir: string; 
       }
     }
   }
+  checks.character = characterStructuralQc(spec, samples, probes, (i) => add(i.code === 'CHARACTER_SCALE_DRIFT' || i.code === 'CHARACTER_FACING_AWAY' ? 'design' : 'structure', i));
   if (fontsFailed.size) add('structure', { severity: 'critical', code: 'FONT_LOAD_FAILED', message: `fonts failed to load: ${[...fontsFailed].join(', ')}` });
   checks.fonts = fontsFailed.size ? 'fail' : 'pass';
   const lastScene = spec.scenes[lastIdx];
@@ -461,7 +463,9 @@ function motionPass(spec: VideoSpec, tl: ReturnType<typeof buildTimeline>, sampl
   const cams = spec.scenes.filter((s) => s.motion.camera && s.motion.camera !== 'none').length;
   if (n >= 4 && cams / n > 0.7) add({ severity: 'warning', code: 'CAMERA_OVERUSE', message: `${cams}/${n} scenes move the camera — nothing feels still, so nothing feels important` });
   const trans = spec.scenes.slice(0, -1).map((s) => s.transition?.type ?? 'auto');
-  if (trans.length >= 4 && new Set(trans).size === 1 && trans[0] !== 'auto') add({ severity: 'warning', code: 'TRANSITION_MONOTONY', message: `every cut uses "${trans[0]}"` });
+  // a character film cuts between poses on purpose (cut on action / continuous rig): not monotony
+  const poseCuts = spec.character && spec.scenes.every((s) => SceneRegistry.get(s.type)?.manifest.category === 'character');
+  if (!poseCuts && trans.length >= 4 && new Set(trans).size === 1 && trans[0] !== 'auto') add({ severity: 'warning', code: 'TRANSITION_MONOTONY', message: `every cut uses "${trans[0]}"` });
   const style = resolveStyle(spec.style.preset, spec.brand, spec.style.overrides);
   const filmP = spec.motion?.personality as MotionPersonalityId | undefined;
   const styleP = (style.motion.personality ?? STYLE_PERSONALITY[style.id]) as MotionPersonalityId | undefined;
@@ -553,6 +557,7 @@ export async function finalQc(opts: { spec: VideoSpec; projectDir: string; video
   let blank = 0;
   let patternHits = 0;
   let lowContrast = 0;
+  let identityFail = 0;
   await Promise.all(
     holds.map(async (s) => {
       const png = frames.get(outFrame(s.frame));
@@ -571,6 +576,7 @@ export async function finalQc(opts: { spec: VideoSpec; projectDir: string; video
         add({ severity: ok ? 'info' : 'critical', code: 'PATTERN_IN_FRAME', frame: s.frame, time: s.time, scene: s.scene, sceneIndex: s.sceneIndex, element: f.kind, message: ok ? `${f.kind} in the MP4 (requested: design.allowPatterns): ${f.message}` : `banned ${f.kind} in the rendered MP4: ${f.message}`, repair: ok ? undefined : { action: 'clean-background' } });
       }
       if (!p) return;
+      if (!(await characterPixelQc(spec, png, p, outScale, { frame: s.frame, time: s.time, scene: s.scene, sceneIndex: s.sceneIndex }, add))) identityFail++;
       const meta = await sharp(png).metadata();
       for (const tx of p.texts) {
         if (tx.opacity < 0.95 || !tx.text.trim() || tx.rect.width < 20) continue;
@@ -589,6 +595,7 @@ export async function finalQc(opts: { spec: VideoSpec; projectDir: string; video
   checks.blank = blank ? 'fail' : 'pass';
   checks.patterns = patternHits ? 'fail' : 'pass';
   checks.contrast = lowContrast ? 'fail' : 'pass';
+  if (spec.character) checks.characterIdentity = identityFail ? 'fail' : 'pass';
   if (loop) {
     const f0 = frames.get(0);
     const f1 = frames.get(outFrame(tl.totalFrames - 1));

@@ -344,6 +344,38 @@ export const BrandMotionRefSchema = z.object({
   ctaStyle: z.string().optional(),
 });
 
+const PtSchema = z.object({ x: z.number(), y: z.number() });
+/**
+ * The film's character (Character Motion Engine). Poses are project assets (transparent PNG crops of the
+ * user's art, never redrawn); a layered SVG character also carries its rig (rendered live as vector).
+ */
+export const CharacterSpecSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  complexity: z.enum(['STATIC', 'POSE_BASED', 'PARTIAL_RIG', 'FULL_VECTOR_RIG']),
+  /** rig = live vector rig; poses = pose-to-pose switching of prepared PNG poses. */
+  mode: z.enum(['rig', 'poses']),
+  poses: z.record(
+    z.object({
+      asset: z.string(),
+      width: z.number().positive(),
+      height: z.number().positive(),
+      state: z.string(),
+      bodyDirection: z.enum(['left', 'right', 'front']).default('front'),
+      framing: z.enum(['full-body', 'half-body', 'bust', 'head']).default('full-body'),
+      prop: z.string().default('none'),
+      /** Anchors as fractions of the pose image (headTop, headCenter, neck, handL, handR, torsoCenter, hips, feet). */
+      anchors: z.record(PtSchema),
+      headHeight: z.number().positive(),
+    }),
+  ),
+  /** Rig (nitaaq.rig/1) when mode = rig. */
+  rig: z.unknown().optional(),
+  identity: z.object({ palette: z.array(z.string()).default([]), garments: z.array(z.string()).default([]), lock: z.array(z.string()).default([]) }).default({}),
+  /** Project-relative folder of the copied character package (manifest, bible, pose library). */
+  package: z.string().optional(),
+});
+
 export const VideoSchema = z.object({
   version: z.string().default(SCHEMA_VERSION),
   project: ProjectSchema,
@@ -364,6 +396,7 @@ export const VideoSchema = z.object({
   motion: FilmMotionSchema.default({}),
   timeline: TimelineOptionsSchema.default({}),
   reference: ReferenceSummarySchema.optional(),
+  character: CharacterSpecSchema.optional(),
   scenes: z.array(SceneSchema).min(1),
   captions: CaptionsSchema.default({}),
   metadata: MetadataSchema.default({}),
@@ -383,3 +416,4 @@ export type Quality = z.infer<typeof QualitySchema>;
 export type SfxCue = z.infer<typeof SfxCueSchema>;
 export type SharedElement = z.infer<typeof SharedElementSchema>;
 export type SoundtrackSpec = z.infer<typeof SoundtrackSchema>;
+export type CharacterSpec = z.infer<typeof CharacterSpecSchema>;

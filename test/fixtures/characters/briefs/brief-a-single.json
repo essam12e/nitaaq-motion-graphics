@@ -1,0 +1,41 @@
+{
+ "language": "ar",
+ "dialect": "saudi",
+ "platform": "tiktok",
+ "audio": {
+  "mode": "none",
+  "sfx": true
+ },
+ "brand": {
+  "name": "مشوار",
+  "colors": [
+   "#0F766E",
+   "#F59E0B"
+  ]
+ },
+ "request": "فيديو قصير بشخصية من صورة واحدة",
+ "character": {
+  "image": "../saudi/saudi-single.png",
+  "name": "أبو فهد"
+ },
+ "duration": 12,
+ "content": {
+  "hook": "عندك مشوار اليوم؟",
+  "characterScript": [
+   {
+    "line": "عندك مشوار اليوم؟"
+   },
+   {
+    "line": "خلّه علينا"
+   },
+   {
+    "line": "حمّل مشوار الآن",
+    "scene": "cta"
+   }
+  ],
+  "cta": {
+   "text": "حمّل التطبيق الآن",
+   "button": "حمّل مجاناً"
+  }
+ }
+}

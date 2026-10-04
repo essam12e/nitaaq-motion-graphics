@@ -2,7 +2,7 @@
 
 _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit by hand._
 
-**88 families · 257 variants · 13 categories.** Every family works in 9:16, 16:9, 1:1 and 4:5 unless noted, validates its `content` with Zod, and ships an example used by the Studio and the visual-regression gallery. **Cost** is the render-cost class used by the effect budget (LOW/MEDIUM/HIGH, see PERFORMANCE.md); **Motion** is the recommended physics and camera use.
+**93 families · 268 variants · 14 categories.** Every family works in 9:16, 16:9, 1:1 and 4:5 unless noted, validates its `content` with Zod, and ships an example used by the Studio and the visual-regression gallery. **Cost** is the render-cost class used by the effect budget (LOW/MEDIUM/HIGH, see PERFORMANCE.md); **Motion** is the recommended physics and camera use.
 
 ## Friendly aliases
 
@@ -160,6 +160,16 @@ _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit b
 | **diagram-flow**<br>Explains a system/process as nodes and connectors drawn step by step: linear (RTL) / hub / cycle. | **linear**, hub, cycle | process, solution, demo, feature | 2.6–10 (default 4.4) | MEDIUM | elements: icon/card/chart; jobs: explain-the-idea/show-how-it-works | title, nodes*, center |
 | **illustration-scene**<br>Procedural vector illustrations in the brand palette (flat / line / duotone), drawn on: hero / trio / explain. No stock art or AI images. | **hero**, trio, explain | problem, solution, feature, hook, process | 2–8 (default 3.6) | MEDIUM | elements: icon/card/chart; jobs: explain-the-idea/show-how-it-works | title, highlight, subtitle, items*, style |
 | **whiteboard**<br>Whiteboard explainer: ink illustrations drawn stroke by stroke with written labels — draw / write. | **draw**, write | problem, solution, process, feature, hook, cta | 2.6–12 (default 5) | MEDIUM | elements: icon/card/chart; jobs: explain-the-idea/show-how-it-works | title, steps* |
+
+## character (5)
+
+| Family | Variants | Beats | Duration (s) | Cost | Motion | Content (required*) |
+|---|---|---|---|---|---|---|
+| **character-cta**<br>The character presents the call to action: the line, a button, the contact and the user’s logo (never altered). | **button**, logo | cta | 2.4–8 (default 3.6) | MEDIUM | elements: body/hero-title; jobs: perform-the-line/direct-attention | line*, highlight, sub, shot*, events, speech, button, contact, logo |
+| **character-data**<br>The character explains / points at the user's own number (count-up) or series (bars), always with the source. | **stat**, bars | proof, feature, solution | 2.4–9 (default 3.8) | MEDIUM | elements: body/hero-title; jobs: perform-the-line/direct-attention | line*, highlight, sub, shot*, events, speech, stat, series |
+| **character-phone**<br>The character holds the phone while the app screen (phone), the conversation (chat) or a message being typed and sent (typing) appears beside it; the graphic passes in front at the cut so the pose change is hidden. | **phone**, chat, typing | demo, solution, feature, problem | 2.2–9 (default 3.8) | MEDIUM | elements: body/hero-title; jobs: perform-the-line/direct-attention | line*, highlight, sub, shot*, events, speech, screen, messages, contact, typed |
+| **character-product**<br>The user's product lands beside the character's presenting hand (never altered); name and price below. | **present** | product, solution, offer, demo | 2.2–8 (default 3.6) | MEDIUM | elements: body/hero-title; jobs: perform-the-line/direct-attention | line*, highlight, sub, shot*, events, speech, product*, name, price |
+| **character-stage**<br>The character acts the line (talk, react, think, point, present) with the text where it looks; variants side (text beside), bubble (speech bubble at the head), title (big line, character smaller). | **side**, bubble, title | hook, problem, bridge, solution, feature, demo, proof | 1.6–9 (default 3.2) | MEDIUM | elements: body/hero-title; jobs: perform-the-line/direct-attention | line*, highlight, sub, shot*, events, speech |
 
 ## Transitions (30)
 

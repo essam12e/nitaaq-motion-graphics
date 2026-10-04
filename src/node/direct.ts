@@ -288,14 +288,39 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
   const ctx = recipeCtx({ brief, brand, assets: recipeAssets, ...planExtras }, plan.aspect as '9:16');
   let chapters: { title: string; scenes: string[] }[] = [];
   let board: PlannedStoryboard;
+  let charFilm: import('./character/film').CharacterFilm | undefined;
   if (brief.chapters && brief.chapters.length > 1) {
     const r = chapterBoards(brief, plan, brand, recipeAssets, seed);
     board = r.storyboard;
     chapters = r.chapters;
+  } else if (loaded.character) {
+    // a character performs the film: the Character Director plans the shots (poses, camera, pose cuts)
+    const { characterFilm } = loaded.character as typeof import('./character/film');
+    charFilm = await perf.stage('character', () =>
+      characterFilm({ brief, baseDir: opts.baseDir, projectDir, aspect: plan.aspect as '9:16', personality, seed, assets, ids: { logo: logoId, product: productId, screenshot: shotId }, voice: voiceTiming }),
+    );
+    board = charFilm.storyboard;
+    for (const n of [...charFilm.plan.warnings, ...charFilm.notes.slice(1)]) assumptions.push(`character: ${n}`);
+    log.stage('CHARACTER', `${charFilm.spec.name}: ${charFilm.prepared.manifest.sourceType}, ${charFilm.prepared.manifest.poses.length} pose(s), ${charFilm.plan.complexity} (${charFilm.prepared.cache}); ${charFilm.plan.shots.map((s) => `${s.intent.state}/${s.poseId}`).join(' | ')}`);
   } else board = buildStoryboard(plan, ctx, { seed, voice: voiceTiming, prefer: brief.preferences.prefer, avoid: brief.preferences.avoid });
   if (board.scenes.length < 2 && !(genre.genre === 'logo' && board.scenes[0]?.family === 'logo-animation')) throw new MotionError({ code: 'INPUT_INVALID', what: 'Not enough content to direct a video', why: 'The brief only supports one scene.', action: 'Add at least a hook and a CTA (and ideally features, a product or a problem/solution).' });
   const film = directFilm({ brief, plan, storyboard: board, seed, referenceEnergy: reference?.motion?.energy, beats: beats && beats.confidence > 0.15 ? beats : null, voiceLed: Boolean(voiceTiming), genre: genre.genre, sharedElements: isSelected(selected, 'shared-elements') });
   const storyboard = film.storyboard;
+  if (charFilm) {
+    // the Character Director's pose cuts and camera win over the generic transition engine for character shots
+    const { CUT_TRANSITION, attachCharacterEvents } = loaded.character as typeof import('./character/film');
+    storyboard.scenes.forEach((s, i) => {
+      if (!s.family.startsWith('character-')) return;
+      s.camera = 'none';
+      const next = storyboard.scenes[i + 1];
+      if (next?.family.startsWith('character-')) {
+        const t = CUT_TRANSITION[(next.content.shot as { cut: { type: string } }).cut.type] ?? CUT_TRANSITION.cut;
+        s.transition = t.type;
+        s.transitionDuration = t.duration;
+      }
+    });
+    attachCharacterEvents(storyboard.scenes, { fps: 30, rig: charFilm.spec.mode === 'rig' ? charFilm.spec.rig : null, personality: film.motion.personality, aspect: plan.aspect });
+  }
   log.stage('STORYBOARD', storyboard.scenes.map((s) => `${s.family}/${s.variant} ${s.duration}s`).join(' | '));
   log.stage('DIRECTOR', `motion ${film.motion.personality} (${film.motion.personalityReason}); hero ${film.motion.heroScene ?? '—'}; camera ${film.motion.cameraBudget.used}/${film.motion.cameraBudget.allowed}${film.motion.beatSync ? `; ${film.motion.beatSync.aligned} cuts on beat @${film.motion.beatSync.bpm} BPM` : ''}`);
   const patterns = requestedPatterns([brief.request, ...brief.preferences.prefer].join(' '));
@@ -330,6 +355,7 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
     if (!opts.dryRun) saveBrandMotion(updated);
     writeFileSync(join(projectDir, 'brand-motion.json'), JSON.stringify(updated, null, 2));
   }
+  if (charFilm) spec.character = charFilm.spec;
   if (chapters.length) spec.timeline.chapters = chapters.map((ch, i) => ({ id: `chapter-${i + 1}`, title: ch.title, startScene: ch.scenes[0] }));
   perf.mark('director', Date.now() - tDir);
 

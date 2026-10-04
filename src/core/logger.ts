@@ -5,6 +5,7 @@ export type Stage =
   | 'INTAKE'
   | 'FONTS'
   | 'BRAND'
+  | 'CHARACTER'
   | 'DIRECTOR'
   | 'STORYBOARD'
   | 'ASSETS'

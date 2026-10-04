@@ -65,13 +65,16 @@ export function checkBannedPatterns(spec: VideoSpec): BannedFinding[] {
   if (!spec.brand && multiColourBg && bluePurple(t.palette.primary) && bluePurple(t.palette.secondary) && !justified) add('generic-blue-purple-ai-gradient', 'blue-violet multi-colour gradient without a brand or request', { path: 'style.palette' });
 
   // repetition / template structure
-  const sig = spec.scenes.map((s) => `${SceneRegistry.resolveId(s.type) ?? s.type}/${s.variant ?? ''}`);
+  // a character scene is a different shot when the pose changes (the acting is the variety)
+  const poseOf = (s: (typeof spec.scenes)[number]) => ((s.content as { shot?: { poseId?: string } }).shot?.poseId ?? '');
+  const sig = spec.scenes.map((s) => `${SceneRegistry.resolveId(s.type) ?? s.type}/${s.variant ?? ''}${poseOf(s) ? `/${poseOf(s)}` : ''}`);
   const counts = new Map<string, number>();
   sig.forEach((k) => counts.set(k, (counts.get(k) ?? 0) + 1));
   for (const [k, n] of counts) if (n >= 3) add('identical-cards-repeated', `${k} is used ${n} times`, { path: 'scenes' });
   for (let i = 1; i < spec.scenes.length; i++) {
     const a = SceneRegistry.resolveId(spec.scenes[i - 1].type);
-    if (a && a === SceneRegistry.resolveId(spec.scenes[i].type)) add('identical-cards-repeated', `scene ${i} and ${i + 1} use the same family (${a}) back to back`, { scene: spec.scenes[i].id, path: `scenes[${i}]` });
+    const sameShot = !poseOf(spec.scenes[i]) || (poseOf(spec.scenes[i]) === poseOf(spec.scenes[i - 1]) && spec.scenes[i].variant === spec.scenes[i - 1].variant);
+    if (a && a === SceneRegistry.resolveId(spec.scenes[i].type) && sameShot) add('identical-cards-repeated', `scene ${i} and ${i + 1} use the same family (${a}) back to back`, { scene: spec.scenes[i].id, path: `scenes[${i}]` });
   }
   const cats = spec.scenes.map((s) => SceneRegistry.get(s.type)?.manifest.category ?? '?');
   if (spec.scenes.length >= 3 && cats[0] === 'typography' && cats[cats.length - 1] === 'cta' && cats.slice(1, -1).every((c) => c === 'infographic')) add('centered-heading-cards-cta-template', 'heading → cards → CTA template arc', { path: 'scenes' });

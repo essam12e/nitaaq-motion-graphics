@@ -122,6 +122,25 @@ export function intentOf(e: MotionEvent, p: SoundPersonality): Intent | null {
       return 'reveal-hit';
     case 'tease':
       return 'tease';
+    // character events: soft, human sounds; a soft personality keeps only the essential ones
+    case 'character_enter':
+      return 'motion-air';
+    case 'head_turn':
+      return null; // a head turn is silent: cloth rustle would only add noise
+    case 'phone_pickup':
+      return 'ui-appear';
+    case 'phone_tap':
+      return 'ui-tap';
+    case 'gesture_peak':
+      return e.importance >= 0.6 ? (soft ? 'motion-air' : 'motion-fast') : 'motion-air';
+    case 'point':
+      return soft ? 'motion-air' : 'motion-fast';
+    case 'reaction':
+      return p === 'playful' ? 'sparkle' : 'contact-soft';
+    case 'object_land':
+      return heavy ? 'contact-heavy' : 'contact-soft';
+    case 'character_exit':
+      return 'motion-air';
     default:
       return null;
   }

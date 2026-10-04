@@ -1,0 +1,48 @@
+{
+ "language": "ar",
+ "dialect": "saudi",
+ "platform": "tiktok",
+ "audio": {
+  "mode": "none",
+  "sfx": true
+ },
+ "brand": {
+  "name": "مشوار",
+  "colors": [
+   "#0F766E",
+   "#F59E0B"
+  ]
+ },
+ "request": "فيديو شخصية مع تايبوغرافي متحرك",
+ "character": {
+  "svg": "../saudi/saudi-layered.svg",
+  "name": "أبو فهد"
+ },
+ "content": {
+  "hook": "الوقت أغلى من الذهب",
+  "emphasis": [
+   "أغلى"
+  ],
+  "characterScript": [
+   {
+    "line": "الوقت أغلى من الذهب",
+    "scene": "title"
+   },
+   {
+    "line": "ليش تضيعه في الزحمة؟"
+   },
+   {
+    "line": "خطط مشوارك بذكاء",
+    "scene": "title"
+   },
+   {
+    "line": "ابدأ اليوم",
+    "scene": "cta"
+   }
+  ],
+  "cta": {
+   "text": "ابدأ اليوم",
+   "button": "ابدأ"
+  }
+ }
+}

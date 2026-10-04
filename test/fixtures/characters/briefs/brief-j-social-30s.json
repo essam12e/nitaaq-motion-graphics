@@ -1,0 +1,81 @@
+{
+ "language": "ar",
+ "dialect": "saudi",
+ "platform": "instagram-reels",
+ "audio": {
+  "mode": "none",
+  "sfx": true
+ },
+ "brand": {
+  "name": "مشوار",
+  "colors": [
+   "#0F766E",
+   "#F59E0B"
+  ]
+ },
+ "request": "إعلان سوشيال ٣٠ ثانية بشخصية سعودية",
+ "duration": 30,
+ "character": {
+  "sheet": "../saudi/saudi-sheet.png",
+  "name": "أبو فهد",
+  "saveAs": "abu-fahad"
+ },
+ "content": {
+  "hook": "كل يوم نفس القصة؟",
+  "characterScript": [
+   {
+    "line": "كل يوم نفس القصة؟"
+   },
+   {
+    "line": "زحمة وتأخير وتوتر"
+   },
+   {
+    "line": "وش الحل؟"
+   },
+   {
+    "line": "مشوار!",
+    "action": "excited"
+   },
+   {
+    "line": "افتح التطبيق واختر وجهتك",
+    "scene": "phone"
+   },
+   {
+    "line": "وصلتني رسالة من المندوب",
+    "scene": "chat",
+    "messages": [
+     "أنا قريب منك",
+     "تمام، أنتظرك"
+    ]
+   },
+   {
+    "line": "شوف هنا كل شي واضح"
+   },
+   {
+    "line": "السعر قبل ما تطلب"
+   },
+   {
+    "line": "وصلت بدري ومرتاح",
+    "action": "happy"
+   },
+   {
+    "line": "حمّل مشوار الآن",
+    "scene": "cta"
+   }
+  ],
+  "ui": {
+   "appName": "مشوار",
+   "headline": "وين تبي تروح؟",
+   "items": [
+    "البيت",
+    "الدوام",
+    "المطار"
+   ]
+  },
+  "cta": {
+   "text": "حمّل التطبيق الآن",
+   "button": "حمّل مجاناً"
+  }
+ },
+ "genre": "character"
+}

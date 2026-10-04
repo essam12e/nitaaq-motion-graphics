@@ -15,11 +15,13 @@
  *   nitaaq capture  <url> [--mobile]           → real website screenshot
  *   nitaaq classify <brief.json>               → SIMPLE / STANDARD / ADVANCED / LONG_FORM + budget
  *   nitaaq cache    [summary|clear [namespace]]
+ *   nitaaq character prepare|inspect|bench <brief.json|art|package>   → character package (cached), bible, pose contact sheet
+ *   nitaaq character sheet <projectDir> [--video f]                    → acting sheet: one settled frame per character shot
  *   nitaaq preflight [--full] | scenes [--json] | styles | schema-export [--out dir] | voices
  *
  * Exit codes: 0 ok · 1 failed · 2 needs user input (questions printed as JSON).
  */
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { formatMotionError, isMotionError } from '../src/core/errors';
@@ -123,8 +125,62 @@ async function main(): Promise<number> {
     case 'animatic': {
       const p = project(pos[0]);
       const res = await produce({ projectDir: p.dir, stopAfterAnimatic: true });
-      out({ ok: res.ok, animatic: res.animatic, contactSheet: res.report?.contactSheet, phoneView: res.report?.phoneSheet, scores: res.report?.scores, critique: res.report?.critique, totalSec: Math.round(res.perf.totalMs / 100) / 10 });
+      let actingSheet: string | undefined;
+      if (res.animatic && existsSync(join(p.dir, 'character_plan.json'))) {
+        const { characterActingSheet } = await import('../src/node/character/preview');
+        actingSheet = (await characterActingSheet(p.dir, res.animatic, join(p.dir, 'qc', 'character-acting.png'))).file;
+      }
+      out({ ok: res.ok, animatic: res.animatic, actingSheet, contactSheet: res.report?.contactSheet, phoneView: res.report?.phoneSheet, scores: res.report?.scores, critique: res.report?.critique, totalSec: Math.round(res.perf.totalMs / 100) / 10 });
       return res.ok ? 0 : 1;
+    }
+    case 'character': {
+      // nitaaq character prepare <brief.json|image|sheet|svg|folder> · inspect <package> · bench <…> · sheet <projectDir> [--video f]
+      const sub = pos[0];
+      const target = pos[1];
+      if (!sub || !target) throw new Error('Usage: nitaaq character prepare|inspect|bench <brief.json|art|package> · nitaaq character sheet <projectDir>');
+      const { prepareCharacter, loadPackage } = await import('../src/node/character/package');
+      const charOf = (t: string): { c: Record<string, unknown>; base: string } => {
+        const f = resolve(t);
+        if (f.endsWith('.json') && existsSync(f)) {
+          const b = JSON.parse(readFileSync(f, 'utf8'));
+          if (!b.character) throw new Error('this brief has no "character"');
+          return { c: b.character, base: dirname(f) };
+        }
+        if (existsSync(f) && statSync(f).isDirectory()) return existsSync(join(f, 'character.json')) ? { c: { use: f }, base: dirname(f) } : { c: { poses: readdirSync(f).filter((x) => /\.png$/i.test(x)).map((x) => ({ path: join(f, x) })) }, base: f };
+        if (/\.svg$/i.test(f)) return { c: { svg: f }, base: dirname(f) };
+        return { c: { [flag('as') === 'sheet' ? 'sheet' : 'image']: f }, base: dirname(f) };
+      };
+      if (sub === 'sheet') {
+        const p = project(target);
+        const video = flag('video') ?? join(p.dir, 'renders', `${basename(p.dir)}-animatic.mp4`);
+        if (!existsSync(video)) throw new Error(`no render at ${video} — run: nitaaq animatic ${p.dir}`);
+        const { characterActingSheet } = await import('../src/node/character/preview');
+        out(await characterActingSheet(p.dir, video, resolve(flag('out') ?? join(p.dir, 'qc', 'character-acting.png'))));
+        return 0;
+      }
+      if (sub === 'inspect') {
+        const dir = resolve(target);
+        const pkg = loadPackage(dir);
+        out({ name: pkg.manifest.name, sourceType: pkg.manifest.sourceType, complexity: pkg.manifest.animationCapabilities.complexity, poses: pkg.manifest.poses.map((x) => `${x.poseId}: ${x.semantics.state} ${Math.round(x.semantics.confidence * 100)}%`), rig: Boolean(pkg.rig), identityLock: pkg.bible.identityLock, restricted: pkg.manifest.restrictedActions, contactSheet: join(dir, 'thumbnails', 'contact.png') });
+        return 0;
+      }
+      const { c, base } = charOf(target);
+      if (sub === 'prepare') {
+        const r = await prepareCharacter(c as never, { baseDir: base, force: flag('force') === 'true' });
+        out({ dir: r.dir, cache: r.cache, sourceType: r.manifest.sourceType, complexity: r.manifest.animationCapabilities.complexity, poses: r.manifest.poses.map((x) => `${x.poseId}: ${x.semantics.state}`), rig: Boolean(r.rig), warnings: r.warnings, timings: r.timings, bible: join(r.dir, 'CHARACTER_BIBLE.md'), contactSheet: join(r.dir, 'thumbnails', 'contact.png') });
+        return 0;
+      }
+      if (sub === 'bench') {
+        const t1 = performance.now();
+        const cold = await prepareCharacter(c as never, { baseDir: base, force: true });
+        const coldMs = performance.now() - t1;
+        const t2 = performance.now();
+        const warm = await prepareCharacter(c as never, { baseDir: base });
+        const warmMs = performance.now() - t2;
+        out({ cold: { ms: Math.round(coldMs), stages: cold.timings }, warm: { ms: Math.round(warmMs), cache: warm.cache }, speedup: Math.round((coldMs / Math.max(1, warmMs)) * 10) / 10 });
+        return 0;
+      }
+      throw new Error(`unknown character command: ${sub}`);
     }
     case 'variants': {
       // Ad creative variants: one directed film per strategy × aspect (recomposed per aspect, never cropped)

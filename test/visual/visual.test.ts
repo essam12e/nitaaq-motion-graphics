@@ -50,6 +50,8 @@ for (const aspect of ['9:16', '16:9'] as const) {
       platform: 'generic',
       style: { preset: 'saudi-modern' },
       audio: { mode: 'none', sfx: { enabled: false } },
+      // character families need a character: the Saudi layered-SVG rig fixture
+      character: JSON.parse(readFileSync(join(__dirname, '../fixtures/characters/saudi/character-spec.json'), 'utf8')),
       scenes: mods.map((m, i) => ({ id: `v${i}`, type: m.manifest.id, variant: m.manifest.defaultVariant, duration: Math.max(2.4, m.manifest.defaultDuration), content: m.manifest.example })),
     });
     const tl = buildTimeline(spec.scenes, 30);

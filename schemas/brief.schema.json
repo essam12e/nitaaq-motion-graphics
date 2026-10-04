@@ -8,6 +8,72 @@
           "type": "string",
           "minLength": 1
         },
+        "genre": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "social-ad",
+            "product",
+            "saas",
+            "launch",
+            "kinetic",
+            "logo",
+            "data",
+            "map",
+            "explainer",
+            "whiteboard",
+            "illustrated",
+            "procedural",
+            "web-ui",
+            "music",
+            "character"
+          ]
+        },
+        "visualMode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "media",
+            "illustration",
+            "zero-asset",
+            "whiteboard"
+          ]
+        },
+        "variants": {
+          "type": "object",
+          "properties": {
+            "strategies": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "problem-first",
+                  "product-first",
+                  "benefit-first",
+                  "offer-first",
+                  "result-first"
+                ]
+              },
+              "minItems": 1
+            },
+            "aspects": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "9:16",
+                  "16:9",
+                  "1:1",
+                  "4:5"
+                ]
+              }
+            }
+          },
+          "required": [
+            "strategies"
+          ],
+          "additionalProperties": false
+        },
         "title": {
           "type": "string"
         },
@@ -101,10 +167,89 @@
           "type": "string",
           "enum": [
             "preview",
+            "animatic",
             "draft",
             "production"
           ],
           "default": "production"
+        },
+        "motion": {
+          "type": "string",
+          "enum": [
+            "premium",
+            "energetic",
+            "playful",
+            "corporate",
+            "cinematic",
+            "tech",
+            "sport"
+          ]
+        },
+        "loop": {
+          "type": "boolean",
+          "default": false
+        },
+        "formats": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "9:16",
+              "16:9",
+              "1:1",
+              "4:5"
+            ]
+          }
+        },
+        "reference": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "image",
+                "video",
+                "website",
+                "ui"
+              ]
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "capture": {
+          "type": "boolean",
+          "default": false
+        },
+        "chapters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "points": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
+              }
+            },
+            "required": [
+              "title"
+            ],
+            "additionalProperties": false
+          }
         },
         "brand": {
           "anyOf": [
@@ -173,6 +318,140 @@
           },
           "default": []
         },
+        "character": {
+          "type": "object",
+          "properties": {
+            "use": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "sheet": {
+              "type": "string"
+            },
+            "sheetLabels": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "crops": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "width": {
+                    "type": "number"
+                  },
+                  "height": {
+                    "type": "number"
+                  },
+                  "label": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y",
+                  "width",
+                  "height"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "poses": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "path"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "svg": {
+              "type": "string"
+            },
+            "image": {
+              "type": "string"
+            },
+            "saveAs": {
+              "type": "string"
+            },
+            "anchors": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "x",
+                    "y"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "motion": {
+              "type": "string",
+              "enum": [
+                "subtle",
+                "normal",
+                "exaggerated"
+              ]
+            },
+            "lockFace": {
+              "type": "boolean"
+            },
+            "talk": {
+              "type": "number",
+              "enum": [
+                0,
+                1,
+                2,
+                3
+              ]
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "left",
+                "right",
+                "center"
+              ]
+            },
+            "garments": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
         "audio": {
           "type": "object",
           "properties": {
@@ -198,11 +477,55 @@
               "type": "boolean",
               "default": true
             },
+            "sfxIntensity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "sfxVolume": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "musicVolume": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "beatSync": {
+              "type": "boolean"
+            },
             "transcript": {
               "type": "array",
               "items": {
                 "type": "string"
               }
+            },
+            "soundtrack": {
+              "type": "string",
+              "enum": [
+                "auto",
+                "off",
+                "tech",
+                "premium",
+                "cinematic",
+                "sport",
+                "playful",
+                "corporate",
+                "minimal",
+                "futuristic"
+              ]
+            },
+            "soundPersonality": {
+              "type": "string",
+              "enum": [
+                "luxury",
+                "tech",
+                "sport",
+                "playful",
+                "cinematic",
+                "corporate"
+              ]
             }
           },
           "additionalProperties": false,
@@ -541,6 +864,314 @@
                 "type": "string"
               }
             },
+            "characterScript": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "line": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "action": {
+                    "type": "string"
+                  },
+                  "emotion": {
+                    "type": "string"
+                  },
+                  "pose": {
+                    "type": "string"
+                  },
+                  "prop": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "phone",
+                      "laptop",
+                      "tablet",
+                      "box",
+                      "product",
+                      "card",
+                      "chart",
+                      "sign"
+                    ]
+                  },
+                  "camera": {
+                    "type": "string",
+                    "enum": [
+                      "wide",
+                      "medium",
+                      "medium-close",
+                      "close"
+                    ]
+                  },
+                  "scene": {
+                    "type": "string",
+                    "enum": [
+                      "stage",
+                      "phone",
+                      "chat",
+                      "product",
+                      "chart",
+                      "title",
+                      "cta"
+                    ]
+                  },
+                  "messages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "seconds": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 20
+                  }
+                },
+                "required": [
+                  "line"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 24
+            },
+            "lines": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "tease": {
+              "type": "string"
+            },
+            "reveal": {
+              "type": "string"
+            },
+            "launchDate": {
+              "type": "string"
+            },
+            "rotate": {
+              "type": "object",
+              "properties": {
+                "prefix": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "words": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minItems": 2,
+                  "maxItems": 6
+                },
+                "suffix": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "prefix",
+                "words"
+              ],
+              "additionalProperties": false
+            },
+            "english": {
+              "type": "string"
+            },
+            "map": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "focus": {
+                  "type": "string"
+                },
+                "regions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "locations": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "lat": {
+                        "type": "number",
+                        "minimum": -90,
+                        "maximum": 90
+                      },
+                      "lon": {
+                        "type": "number",
+                        "minimum": -180,
+                        "maximum": 180
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "routes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "from": {
+                        "type": "string"
+                      },
+                      "to": {
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "from",
+                      "to"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "source": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "illustration": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "flow": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "logo",
+                      "search",
+                      "result",
+                      "product",
+                      "cart",
+                      "checkout",
+                      "success"
+                    ]
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "kind",
+                  "label"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "integrations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "table": {
+              "type": "object",
+              "properties": {
+                "columns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "rows": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "highlightRow": {
+                  "type": "integer"
+                },
+                "source": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "columns",
+                "rows"
+              ],
+              "additionalProperties": false
+            },
+            "form": {
+              "type": "object",
+              "properties": {
+                "fields": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "label": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "label",
+                      "value"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "button": {
+                  "type": "string"
+                },
+                "done": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "fields",
+                "button"
+              ],
+              "additionalProperties": false
+            },
             "cta": {
               "type": "object",
               "properties": {
@@ -623,6 +1254,34 @@
                 "string",
                 "number"
               ]
+            },
+            "gsap": {
+              "type": "boolean"
+            },
+            "logoReveal": {
+              "type": "string"
+            },
+            "arc": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "variantOf": {
+              "type": "object",
+              "properties": {
+                "strategy": {
+                  "type": "string"
+                },
+                "base": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "strategy",
+                "base"
+              ],
+              "additionalProperties": false
             }
           },
           "additionalProperties": false,

@@ -50,6 +50,16 @@ export const MOTION_EVENT_TYPES = [
   'camera_move',
   'hero_reveal',
   'tease',
+  // character engine (exact anchors from the Character Actor's own curves)
+  'character_enter',
+  'head_turn',
+  'phone_pickup',
+  'phone_tap',
+  'gesture_peak',
+  'point',
+  'reaction',
+  'object_land',
+  'character_exit',
 ] as const;
 export type MotionEventType = (typeof MOTION_EVENT_TYPES)[number];
 
@@ -72,6 +82,11 @@ export interface MotionEventDecl {
   anchor?: AnchorName;
   /** Repeating events (counter ticks, typing) every `every` s, `count` times. */
   repeat?: { count: number; every: number };
+  /**
+   * Exact anchors (scene-local seconds) measured on the real motion curve — used as-is
+   * instead of the element's physics profile (character gestures, phone taps).
+   */
+  exact?: { start: number; peak: number; contact: number; settle: number; completion: number };
 }
 
 /** A resolved event on the film timeline. */
@@ -130,6 +145,15 @@ export const DEFAULT_ANCHOR: Record<MotionEventType, AnchorName> = {
   camera_move: 'peak',
   hero_reveal: 'contact',
   tease: 'start',
+  character_enter: 'peak',
+  head_turn: 'peak',
+  phone_pickup: 'contact',
+  phone_tap: 'contact',
+  gesture_peak: 'peak',
+  point: 'contact',
+  reaction: 'peak',
+  object_land: 'contact',
+  character_exit: 'peak',
 };
 
 const DEFAULT_ELEMENT: Partial<Record<MotionEventType, ElementKind>> = {
@@ -160,6 +184,15 @@ const DEFAULT_ELEMENT: Partial<Record<MotionEventType, ElementKind>> = {
   map_pin: 'icon',
   map_route: 'chart',
   draw_stroke: 'chart',
+  character_enter: 'body',
+  head_turn: 'body',
+  phone_pickup: 'device',
+  phone_tap: 'button',
+  gesture_peak: 'body',
+  point: 'body',
+  reaction: 'body',
+  object_land: 'product',
+  character_exit: 'body',
 };
 
 const DEFAULT_IMPORTANCE: Partial<Record<MotionEventType, number>> = {
@@ -193,6 +226,15 @@ const DEFAULT_IMPORTANCE: Partial<Record<MotionEventType, number>> = {
   scene_start: 0.2,
   warning_state: 0.65,
   product_peak_velocity: 0.6,
+  character_enter: 0.55,
+  head_turn: 0.15,
+  phone_pickup: 0.45,
+  phone_tap: 0.2,
+  gesture_peak: 0.35,
+  point: 0.55,
+  reaction: 0.45,
+  object_land: 0.6,
+  character_exit: 0.4,
 };
 
 /** Legacy SFX category → semantic event, given the scene category. */
@@ -262,7 +304,10 @@ export function detectEvents(scenes: SceneEventSource[], personality: MotionPers
         if (local > s.durationSec - 0.05) break;
         const startSec = s.startSec + local;
         const toSec = (f: number) => startSec + f / fps;
-        const anchors = { start: startSec, peak: toSec(a.peakVelocityFrame), contact: toSec(a.contactFrame), settle: toSec(a.settleFrame), completion: toSec(a.completionFrame) };
+        const ex = d.exact;
+        const anchors = ex
+          ? { start: s.startSec + ex.start / s.speed, peak: s.startSec + ex.peak / s.speed, contact: s.startSec + ex.contact / s.speed, settle: s.startSec + ex.settle / s.speed, completion: s.startSec + ex.completion / s.speed }
+          : { start: startSec, peak: toSec(a.peakVelocityFrame), contact: toSec(a.contactFrame), settle: toSec(a.settleFrame), completion: toSec(a.completionFrame) };
         const anchor = d.anchor ?? DEFAULT_ANCHOR[d.type];
         const speed = a.peakVelocity;
         const massK = { feather: 0.15, light: 0.3, medium: 0.5, heavy: 0.75, massive: 0.95 }[prof.mass] ?? 0.5;

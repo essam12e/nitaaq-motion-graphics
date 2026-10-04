@@ -18,7 +18,7 @@ export interface MotionRecommendation {
   jobs: string[];
 }
 
-export type SceneCategory = 'typography' | 'brand' | 'ui' | 'mobile' | 'commerce' | 'data' | 'media' | 'infographic' | 'cinematic' | 'social' | 'cta' | 'illustration' | 'map';
+export type SceneCategory = 'typography' | 'brand' | 'ui' | 'mobile' | 'commerce' | 'data' | 'media' | 'infographic' | 'cinematic' | 'social' | 'cta' | 'illustration' | 'map' | 'character';
 
 export interface SfxSuggestion {
   /** Seconds after scene start (scaled by motion speed). */
@@ -86,7 +86,7 @@ export interface SceneManifest<P = Record<string, unknown>> {
   module?: string;
 }
 
-const DEFAULT_COST: Record<SceneCategory, PerformanceCost> = { typography: 'LOW', brand: 'LOW', cta: 'LOW', social: 'LOW', infographic: 'LOW', data: 'MEDIUM', ui: 'MEDIUM', mobile: 'MEDIUM', commerce: 'MEDIUM', media: 'HIGH', cinematic: 'HIGH', illustration: 'MEDIUM', map: 'MEDIUM' };
+const DEFAULT_COST: Record<SceneCategory, PerformanceCost> = { typography: 'LOW', brand: 'LOW', cta: 'LOW', social: 'LOW', infographic: 'LOW', data: 'MEDIUM', ui: 'MEDIUM', mobile: 'MEDIUM', commerce: 'MEDIUM', media: 'HIGH', cinematic: 'HIGH', illustration: 'MEDIUM', map: 'MEDIUM', character: 'MEDIUM' };
 const DEFAULT_MOTION: Record<SceneCategory, MotionRecommendation> = {
   typography: { elements: ['hero-title', 'text'], jobs: ['establish-hierarchy', 'stop-the-scroll'] },
   brand: { elements: ['logo', 'hero-title'], jobs: ['brand-recall'] },
@@ -101,6 +101,7 @@ const DEFAULT_MOTION: Record<SceneCategory, MotionRecommendation> = {
   cta: { elements: ['button', 'logo'], jobs: ['direct-action', 'resolve'] },
   illustration: { elements: ['icon', 'card', 'chart'], jobs: ['explain-the-idea', 'show-how-it-works'] },
   map: { elements: ['chart', 'icon', 'camera'], jobs: ['locate-the-story', 'connect-places'] },
+  character: { elements: ['body', 'hero-title'], jobs: ['perform-the-line', 'direct-attention'] },
 };
 
 /** Family cost, defaulted by category. */

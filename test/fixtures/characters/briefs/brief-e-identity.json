@@ -1,0 +1,49 @@
+{
+ "language": "ar",
+ "dialect": "saudi",
+ "platform": "instagram-feed",
+ "audio": {
+  "mode": "none",
+  "sfx": true
+ },
+ "brand": {
+  "name": "مشوار",
+  "colors": [
+   "#0F766E",
+   "#F59E0B"
+  ]
+ },
+ "request": "فيديو بشخصية سعودية بثوب وشماغ وعقال",
+ "aspect": "1:1",
+ "character": {
+  "svg": "../saudi/saudi-layered.svg",
+  "name": "أبو فهد",
+  "garments": [
+   "شماغ",
+   "عقال",
+   "ثوب"
+  ]
+ },
+ "content": {
+  "hook": "هلا والله",
+  "characterScript": [
+   {
+    "line": "هلا والله"
+   },
+   {
+    "line": "عندي لك خبر حلو!"
+   },
+   {
+    "line": "وش رايك نجرب؟"
+   },
+   {
+    "line": "تمام، يلا نبدأ",
+    "scene": "cta"
+   }
+  ],
+  "cta": {
+   "text": "يلا نبدأ",
+   "button": "ابدأ"
+  }
+ }
+}

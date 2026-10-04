@@ -1,0 +1,100 @@
+{
+ "language": "ar",
+ "dialect": "saudi",
+ "platform": "tiktok",
+ "audio": {
+  "mode": "none",
+  "sfx": true
+ },
+ "brand": {
+  "name": "مشوار",
+  "colors": [
+   "#0F766E",
+   "#F59E0B"
+  ]
+ },
+ "request": "فيديو شخصية تستخدم الجوال وتطبيق دردشة",
+ "character": {
+  "poses": [
+   {
+    "path": "../saudi/poses/character-neutral.png"
+   },
+   {
+    "path": "../saudi/poses/character-happy.png"
+   },
+   {
+    "path": "../saudi/poses/character-surprised.png"
+   },
+   {
+    "path": "../saudi/poses/character-confused.png"
+   },
+   {
+    "path": "../saudi/poses/character-thinking.png"
+   },
+   {
+    "path": "../saudi/poses/character-talking.png"
+   },
+   {
+    "path": "../saudi/poses/character-pointing.png"
+   },
+   {
+    "path": "../saudi/poses/character-presenting.png"
+   },
+   {
+    "path": "../saudi/poses/character-holding-phone.png"
+   },
+   {
+    "path": "../saudi/poses/character-looking-phone.png"
+   },
+   {
+    "path": "../saudi/poses/character-excited.png"
+   },
+   {
+    "path": "../saudi/poses/character-listening.png"
+   }
+  ],
+  "name": "أبو فهد"
+ },
+ "content": {
+  "hook": "طلبت قهوتك؟",
+  "characterScript": [
+   {
+    "line": "طلبت قهوتك؟"
+   },
+   {
+    "line": "افتح التطبيق",
+    "scene": "phone"
+   },
+   {
+    "line": "اكتب طلبك بسهولة",
+    "action": "typing",
+    "scene": "phone"
+   },
+   {
+    "line": "وصلتني رسالة",
+    "scene": "chat",
+    "messages": [
+     "طلبك جاهز ☕",
+     "شكراً!"
+    ]
+   },
+   {
+    "line": "اطلب الآن",
+    "scene": "cta"
+   }
+  ],
+  "ui": {
+   "appName": "قهوتي",
+   "headline": "وش تبي اليوم؟",
+   "items": [
+    "لاتيه",
+    "قهوة سعودية",
+    "كابتشينو"
+   ]
+  },
+  "cta": {
+   "text": "اطلب الآن",
+   "button": "اطلب"
+  }
+ }
+}

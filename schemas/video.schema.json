@@ -6,7 +6,7 @@
       "properties": {
         "version": {
           "type": "string",
-          "default": "1.0"
+          "default": "3.0"
         },
         "project": {
           "type": "object",
@@ -53,6 +53,41 @@
           "required": [
             "id",
             "title"
+          ],
+          "additionalProperties": false
+        },
+        "genre": {
+          "type": "string"
+        },
+        "modules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "brandMotion": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string"
+            },
+            "personality": {
+              "type": "string"
+            },
+            "soundPersonality": {
+              "type": "string"
+            },
+            "logoReveal": {
+              "type": "string"
+            },
+            "ctaStyle": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "key",
+            "personality"
           ],
           "additionalProperties": false
         },
@@ -549,6 +584,77 @@
               ],
               "additionalProperties": false
             },
+            "soundtrack": {
+              "type": "object",
+              "properties": {
+                "style": {
+                  "type": "string",
+                  "enum": [
+                    "tech",
+                    "premium",
+                    "cinematic",
+                    "sport",
+                    "playful",
+                    "corporate",
+                    "minimal",
+                    "futuristic"
+                  ]
+                },
+                "bpm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "seed": {
+                  "type": [
+                    "string",
+                    "number"
+                  ]
+                },
+                "hits": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "default": []
+                },
+                "sections": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "start": {
+                        "type": "number"
+                      },
+                      "end": {
+                        "type": "number"
+                      },
+                      "energy": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "start",
+                      "end",
+                      "energy"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "default": []
+                }
+              },
+              "required": [
+                "style",
+                "bpm",
+                "seed"
+              ],
+              "additionalProperties": false
+            },
             "sfx": {
               "type": "object",
               "properties": {
@@ -574,6 +680,77 @@
                     "type": "string"
                   },
                   "default": {}
+                },
+                "personality": {
+                  "type": "string"
+                },
+                "cues": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "sceneId": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "family": {
+                        "type": "string"
+                      },
+                      "file": {
+                        "type": "string"
+                      },
+                      "atSec": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "volume": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1.5
+                      },
+                      "duration": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "event": {
+                        "type": "string"
+                      },
+                      "anchor": {
+                        "type": "string"
+                      },
+                      "anchorSec": {
+                        "type": "number"
+                      },
+                      "layer": {
+                        "type": "string",
+                        "enum": [
+                          "movement",
+                          "impact",
+                          "detail",
+                          "single"
+                        ],
+                        "default": "single"
+                      },
+                      "pan": {
+                        "type": "number",
+                        "minimum": -1,
+                        "maximum": 1,
+                        "default": 0
+                      }
+                    },
+                    "required": [
+                      "sceneId",
+                      "sound",
+                      "family",
+                      "file",
+                      "atSec",
+                      "volume",
+                      "duration"
+                    ],
+                    "additionalProperties": false
+                  }
                 }
               },
               "additionalProperties": false,
@@ -582,6 +759,415 @@
           },
           "additionalProperties": false,
           "default": {}
+        },
+        "design": {
+          "type": "object",
+          "properties": {
+            "allowPatterns": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "dots",
+                  "grid",
+                  "halftone",
+                  "bokeh",
+                  "stripes",
+                  "lines",
+                  "particles"
+                ]
+              },
+              "default": []
+            },
+            "decorations": {
+              "type": "boolean",
+              "default": false
+            },
+            "justification": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "effectBudget": {
+              "type": "string",
+              "enum": [
+                "LOW",
+                "MEDIUM",
+                "HIGH"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "default": {}
+        },
+        "motion": {
+          "type": "object",
+          "properties": {
+            "personality": {
+              "type": "string",
+              "enum": [
+                "premium",
+                "energetic",
+                "playful",
+                "corporate",
+                "cinematic",
+                "tech",
+                "sport"
+              ]
+            },
+            "seed": {
+              "type": [
+                "string",
+                "number"
+              ]
+            },
+            "heroScene": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "default": {}
+        },
+        "timeline": {
+          "type": "object",
+          "properties": {
+            "seamlessLoop": {
+              "type": "boolean",
+              "default": false
+            },
+            "chapters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "startScene": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "startScene"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            },
+            "beatSync": {
+              "type": "object",
+              "properties": {
+                "bpm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "offset": {
+                  "type": "number"
+                },
+                "aligned": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "bpm",
+                "offset",
+                "aligned"
+              ],
+              "additionalProperties": false
+            },
+            "shared": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "asset": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "logo",
+                      "product",
+                      "phone",
+                      "browser",
+                      "card",
+                      "text",
+                      "shape",
+                      "icon",
+                      "chart",
+                      "screenshot"
+                    ],
+                    "default": "product"
+                  },
+                  "fromScene": {
+                    "type": "string"
+                  },
+                  "toScene": {
+                    "type": "string"
+                  },
+                  "fromRect": {
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "w": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "h": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y",
+                      "w",
+                      "h"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "toRect": {
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "w": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "h": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y",
+                      "w",
+                      "h"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "id",
+                  "asset",
+                  "fromScene",
+                  "toScene"
+                ],
+                "additionalProperties": false
+              },
+              "default": []
+            }
+          },
+          "additionalProperties": false,
+          "default": {}
+        },
+        "reference": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "image",
+                "video",
+                "website"
+              ]
+            },
+            "motionEnergy": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "cameraActivity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "visualDensity": {
+              "type": "string",
+              "enum": [
+                "sparse",
+                "balanced",
+                "dense"
+              ]
+            },
+            "appliedTo": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            }
+          },
+          "required": [
+            "source",
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        "character": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "complexity": {
+              "type": "string",
+              "enum": [
+                "STATIC",
+                "POSE_BASED",
+                "PARTIAL_RIG",
+                "FULL_VECTOR_RIG"
+              ]
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "rig",
+                "poses"
+              ]
+            },
+            "poses": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "asset": {
+                    "type": "string"
+                  },
+                  "width": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "height": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "bodyDirection": {
+                    "type": "string",
+                    "enum": [
+                      "left",
+                      "right",
+                      "front"
+                    ],
+                    "default": "front"
+                  },
+                  "framing": {
+                    "type": "string",
+                    "enum": [
+                      "full-body",
+                      "half-body",
+                      "bust",
+                      "head"
+                    ],
+                    "default": "full-body"
+                  },
+                  "prop": {
+                    "type": "string",
+                    "default": "none"
+                  },
+                  "anchors": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "headHeight": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "asset",
+                  "width",
+                  "height",
+                  "state",
+                  "anchors",
+                  "headHeight"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "rig": {},
+            "identity": {
+              "type": "object",
+              "properties": {
+                "palette": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": []
+                },
+                "garments": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": []
+                },
+                "lock": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": []
+                }
+              },
+              "additionalProperties": false,
+              "default": {}
+            },
+            "package": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "complexity",
+            "mode",
+            "poses"
+          ],
+          "additionalProperties": false
         },
         "scenes": {
           "type": "array",
@@ -697,6 +1283,18 @@
                     "minimum": 0.4,
                     "maximum": 2.5,
                     "default": 1
+                  },
+                  "jobs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "text": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
                   }
                 },
                 "additionalProperties": false,
@@ -723,6 +1321,9 @@
                       "up",
                       "down"
                     ]
+                  },
+                  "reason": {
+                    "type": "string"
                   }
                 },
                 "required": [

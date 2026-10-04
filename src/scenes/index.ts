@@ -26,9 +26,10 @@ import * as mapScenes from './map/map-scenes';
 import * as illustration from './illustration/illustration-scenes';
 import * as dataStory from './data/data-story';
 import * as web from './web/gsap-sequence';
+import * as character from './character/character-scenes';
 
 const isScene = (x: unknown): x is SceneModule => Boolean(x && typeof x === 'object' && 'manifest' in x && 'Component' in x);
-const GROUPS: Record<string, unknown>[] = [moreTypography, brand, ui, mobile, commerce, data, media, infographic, cinematic, social, cta, flow, kinetic, logoAnim, productDirector, mapScenes, illustration, dataStory, web];
+const GROUPS: Record<string, unknown>[] = [moreTypography, brand, ui, mobile, commerce, data, media, infographic, cinematic, social, cta, flow, kinetic, logoAnim, productDirector, mapScenes, illustration, dataStory, web, character];
 
 export const BUILTIN_SCENES: SceneModule[] = [kineticTitle, wordImpact, lineReveal, ...GROUPS.flatMap((g) => Object.values(g).filter(isScene))];
 

@@ -1,0 +1,68 @@
+{
+ "language": "ar",
+ "dialect": "saudi",
+ "platform": "tiktok",
+ "audio": {
+  "mode": "none",
+  "sfx": true
+ },
+ "brand": {
+  "name": "مشوار",
+  "colors": [
+   "#0F766E",
+   "#F59E0B"
+  ]
+ },
+ "request": "فيديو أرقام بشخصية تشرح",
+ "character": {
+  "svg": "../saudi/saudi-layered.svg",
+  "name": "أبو فهد"
+ },
+ "content": {
+  "hook": "طلباتنا تضاعفت",
+  "stats": [
+   {
+    "value": 183,
+    "suffix": "%",
+    "label": "نمو سنوي",
+    "source": "بيانات اختبار داخلية"
+   }
+  ],
+  "series": {
+   "labels": [
+    "الربع 1",
+    "الربع 2",
+    "الربع 3",
+    "الربع 4"
+   ],
+   "values": [
+    120,
+    180,
+    240,
+    340
+   ],
+   "source": "بيانات اختبار داخلية"
+  },
+  "characterScript": [
+   {
+    "line": "طلباتنا تضاعفت هذا العام"
+   },
+   {
+    "line": "نمو سنوي",
+    "scene": "chart"
+   },
+   {
+    "line": "والطلبات كل ربع تزيد",
+    "scene": "chart"
+   },
+   {
+    "line": "انضم لنا اليوم",
+    "scene": "cta"
+   }
+  ],
+  "cta": {
+   "text": "انضم لنا اليوم",
+   "button": "سجّل"
+  }
+ }
+}

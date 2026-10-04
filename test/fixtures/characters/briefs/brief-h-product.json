@@ -1,0 +1,86 @@
+{
+ "language": "ar",
+ "dialect": "saudi",
+ "platform": "tiktok",
+ "audio": {
+  "mode": "none",
+  "sfx": true
+ },
+ "brand": {
+  "name": "ندى",
+  "colors": [
+   "#0E7C66",
+   "#F2C14E"
+  ]
+ },
+ "request": "إعلان منتج بشخصية تقدّمه",
+ "character": {
+  "poses": [
+   {
+    "path": "../saudi/poses/character-neutral.png"
+   },
+   {
+    "path": "../saudi/poses/character-happy.png"
+   },
+   {
+    "path": "../saudi/poses/character-surprised.png"
+   },
+   {
+    "path": "../saudi/poses/character-confused.png"
+   },
+   {
+    "path": "../saudi/poses/character-thinking.png"
+   },
+   {
+    "path": "../saudi/poses/character-talking.png"
+   },
+   {
+    "path": "../saudi/poses/character-pointing.png"
+   },
+   {
+    "path": "../saudi/poses/character-presenting.png"
+   },
+   {
+    "path": "../saudi/poses/character-holding-phone.png"
+   },
+   {
+    "path": "../saudi/poses/character-looking-phone.png"
+   },
+   {
+    "path": "../saudi/poses/character-excited.png"
+   },
+   {
+    "path": "../saudi/poses/character-listening.png"
+   }
+  ],
+  "name": "أبو فهد"
+ },
+ "content": {
+  "hook": "جربت مرطّب ندى؟",
+  "product": {
+   "name": "مرطّب ندى",
+   "price": "89 ر.س",
+   "image": "../../product.png"
+  },
+  "characterScript": [
+   {
+    "line": "جربت مرطّب ندى؟"
+   },
+   {
+    "line": "هذا هو، خفيف ويدوم",
+    "scene": "product"
+   },
+   {
+    "line": "واو، النتيجة رهيبة!"
+   },
+   {
+    "line": "اطلبه الحين",
+    "scene": "cta"
+   }
+  ],
+  "cta": {
+   "text": "اطلبه الحين",
+   "button": "اطلب الآن"
+  }
+ }
+}

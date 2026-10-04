@@ -7,6 +7,7 @@
  */
 import { z } from 'zod';
 import { AspectSchema, DialectSchema, LanguageSchema, PlatformSchema } from './video';
+import { BriefCharacterSchema, CharacterBeatSchema } from '../character/schema';
 
 export const FeatureSchema = z.object({
   title: z.string().min(1),
@@ -47,7 +48,7 @@ export const BriefAssetSchema = z.object({
   label: z.string().optional(),
 });
 
-export const GENRES = ['auto', 'social-ad', 'product', 'saas', 'launch', 'kinetic', 'logo', 'data', 'map', 'explainer', 'whiteboard', 'illustrated', 'procedural', 'web-ui', 'music'] as const;
+export const GENRES = ['auto', 'social-ad', 'product', 'saas', 'launch', 'kinetic', 'logo', 'data', 'map', 'explainer', 'whiteboard', 'illustrated', 'procedural', 'web-ui', 'music', 'character'] as const;
 export const GenreSchema = z.enum(GENRES);
 
 export const MapLocationSchema = z.object({
@@ -113,6 +114,11 @@ export const BriefSchema = z.object({
     .nullable()
     .optional(),
   assets: z.array(BriefAssetSchema).default([]),
+  /**
+   * A character the film is performed by (Character Motion Engine): a pose sheet, several PNG poses,
+   * a layered SVG or one image — or a saved package. The art is prepared once, cached, and never redrawn.
+   */
+  character: BriefCharacterSchema.optional(),
   audio: z
     .object({
       mode: z.enum(['none', 'user-voice', 'tts']).default('none'),
@@ -174,6 +180,8 @@ export const BriefSchema = z.object({
       })
       .optional(),
     messages: z.array(z.string()).optional(),
+    /** Character script: one beat per line the character performs (otherwise built from hook/problem/solution/CTA). */
+    characterScript: z.array(CharacterBeatSchema).min(1).max(24).optional(),
     /** Kinetic typography script: short lines shown word-group by word-group, in order. */
     lines: z.array(z.string().min(1)).optional(),
     /** Launch/hype: a teaser line before the reveal and the reveal line itself. */

@@ -94,6 +94,8 @@ const CAMERA_BY_CATEGORY: Record<string, PlannedScene['camera'][]> = {
   infographic: ['none', 'drift'],
   social: ['drift', 'none'],
   cta: ['push', 'none'],
+  // the Character Director runs its own camera (shot sizes + moves) inside the scene
+  character: ['none'],
 };
 
 /** Split speech segments into `n` contiguous groups of roughly equal speaking time. */
