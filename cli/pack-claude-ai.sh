@@ -9,7 +9,7 @@ mkdir -p "$TMP/nitaaq-motion-graphics"
 git -C "$ROOT" archive HEAD | tar -x -C "$TMP/nitaaq-motion-graphics"
 # claude.ai runs the pipeline only: dev suites, the studio, adapters, dev scripts and derived schemas stay in the repo
 (cd "$TMP/nitaaq-motion-graphics" && rm -rf public/fonts test studio AGENTS.md .env.example schemas/video.schema.json adapters vitest.config.ts dist bin install.sh .gitignore \
-  cli/benchmark.ts cli/build-geo.ts cli/dot-regression.ts cli/gallery.ts cli/gen-docs.ts cli/make-demo-assets.ts cli/make-test-audio.ts cli/make-textures.ts cli/pack-claude-ai.sh cli/test-videos.ts \
+  cli/benchmark.ts cli/build-geo.ts cli/dot-regression.ts cli/gallery.ts cli/gen-docs.ts cli/make-demo-assets.ts cli/make-test-audio.ts cli/make-textures.ts cli/pack-claude-ai.sh cli/test-videos.ts cli/test-characters.ts cli/make-character-assets.ts \
   docs/TEST_RESULTS.md docs/performance-report.json schemas/creative-plan.schema.json schemas/scene-content.schema.json schemas/storyboard.schema.json)
 N=$(find "$TMP/nitaaq-motion-graphics" -type f | wc -l)
 [ "$N" -le 200 ] || { echo "too many files for claude.ai: $N" >&2; exit 1; }
