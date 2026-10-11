@@ -41,7 +41,8 @@ type PD = z.infer<typeof ProductDepthC>;
 
 function ProductDepth({ content: c, variant }: { content: PD; variant: string }) {
   const L = useLayout();
-  const { tokens: t } = useVideo();
+  // the price takes the highlight colour (contrast-checked against the background), not the raw accent
+  const { tokens: t, hl } = useVideo();
   const { m, s } = useSceneTime();
   const u = L.u;
   const ar = useAspect(c.image, 1);
@@ -62,7 +63,7 @@ function ProductDepth({ content: c, variant }: { content: PD; variant: string })
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: variant === 'side' ? 'flex-start' : 'center', gap: u * 1.2, maxWidth: variant === 'side' ? L.safe.width * 0.46 : undefined }}>
       {c.name ? <Text text={c.name} role="eyebrow" delay={0.5} animate="block" align={variant === 'side' ? 'start' : 'center'} /> : null}
       <Text text={c.title} highlight={c.highlight} role="headline" size={8} delay={0.65} align={variant === 'side' ? 'start' : 'center'} maxWidth={variant === 'side' ? L.safe.width * 0.46 : undefined} />
-      {c.price ? <Text text={c.price} role="number" size={7} delay={1.05} align={variant === 'side' ? 'start' : 'center'} color={t.palette.accent} /> : null}
+      {c.price ? <Text text={c.price} role="number" size={7} delay={1.05} align={variant === 'side' ? 'start' : 'center'} color={hl} /> : null}
     </div>
   );
   return (

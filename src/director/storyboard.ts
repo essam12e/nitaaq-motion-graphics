@@ -203,6 +203,9 @@ export function buildStoryboard(plan: CreativePlan, ctx: RecipeCtx, opts: { seed
         // banned look «heading → cards → CTA»: the last middle scene breaks the template when it can
         if (templateRisk && m.category === 'infographic') w *= 0.12;
         if (prefer.includes(r.family)) w *= 2.2;
+        // two hero shots of the same product (classic + 2.5D depth) would repeat one message back to back
+        const HERO_SHOTS = ['product-hero', 'product-depth'];
+        if (HERO_SHOTS.includes(r.family) && picked.some((p) => HERO_SHOTS.includes(p.r.family))) w *= 0.12;
         const pay = payloadOf(r.family);
         if (pay) w *= shown.has(pay) ? 0.12 : pay === 'screenshot' ? 1.8 : 1.5; // the user's real screenshot first
         // match the beat's energy
