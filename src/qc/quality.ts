@@ -28,6 +28,7 @@ import { probe, loudness, ffmpegRun } from '../node/audio';
 import type { ProbeResult as DomProbe, ProbeText } from '../engine/QCProbe';
 import { log } from '../core/logger';
 import { sampleFramesV2, collectProbes, determinismCheck, type Sample } from './probes';
+import { bundleKey } from '../node/bundle';
 import { visualQa, categoryScores, gateOk, GATE, type Category } from './vqa';
 import { detectPatterns, type Rect } from './pattern-detect';
 import { characterStructuralQc, characterPixelQc } from './character-qc';
@@ -448,7 +449,8 @@ export async function structuralQc(opts: { spec: VideoSpec; projectDir: string; 
     const a = samples.find((x) => x.kind === 'mid' && x.sceneIndex === 0)?.frame ?? samples[0].frame;
     const b = samples[samples.length - 1].frame;
     try {
-      const d = await determinismCheck(spec, projectDir, a, b, join(opts.outDir, 'seek'));
+      // same code bundle + same spec + same frames → same answer: warm runs reuse the measured result
+      const d = await cached('determinism', hashOf('det-v1', bundleKey(), spec, a, b), () => determinismCheck(spec, projectDir, a, b, join(opts.outDir, 'seek')));
       determinism = { frames: [a, b], ...d };
       checks.determinism = d.ok ? 'pass' : 'fail';
       if (!d.ok) add('structure', { severity: d.meanDiff > 2 ? 'critical' : 'error', code: 'MOTION_NONDETERMINISTIC', frame: a, message: `frame ${a} renders differently after seeking to ${b} and back (mean Δ ${d.meanDiff}, max Δ ${d.maxDiff}) — something depends on render history` });
