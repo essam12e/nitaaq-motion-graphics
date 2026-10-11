@@ -450,8 +450,8 @@ export async function structuralQc(opts: { spec: VideoSpec; projectDir: string; 
     const b = samples[samples.length - 1].frame;
     try {
       // same code bundle + same film + same frames → same answer: warm runs reuse the measured result
-      // (the project id/title only name the folder; seeds that matter live in metadata/motion)
-      const film = { ...spec, project: { ...spec.project, id: '', title: '' } };
+      // (project id/title and the creation stamp only label the run)
+      const film = { ...spec, project: { ...spec.project, id: '', title: '' }, metadata: { ...spec.metadata, createdAt: '', briefHash: '' } };
       const d = await cached('determinism', hashOf('det-v1', bundleKey(), film, a, b), () => determinismCheck(spec, projectDir, a, b, join(opts.outDir, 'seek')));
       determinism = { frames: [a, b], ...d };
       checks.determinism = d.ok ? 'pass' : 'fail';
