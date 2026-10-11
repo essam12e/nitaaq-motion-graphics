@@ -11,10 +11,28 @@ git -C "$ROOT" archive HEAD | tar -x -C "$TMP/nitaaq-motion-graphics"
 (cd "$TMP/nitaaq-motion-graphics" && rm -rf public/fonts test studio AGENTS.md .env.example schemas/video.schema.json adapters vitest.config.ts dist bin install.sh .gitignore \
   cli/benchmark.ts cli/build-geo.ts cli/dot-regression.ts cli/gallery.ts cli/gen-docs.ts cli/make-demo-assets.ts cli/make-test-audio.ts cli/make-textures.ts cli/pack-claude-ai.sh cli/test-videos.ts cli/test-characters.ts cli/make-character-assets.ts cli/curate-sfx.ts cli/stills.ts \
   docs/TEST_RESULTS.md docs/performance-report.json schemas/creative-plan.schema.json schemas/scene-content.schema.json schemas/storyboard.schema.json)
-# claude.ai counts files: the library sounds travel as one tar (npm run setup unpacks it), and the
-# character docs as one file (the full repo keeps them separate)
-(cd "$TMP/nitaaq-motion-graphics/public" && tar -cf sfx.tar --exclude=CREDITS.md sfx && find sfx -type f ! -name CREDITS.md -delete)
-(cd "$TMP/nitaaq-motion-graphics/docs" && for f in CHARACTER_FORMAT CHARACTER_POSES CHARACTER_RIGGING CHARACTER_QC CHARACTER_PERFORMANCE CHARACTER_TROUBLESHOOTING; do printf '\n\n---\n\n' >> CHARACTER_ENGINE.md; cat "$f.md" >> CHARACTER_ENGINE.md; rm "$f.md"; done)
+# claude.ai counts files: the library sounds, demo images, paper textures and map data travel as one tar
+# (npm run setup unpacks it), and related docs are merged into one file per topic (the full repo keeps them
+# separate; links in SKILL.md / README.md / docs are rewritten to the merged file)
+(cd "$TMP/nitaaq-motion-graphics" && tar -cf public/sfx.tar --exclude=public/sfx/CREDITS.md public/sfx public/demo public/tex data/geo \
+  && find public/sfx -type f ! -name CREDITS.md -delete && rm -rf public/demo public/tex data/geo)
+merge() {
+  local target="$1"; shift
+  for f in "$@"; do
+    printf '\n\n---\n\n' >> "docs/$target.md"; cat "docs/$f.md" >> "docs/$target.md"; rm "docs/$f.md"
+    find . -name '*.md' -exec sed -i "s#docs/$f\.md#docs/$target.md#g; s#(\./$f\.md#(./$target.md#g; s#($f\.md#($target.md#g" {} +
+  done
+}
+(cd "$TMP/nitaaq-motion-graphics" \
+  && merge CHARACTER_ENGINE CHARACTER_FORMAT CHARACTER_POSES CHARACTER_RIGGING CHARACTER_QC CHARACTER_PERFORMANCE CHARACTER_TROUBLESHOOTING \
+  && merge MOTION_SYSTEM CAMERA MORPHING TRANSITIONS TEXT_MOTION \
+  && merge AUDIO AUDIO_ENGINE SOUND_DIRECTOR \
+  && merge BRAND_SYSTEM BRAND_MOTION REFERENCE_SYSTEM \
+  && merge PRODUCT_VIDEO LAUNCH_FILM AD_VARIANTS \
+  && merge ILLUSTRATION WHITEBOARD MAP_ANIMATION DATA_ANIMATION GSAP \
+  && merge QUALITY PERFORMANCE TROUBLESHOOTING \
+  && merge ARCHITECTURE THIRD_PARTY \
+  && merge SCENE_LIBRARY STYLE_LIBRARY)
 N=$(find "$TMP/nitaaq-motion-graphics" -type f | wc -l)
 [ "$N" -le 200 ] || { echo "too many files for claude.ai: $N" >&2; exit 1; }
 mkdir -p "$ROOT/dist"
