@@ -212,7 +212,7 @@ export function masterAudio(file: string, opts: { targetLufs?: number; truePeak?
   const eff = Math.min(target, inI + 12);
   const filters = `loudnorm=I=${eff}:TP=${tp}:LRA=11:measured_I=${j.input_i}:measured_TP=${j.input_tp}:measured_LRA=${j.input_lra}:measured_thresh=${j.input_thresh}:offset=${j.target_offset}:linear=true,aresample=48000,alimiter=limit=${Math.pow(10, (tp - 0.2) / 20).toFixed(4)}:attack=5:release=60:level=disabled`;
   const tmp = `${file}.master.mp4`;
-  ffmpegRun(['-i', file, '-map', '0:v?', '-map', '0:a', '-c:v', 'copy', '-af', filters, '-c:a', 'aac', '-b:a', opts.bitrate ?? '192k', '-ar', '48000', '-map_metadata', '-1', '-movflags', '+faststart', tmp], 'audio mastering');
+  ffmpegRun(['-i', file, '-map', '0:v?', '-map', '0:a', '-c:v', 'copy', '-af', filters, '-c:a', 'aac', '-b:a', opts.bitrate ?? '192k', '-ar', '48000', '-map_metadata', '-1', '-fflags', '+bitexact', '-flags:a', '+bitexact', '-movflags', '+faststart', tmp], 'audio mastering');
   renameSync(tmp, file);
   const after = loudness(file);
   const clippedSamples = countClipped(file);

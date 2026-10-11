@@ -40,3 +40,11 @@ Motion QC (`src/qc/audio-qc.ts → motionVarietyQc`) reports `TEXT_MOTION_REPEAT
 ## Tests
 
 `test/unit/v3-modules.test.ts` (Arabic never per glyph, English per char allowed, no back-to-back headline family, ≥26 families), `test/unit/arabic.test.ts`, visual baselines in `test/visual/baseline/`.
+
+## Arabic Kinetic Typography 2.0
+
+- **Joining-safe letter groups** (`joiningClusters` in `src/typography/arabic.ts`): a word is split only where the right letter does not join forward (ا د ذ ر ز و ة ى …) or next to a non-joining character; diacritics stay with their letter; lam-alef is never split. مواعيدك → مو · ا · عيد · ك. Each group animates on its own and the word still joins correctly.
+- **Kashida** (`kashida(word, n)`): tatweel inserted only at a legal joined connection (بشرتك → بشرتــك), used as a stretch on the key word; the fitter reserves the stretched width.
+- **Families** (Arabic copy only): `ar-cluster-rise`, `ar-cluster-cascade`, `ar-cluster-drop`, `ar-fill-sweep` (ghost → ink in reading direction), `ar-ink-sweep` (feathered line wipe), `ar-weight-settle`, `ar-kashida-stretch` (needs a highlight). The planner puts them first for Arabic headlines, support lines and CTAs.
+- **QC**: `ARABIC_SPLIT_GLYPHS` now tests real joins in the DOM (two adjacent text nodes on one line whose letters connect) instead of flagging every single-letter span.
+- Scene family `kinetic-arabic` (stack / hero-word / rise) shows all of it.

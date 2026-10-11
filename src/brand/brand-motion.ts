@@ -35,7 +35,9 @@ export function brandKey(name: string | null | undefined, logoHash?: string | nu
   const base = (name ?? '').trim().toLowerCase();
   const slug = base.replace(/[^a-z0-9؀-ۿ]+/g, '-').replace(/^-|-$/g, '');
   const h = (hashString(`${base}|${logoHash ?? ''}`) >>> 0).toString(16).padStart(8, '0').slice(0, 8);
-  const ascii = slug.replace(/[^a-z0-9-]/g, '');
+  // leading hyphens only (an all-Arabic name left "-" and an invalid key); trailing ones are kept so
+  // keys of existing mixed-script brands ("nada--…") do not change
+  const ascii = slug.replace(/[^a-z0-9-]/g, '').replace(/^-+/, '');
   return `${ascii ? ascii.slice(0, 24) + '-' : 'brand-'}${h}`;
 }
 

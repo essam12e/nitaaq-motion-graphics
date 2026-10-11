@@ -73,3 +73,17 @@ The profile's `why` string is written to `motion_spec.json`, so every move docum
 ## 6. QC checks on motion
 
 `HOLD_TOO_SHORT`, `VOICE_DRIFT`, `MOTION_NO_PURPOSE`, `CAMERA_OVERUSE` (> 70 % of scenes), `TRANSITION_MONOTONY`, `TRANSITION_REPEAT`, `TEXT_MOTION_REPEAT`, `TEXT_MOTION_OVERUSED`, `PERSONALITY_MISMATCH`. See `QUALITY.md`.
+
+## 7. Motion Engine 2.0
+
+- **Springs** (`src/motion/spring.ts`): closed-form damped oscillator (under/critical/over-damped), `springFromBounce(bounce, visualDuration)`, settle time, overshoot, `inertiaAt` (throw + decay to a boundary), `momentumAt` (multi-leg). Pure functions of time.
+- **Easing** (`src/motion/easing.ts`): cubic-bezier solver, anticipate, back, elastic, bounce, steps, mirror/reverse/blend, named `RATE` table per role.
+- **Orchestration** (`src/motion/orchestrate.ts`): stagger (from first/last/centre/edges/random-seeded, with easing over the stagger), keyframe tracks, sequences with overlaps, numeric velocity.
+- **Motion Intent System** (`src/motion/intent.ts`): every element gets a role (hero-product, headline, supporting-text, cta, logo, ui, illustration, icon, background, data) and an intent (reveal, emphasis, transition, navigation, transformation, continuity, attention, …) → the motion, its timing and its sound are chosen from the intent, written to `scene.motion.intents`.
+
+## 8. Motion Director 2.0
+
+- **Visual Rhythm Plan** (`src/director/rhythm.ts` → `rhythm_plan.json`): per scene start, length, energy, copy density, the cut into it, camera, beat accents; film checks for monotony (three equal lengths), a repeated cut, hero placement (30–85%), a breath before the hero, readability (≤ 22 characters/s) and contrast (length variation).
+- **Motion Language** (same file): the film's vocabulary — personality, easing, entrances, text families, transitions, camera moves, its signature move and its rules — so edits stay in the same language.
+- **Anti-Template System** (`src/director/anti-template.ts`, history in `workspace/.history/films.json`): each film's fingerprint (family/variant sequence, cuts, camera, backgrounds, text families, personality) is compared with the last 40 films; above 60% similarity the director varies only non-semantic choices — cuts without a story reason, sibling camera moves, variants with at least the same text capacity — until it drops below. Content, order, timing, brand and product never change. Report: `anti_template.json`. `NITAAQ_NO_ANTI_TEMPLATE=1` turns it off.
+- **Camera**: docs/CAMERA.md. **Morphing**: docs/MORPHING.md.

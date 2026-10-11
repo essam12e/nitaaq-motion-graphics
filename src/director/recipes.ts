@@ -98,6 +98,13 @@ const mod = (c: RecipeCtx, id: string) => Boolean(c.modules?.includes(id));
 const LATIN = /[A-Za-z][A-Za-z0-9 .&'’-]{1,}/;
 /** Lines for kinetic typography: the user's script, else the hook split into clauses. */
 const kineticLines = (c: RecipeCtx): string[] => (c.brief.content.lines?.length ? c.brief.content.lines.slice(0, 6) : splitClauses(c.brief.content.hook)).map((l) => l.slice(0, 80));
+/** Steps (or features) that each have a distinct, meaningful icon — the morph story's stages. */
+const morphSteps = (c: RecipeCtx): { icon: string; label: string }[] => {
+  const src = c.brief.content.steps?.length ? c.brief.content.steps : (c.brief.content.features ?? []).map((f) => f.title);
+  if (src.length < 2 || src.length > 4 || src.some((x) => x.length > 24)) return [];
+  const st = src.map((x) => ({ icon: iconFor(x, ''), label: x }));
+  return st.every((x) => x.icon) && new Set(st.map((x) => x.icon)).size === st.length ? st : [];
+};
 /** Illustration subjects that fit a text (never a random picture). */
 const subjectsFor = (c: RecipeCtx, ...texts: (string | undefined)[]): string[] => {
   const hinted = (c.brief.content.illustration ?? []).flatMap((h) => matchIllustrations(h, 1).length ? matchIllustrations(h, 1) : []);
@@ -111,15 +118,15 @@ const seriesData = (c: RecipeCtx) => {
 
 /** Families each genre leans on (weighted ×2.2 by the storyboard when eligible). */
 export const GENRE_PREFER: Record<string, string[]> = {
-  kinetic: ['kinetic-sequence', 'kinetic-stack', 'kinetic-number', 'kinetic-mixed', 'kinetic-replace', 'zero-asset-sequence'],
-  launch: ['tease-reveal', 'feature-montage', 'product-hero', 'kinetic-sequence', 'logo-animation'],
-  product: ['product-hero', 'product-detail', 'product-showcase', 'price-offer'],
+  kinetic: ['kinetic-arabic', 'kinetic-sequence', 'kinetic-stack', 'kinetic-number', 'kinetic-mixed', 'kinetic-replace', 'zero-asset-sequence'],
+  launch: ['tease-reveal', 'feature-montage', 'product-hero', 'product-depth', 'kinetic-sequence', 'logo-animation'],
+  product: ['product-hero', 'product-depth', 'product-detail', 'product-showcase', 'price-offer'],
   logo: ['logo-animation'],
   map: ['map-story'],
   data: ['data-story', 'kinetic-number', 'kpi-counter'],
   whiteboard: ['whiteboard'],
-  illustrated: ['illustration-scene', 'diagram-flow'],
-  explainer: ['diagram-flow', 'illustration-scene'],
+  illustrated: ['illustration-scene', 'diagram-flow', 'morph-story'],
+  explainer: ['diagram-flow', 'illustration-scene', 'morph-story'],
   procedural: ['zero-asset-sequence', 'kinetic-sequence'],
   music: ['kinetic-sequence', 'feature-montage', 'zero-asset-sequence'],
   'web-ui': ['gsap-sequence', 'browser-scene', 'landing-page'],
@@ -144,6 +151,10 @@ export const MODULE_RECIPES: Recipe[] = [
   // ───────── map
   { family: 'map-story', beats: ['map', 'proof', 'feature'], weight: 1.8, visual: 'animated map (Natural Earth data)', when: (c) => mod(c, 'map') && Boolean(c.map && (c.map.pins.length || c.map.regions.length || c.map.focus)), message: (c) => c.brief.content.map?.title ?? 'map', build: (c) => ({ title: c.brief.content.map?.title, geo: c.map }), variants: (c) => (c.map!.routes.length ? ['route', 'pins'] : c.map!.regions.length ? ['regions', 'focus'] : c.map!.pins.length ? ['pins', 'focus'] : ['focus']) },
   // ───────── illustration / explainer
+  // ── Motion 2.0 families: 2.5D product depth, one-body morph story, Arabic kinetic 2.0
+  { family: 'product-depth', beats: ['product', 'reveal'], weight: 1.35, visual: '2.5D product on depth planes', when: (c) => (mod(c, 'product-commercial') || mod(c, 'launch-film')) && Boolean(c.assets.product) && Boolean(c.brief.content.product?.tagline ?? c.brief.content.product?.name), message: (c) => c.brief.content.product?.tagline ?? c.brief.content.product?.name ?? '', build: (c) => ({ image: c.assets.product, name: c.brief.content.product?.tagline ? c.brief.content.product?.name : undefined, title: (c.brief.content.product?.tagline ?? c.brief.content.product?.name ?? '').slice(0, 90), highlight: emph(c, c.brief.content.product?.tagline), price: c.genre === 'launch' ? undefined : c.brief.content.product?.price }), variants: (c) => (c.orientation === 'landscape' ? ['side', 'center'] : ['center']) },
+  { family: 'morph-story', beats: ['process', 'solution', 'feature'], weight: 1.3, visual: 'one shape morphing through the steps', when: (c) => (mod(c, 'illustration') || mod(c, 'kinetic-type')) && morphSteps(c).length >= 2, message: (c) => morphSteps(c).map((x) => x.label).join(' ← '), build: (c) => ({ title: c.brief.content.solution && c.brief.content.solution.length <= 80 ? c.brief.content.solution : undefined, stages: morphSteps(c) }), variants: () => ['icons'] },
+  { family: 'kinetic-arabic', beats: ['hook', 'tease', 'problem'], weight: 1.1, visual: 'Arabic letter-group kinetic type', when: (c) => mod(c, 'kinetic-type') && c.lang !== 'en' && kineticLines(c).length >= 1 && kineticLines(c).length <= 3 && kineticLines(c).every((l) => l.length <= 40 && /[\u0600-\u06FF]/.test(l)), message: (c) => kineticLines(c).join(' / '), build: (c) => ({ lines: kineticLines(c), highlight: emph(c, ...kineticLines(c)), kicker: c.brandName && c.brandName.length <= 40 ? c.brandName : undefined }), variants: (c) => (kineticLines(c).length === 1 && words(kineticLines(c)[0]).length <= 2 ? ['hero-word'] : ['stack', 'rise']) },
   { family: 'illustration-scene', beats: ['problem', 'solution', 'feature', 'hook'], weight: 1.15, visual: 'procedural illustration', when: (c) => mod(c, 'illustration') && subjectsFor(c, c.brief.content.problem, c.brief.content.solution, c.brief.content.hook, ...(c.brief.content.features?.map((f) => f.title) ?? [])).length >= 1, message: (c) => c.brief.content.solution ?? c.brief.content.hook, build: (c) => { const feats = c.brief.content.features ?? []; const trio = feats.slice(0, 3).map((f) => ({ subject: subjectsFor(c, f.title, f.description)[0], label: f.title.slice(0, 40) })).filter((x) => x.subject); if (trio.length >= 2) return { title: c.brief.content.solution, items: trio, style: c.genre === 'illustrated' ? 'flat' : 'duotone' }; const subj = subjectsFor(c, c.brief.content.solution, c.brief.content.problem, c.brief.content.hook)[0]; return { title: c.brief.content.solution ?? c.brief.content.hook, highlight: emph(c, c.brief.content.solution ?? c.brief.content.hook), items: [{ subject: subj }], style: c.genre === 'illustrated' ? 'flat' : 'duotone' }; }, variants: (c) => ((c.brief.content.features ?? []).filter((f) => subjectsFor(c, f.title, f.description).length).length >= 2 ? ['trio'] : c.orientation === 'landscape' ? ['explain', 'hero'] : ['hero', 'explain']) },
   { family: 'diagram-flow', beats: ['process', 'demo', 'solution'], weight: 1.35, visual: 'diagram of the process', when: (c) => mod(c, 'illustration') && (c.brief.content.steps?.length ?? 0) >= 2 && c.brief.content.steps!.length <= 6 && c.brief.content.steps!.every((s) => s.length <= 32), message: (c) => c.brief.content.steps!.join(' ← '), build: (c) => ({ nodes: c.brief.content.steps!.map((st) => ({ label: st, subject: subjectsFor(c, st)[0] })), center: c.brandName }), variants: (c) => ((c.brief.content.integrations?.length ?? 0) >= 3 ? ['hub', 'linear'] : ['linear', 'cycle']) },
   // ───────── zero asset

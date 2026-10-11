@@ -90,3 +90,7 @@ Measured on the same 4-core container as the v2 baseline (`docs/performance-repo
 - A warm is 0.4 s slower than v2: case A now gets a procedural soundtrack (≈1 s of synthesis, cached afterwards — the repeat run is faster than v2).
 - The sound stage (Sound Director + audio QC) costs 0.05–0.1 s per film; soundtrack synthesis 1–2.5 s on first use.
 - No speed claim beyond these measurements is made.
+
+## Resource profiling (Motion 2.0)
+
+`performance_report.json → resources`: system-wide CPU % (Chromium renders run in child processes) and memory sampled every 500 ms — overall average/peak, peak memory above the start, node RSS peak, core count, and the same per stage (`perStage`). `NITAAQ_NO_PROFILE=1` turns sampling off.

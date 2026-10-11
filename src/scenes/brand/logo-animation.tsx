@@ -254,14 +254,15 @@ function LiquidMorphLogo({ src, W, H }: { src: string; W: number; H: number }) {
   const sec = m.frame / m.fps;
   const r = Math.min(W, H) * 0.32;
   const blob = blobPath(W / 2, H / 2, r * (0.6 + 0.4 * clamp(sec / 0.5)), 'logo-blob', { phase: sec * 2.4, wobble: 0.22 });
-  if (!sil) return <Layer src={src} w={W} h={H} style={{ opacity: progress(m, 0.2, 0.8, 'smooth') }} />;
-  const k = springAt(Math.max(0, sec - 0.45), 0, 1, { stiffness: 120, damping: 16, mass: 1 }).value;
-  const d = morphAt(cachedMorph(blob, sil, 120), Math.max(0, Math.min(1.06, k)));
-  const logoIn = progress(m, 1.25, 0.6, 'smooth');
+  // one stable tree (svg, then the logo layer) whether or not the silhouette is ready: swapping trees
+  // re-mounted the logo <img> mid-probe and it was measured before it had loaded
+  const k = sil ? springAt(Math.max(0, sec - 0.45), 0, 1, { stiffness: 120, damping: 16, mass: 1 }).value : 0;
+  const d = sil ? morphAt(cachedMorph(blob, sil, 120), Math.max(0, Math.min(1.06, k))) : '';
+  const logoIn = sil ? progress(m, 1.25, 0.6, 'smooth') : progress(m, 0.2, 0.8, 'smooth');
   return (
     <>
       <svg width={W} height={H} style={{ position: 'absolute', inset: 0, overflow: 'visible', opacity: 1 - logoIn }} data-qc="morph">
-        <path d={d} fill={t.palette.primary} fillRule="evenodd" />
+        {d ? <path d={d} fill={t.palette.primary} fillRule="evenodd" /> : null}
       </svg>
       <Layer src={src} w={W} h={H} style={{ opacity: logoIn }} />
     </>

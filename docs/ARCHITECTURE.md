@@ -15,15 +15,17 @@ brief.json ─► INTAKE (few questions; logo question asked when no logo) ─�
 PLAN (arc, pace, style) ─► STORYBOARD (recipes → families; user material never dropped)
    │   character film: CHARACTER DIRECTOR (line → intent → phases, pose, shot, camera, pose cut) replaces the recipes;
    │   pose cuts become transitions; the CHARACTER ACTOR's exact event anchors feed the Sound Director
-   ─► CREATIVE DIRECTOR (personality, motion jobs, hero, camera budget, beat sync)
+   ─► CREATIVE DIRECTOR (personality, motion jobs + intents, hero, camera plans 2.5D, beat accents)
    ─► TEXT MOTION PLAN + TRANSITION ENGINE (meaning-driven, shared elements planned)
-   ─► COMPILE → video.json + project memory files
+   ─► COMPILE → video.json ─► ANTI-TEMPLATE (vs. workspace history) ─► RHYTHM PLAN + MOTION LANGUAGE
+   ─► project memory files (rhythm_plan.json, anti_template.json, music_plan.json …)
    ─► SOUND STAGE (soundtrack if needed → events → Sound Director → sound-plan.json)
    ─► produce:
-        VALIDATE ─► STRUCTURAL QC (probes, cached) ─► REPAIR
+        VALIDATE ─► STRUCTURAL QC (probes, cached) + VISUAL QA 2.0 (moments, camera framing, product protection,
+        determinism) ─► REPAIR (camera-solve …)
         ─► SHARED-ELEMENT RECTS (measured with the probe)
         ─► SOUND STAGE + AUDIO QC / motion-variety QC ─► REPAIR (≤3 variations)
-        ─► contact sheet + phone view ─► [ANIMATIC] ─► RENDER (cached) ─► FINAL QC (+ audio pass)
+        ─► contact sheet + phone view ─► [ANIMATIC] ─► RENDER (cached) ─► MASTER (−14 LUFS, −1 dBTP) ─► FINAL QC (category gate) (+ audio pass)
         ─► post-render repair loop ─► delivery (only with 0 critical)
    ─► variants command: 5 strategies × aspects → recomposed films (same pipeline per job)
 ```
@@ -42,7 +44,7 @@ PLAN (arc, pace, style) ─► STORYBOARD (recipes → families; user material n
 | Design rules | `design/banned-patterns.json`, `src/design/` | banned generic looks (spec level), clean background kinds and pattern fallback. |
 | Node orchestration | `src/node/` | `direct` (ingest files byte-identical, logo analysis, voice probe/segmentation, TTS, reference + beats in parallel, capture), `recompose` (multi-aspect), `capture` (website screenshot), `beats` (decode + cues), `manifest`, `project-files` (memory files), `render`, `produce` (validation → QC passes → shared rects → sound stage → render → QC → repair loop), `sound` (film events, sfx-history, plan files), `shared-rects` (measured shared-element rects), `brand-motion-store`, `logo-structure`, `preflight`, `audio` (ffprobe, silencedetect, loudness, cleanup), `tts` (VoiceProvider), `fonts` (Arabic coverage check), `assets`, `workspace`, `bundle` (cached Remotion bundle). |
 | Engine (React/Remotion) | `src/engine/` | `VideoComposition` knows only the SceneRegistry: timeline, transitions, background/texture, per-scene layout scale/offset, audio (voice, music with ducking, SFX), QC probe (qc mode only). |
-| Scenes | `src/scenes/` | 93 families / 268 variants as plugins: `defineScene(manifest, Component)`; manifest = Zod content schema, variants, durations, beats, energy, SFX cues, aspect preferences, text capacity, example. `SceneRegistry.register/alias`. |
+| Scenes | `src/scenes/` | 96 families / 276 variants as plugins: `defineScene(manifest, Component)`; manifest = Zod content schema, variants, durations, beats, energy, SFX cues, aspect preferences, text capacity, example. `SceneRegistry.register/alias`. |
 | Design system | `src/styles/`, `src/typography/`, `src/layout/`, `src/motion/`, `src/components/`, `src/brand/` | Style tokens (24 presets), font registry (11 families, local woff2), Arabic shaping helpers + text fitter, canvas profiles and platform safe areas, motion primitives (easing, springs, camera, parallax, count-up), shared components (Text, Surface, Icon, Media, mockups), colour science (OKLCH, WCAG contrast), logo analyzer + palette derivation. |
 | QC | `src/qc/` | `quality.ts` (structural + final technical QC, scores, acceptance, critique, contact + phone sheets), `audio-qc.ts` (SFX repetition / density / sync / voice clash + motion variety), `pattern-detect.ts` (dot/grid/particle detector), `probes.ts` (cached parallel DOM probes), `repair-loop.ts` (finding → safe spec change). See QUALITY.md. |
 | Validation | `src/validation/` | Static validation (issues with severity) + deterministic repair with a repair log. |

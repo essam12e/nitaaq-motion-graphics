@@ -44,3 +44,24 @@ Safe, deterministic spec changes only: shrink text/layout, add a scrim, extend a
 ## Outputs
 
 `quality_report.json` (v2.0: stage, scores, acceptance, critique, timings, probe cache stats, issues), `qc/…/contact-sheet.png`, `phone-view.png`, `review_log.md` (one entry per run), `audio-qc.json`, `sound-plan.json`.
+
+## Visual QA 2.0 (`src/qc/vqa.ts`)
+
+Beyond the fixed sample grid, QA now samples the **moments that matter**: the middle of each scene, the end of each transition, the hero, the logo and the CTA (`momentSamples`). On those frames:
+
+| Check | Code | Severity / repair |
+|---|---|---|
+| protected elements (text, product, logo, CTA) inside the safe area for the **whole camera move** — measured rects are unprojected to their rest position, then `auditFraming` / `solveFraming` run on the plan | `CAMERA_FRAMING` | error → `camera-solve` (solved plan, else half amplitude) |
+| product / logo recoloured by a CSS filter | `PRODUCT_ALTERED` | critical, never auto-"fixed" |
+| product / logo aspect changed (> ±4%) | `PRODUCT_DISTORTED` | critical |
+| text covering the product / logo | `PRODUCT_OBSTRUCTED` | > 15% warning, > 30% error → shrink layout |
+| frame almost empty | `FRAME_EMPTY` | warning |
+| visual weight far off centre | `COMPOSITION_UNBALANCED` | warning |
+| Latin punctuation in RTL copy | `RTL_PUNCTUATION` | warning |
+| Arabic word split between two letters that connect | `ARABIC_SPLIT_GLYPHS` | critical (splits at non-joining letters are legal) |
+
+**Deterministic seek check:** frame A is rendered, then B, then A again; the two A's must match (mean diff < 0.5, max < 48) — `MOTION_NONDETERMINISTIC` otherwise (critical). `nitaaq seek <project> <t>` prints the film's exact state at any time. `NITAAQ_SKIP_DETERMINISM=1` skips the check.
+
+## Quality scoring as a gate
+
+`quality_report.json → categories`: composition, motion, typography, camera, brand, audio, technical and overall (weighted). Delivery needs **every category ≥ 50 and overall ≥ 70**, in addition to zero critical issues — a single bad category blocks even when the average is high. New acceptance rules: product protection, camera framing, the quality gate.

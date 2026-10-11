@@ -660,7 +660,7 @@ export async function finalQc(opts: { spec: VideoSpec; projectDir: string; video
 
   // sound-design / motion-variety findings from produce's sound stage
   if (opts.extraIssues?.length) issues.push(...opts.extraIssues);
-  const report = finalize(spec, issues, checks, { video, stage: 'final', profile: opts.profile, samples: structural.report.samples, media, audio, contactSheet: structural.report.contactSheet, phoneSheet: structural.report.phoneSheet, repairPass: opts.pass, timings, probeCache: structural.report.probeCache }, opts.extraIssues ? ['structure', 'design', 'motion', 'audio', 'technical'] : ['structure', 'design', 'motion', 'technical']);
+  const report = finalize(spec, issues, checks, { video, stage: 'final', profile: opts.profile, samples: structural.report.samples, media, audio, contactSheet: structural.report.contactSheet, phoneSheet: structural.report.phoneSheet, repairPass: opts.pass, timings, probeCache: structural.report.probeCache, determinism: structural.report.determinism }, opts.extraIssues ? ['structure', 'design', 'motion', 'audio', 'technical'] : ['structure', 'design', 'motion', 'technical']);
   writeFileSync(join(opts.outDir, 'quality-report.json'), JSON.stringify(report, null, 2));
   log.stage('QUALITY', `final ${report.passed ? 'PASSED' : 'FAILED'} — critical ${report.summary.critical}, error ${report.summary.error}, warning ${report.summary.warning}; score ${report.scores.overall} (${(timings.finalMs / 1000).toFixed(1)}s)`);
   return report;
