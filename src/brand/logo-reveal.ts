@@ -69,6 +69,7 @@ const REVEALS: LogoRevealDef[] = [
   { id: 'icon-wordmark', title: 'Icon then wordmark', describe: 'the symbol arrives first, the wordmark unmasks beside it', energy: 0.5, personalities: ['corporate', 'tech', 'premium', 'energetic', 'playful', 'cinematic', 'sport'], needs: twoParts, fit: () => 0.85, minDuration: 2 },
   { id: 'depth', title: 'Depth', describe: 'the logo emerges from depth with blur-to-focus', energy: 0.4, personalities: ['cinematic', 'premium', 'tech'], fit: () => 0.25, minDuration: 1.8 },
   { id: 'minimal-premium', title: 'Minimal premium', describe: 'a slow fade with tracking-free breath and a hairline underline', energy: 0.2, personalities: ['premium', 'corporate', 'cinematic'], fit: (s) => (s.colorCount <= 3 ? 0.4 : 0.2), minDuration: 2 },
+  { id: 'liquid-morph', title: 'Liquid morph', describe: 'an organic blob in the brand colour morphs into the logo silhouette (traced from its alpha), then the untouched logo appears in it', energy: 0.55, personalities: ['premium', 'cinematic', 'playful', 'tech'], needs: (s) => s.hasAlpha, fit: (s) => (s.layout === 'icon' || s.layout === 'emblem' ? 0.6 : 0.3), minDuration: 2.2 },
   { id: 'energetic', title: 'Energetic punch', describe: 'a hard punch-in with a colour flash and burst lines around it', energy: 0.9, personalities: ['energetic', 'sport', 'playful'], fit: () => 0.3, minDuration: 1.2 },
 ];
 for (const r of REVEALS) if (!LogoRevealRegistry.has(r.id)) LogoRevealRegistry.register(r);

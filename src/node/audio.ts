@@ -4,7 +4,7 @@
  * never rewrites the user's original file (outputs go to a new file).
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { MotionError } from '../core/errors';
 import { ROOT } from './workspace';
@@ -180,4 +180,53 @@ export function ffmpegRun(args: string[], what: string): void {
   const { ffmpeg } = findFfmpeg();
   const r = spawnSync(ffmpeg, ['-y', '-hide_banner', '-loglevel', 'error', ...args], { encoding: 'utf8', env: ffEnv(), maxBuffer: 1 << 26 });
   if (r.status !== 0) throw new MotionError({ code: 'RENDER_FAILED', what, why: (r.stderr ?? '').slice(0, 400) });
+}
+
+export interface MasterReport {
+  applied: boolean;
+  targetLufs: number;
+  before: { integratedLufs: number | null; truePeak: number | null; lra: number | null };
+  after?: LoudnessStats;
+  clippedSamples: number;
+  filters?: string;
+  note: string;
+}
+
+/**
+ * Master bus (Audio Engine 2.0): two-pass EBU R128 loudness normalisation to the
+ * delivery target (social −14 LUFS, true peak −1 dBTP), then a brickwall limiter
+ * and a clipping count. Video is stream-copied; only the audio is re-encoded.
+ * Sparse films (very quiet) are lifted by at most +12 LU so silence stays silence.
+ */
+export function masterAudio(file: string, opts: { targetLufs?: number; truePeak?: number; bitrate?: string } = {}): MasterReport {
+  const { ffmpeg } = findFfmpeg();
+  const target = opts.targetLufs ?? -14;
+  const tp = opts.truePeak ?? -1;
+  const m = spawnSync(ffmpeg, ['-hide_banner', '-nostats', '-i', file, '-vn', '-af', `loudnorm=I=${target}:TP=${tp}:LRA=11:print_format=json`, '-f', 'null', '-'], { encoding: 'utf8', env: ffEnv(), maxBuffer: 1 << 26 });
+  const js = (m.stderr ?? '').match(/\{[\s\S]*?"input_i"[\s\S]*?\}/)?.[0];
+  if (!js) return { applied: false, targetLufs: target, before: { integratedLufs: null, truePeak: null, lra: null }, clippedSamples: 0, note: 'no measurable audio — master skipped' };
+  const j = JSON.parse(js) as Record<string, string>;
+  const inI = Number(j.input_i);
+  const before = { integratedLufs: inI, truePeak: Number(j.input_tp), lra: Number(j.input_lra) };
+  if (!Number.isFinite(inI) || inI < -70) return { applied: false, targetLufs: target, before, clippedSamples: 0, note: 'silent mix — master skipped' };
+  const eff = Math.min(target, inI + 12);
+  const filters = `loudnorm=I=${eff}:TP=${tp}:LRA=11:measured_I=${j.input_i}:measured_TP=${j.input_tp}:measured_LRA=${j.input_lra}:measured_thresh=${j.input_thresh}:offset=${j.target_offset}:linear=true,aresample=48000,alimiter=limit=${Math.pow(10, (tp - 0.2) / 20).toFixed(4)}:attack=5:release=60:level=disabled`;
+  const tmp = `${file}.master.mp4`;
+  ffmpegRun(['-i', file, '-map', '0:v?', '-map', '0:a', '-c:v', 'copy', '-af', filters, '-c:a', 'aac', '-b:a', opts.bitrate ?? '192k', '-ar', '48000', '-map_metadata', '-1', '-movflags', '+faststart', tmp], 'audio mastering');
+  renameSync(tmp, file);
+  const after = loudness(file);
+  const clippedSamples = countClipped(file);
+  return { applied: true, targetLufs: eff, before, after, clippedSamples, filters, note: `${inI.toFixed(1)} → ${after.integratedLufs ?? '?'} LUFS, true peak ${after.truePeak ?? '?'} dBFS${eff !== target ? ` (sparse mix: lifted by ≤12 LU, target ${eff.toFixed(1)})` : ''}` };
+}
+
+/** Samples at (or within 0.01 dB of) full scale — digital clipping. */
+export function countClipped(file: string): number {
+  const { ffmpeg } = findFfmpeg();
+  const r = spawnSync(ffmpeg, ['-v', 'error', '-i', file, '-vn', '-ar', '48000', '-f', 'f32le', 'pipe:1'], { maxBuffer: 1 << 28, env: ffEnv() });
+  if (r.status !== 0 || !r.stdout) return 0;
+  const b = r.stdout as Buffer;
+  const x = new Float32Array(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
+  let n = 0;
+  for (let i = 0; i < x.length; i++) if (Math.abs(x[i]) >= 0.999) n++;
+  return n;
 }

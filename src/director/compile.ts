@@ -63,8 +63,18 @@ export function compileSpec(input: {
     duration: s.duration,
     content: s.content,
     layout: {},
-    motion: { intensity: s.intensity, camera: s.camera, ...(input.motion ? { jobs: input.motion.scenes[i]?.jobs, text: input.motion.scenes[i]?.text } : {}) },
-    transition: s.transition === 'none' ? undefined : { type: s.transition, duration: s.transitionDuration, ...(input.motion?.scenes[i]?.transitionReason ? { reason: input.motion.scenes[i].transitionReason } : {}) },
+    motion: {
+      intensity: s.intensity,
+      camera: s.camera,
+      ...(input.motion ? { jobs: input.motion.scenes[i]?.jobs, text: input.motion.scenes[i]?.text } : {}),
+      ...(s.cameraPlan ? { cameraPlan: s.cameraPlan } : {}),
+      ...(s.intents?.length ? { intents: s.intents } : {}),
+      ...(s.accents?.length ? { accents: s.accents } : {}),
+    },
+    transition:
+      s.transition === 'none'
+        ? undefined
+        : { type: s.transition, duration: s.transitionDuration, ...(input.motion?.scenes[i]?.transitionReason ? { reason: input.motion.scenes[i].transitionReason } : {}), ...(s.transitionHint ? { focus: s.transitionHint.focus, shape: s.transitionHint.shape, color: s.transitionHint.color, direction: s.transitionHint.direction } : {}) },
     sfx: 'auto' as const,
     purpose: s.purpose,
     beat: s.beat,

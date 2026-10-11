@@ -271,7 +271,10 @@ export async function ensureSfxBank(force = false): Promise<SfxBankIndex> {
   if (!force && existsSync(idxFile)) {
     try {
       const idx = JSON.parse(readFileSync(idxFile, 'utf8')) as SfxBankIndex;
-      if (idx.version === GEN_VERSION && idx.variants.every((v) => existsSync(join(ROOT, 'public', v.file)))) return idx;
+      // re-index when a family gained library sounds (the synthesised variants stay byte-identical: seeded by GEN_VERSION)
+      const libs = SfxFamilyRegistry.list().flatMap((f) => (f.library ?? []).filter((id) => SFX.some((x) => x.id === id)).map((id) => `lib-${id}|${f.id}`));
+      const have = new Set(idx.variants.map((v) => `${v.id}|${v.family}`));
+      if (idx.version === GEN_VERSION && idx.variants.every((v) => existsSync(join(ROOT, 'public', v.file))) && libs.every((k) => have.has(k))) return idx;
     } catch {
       /* regenerate */
     }

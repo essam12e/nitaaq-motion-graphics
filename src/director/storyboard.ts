@@ -22,6 +22,14 @@ export interface PlannedScene extends StoryboardScene {
   camera: 'none' | 'push' | 'pull' | 'drift' | 'rise' | 'pan-left' | 'pan-right';
   intensity: number;
   transitionDuration: number;
+  /** Camera Engine 2.0 plan (written by the Creative Director). */
+  cameraPlan?: import('../camera/moves').CameraPlan;
+  /** Motion Intent System: element roles, intents and entrances. */
+  intents?: { role: string; intent: string; entrance?: string; sound?: string; importance?: number }[];
+  /** Continuity hint for the outgoing transition (shape/focus/colour/direction). */
+  transitionHint?: import('../transitions/continuity').ContinuityHint;
+  /** Beat accents (scene-local seconds). */
+  accents?: number[];
 }
 
 export interface PlannedStoryboard extends Storyboard {

@@ -24,6 +24,10 @@ import type { ElementKind } from '../motion/physics';
 import { createRng } from '../core/rng';
 import { buildTimeline } from '../core/timeline';
 import type { Brief } from '../schema/brief';
+import { refineContinuity, edgeShape, type SceneEdge } from '../transitions/continuity';
+import { planSceneIntent } from '../motion/intent';
+import { planCamera, sceneAccents } from '../camera/director';
+import { LEGACY_MOVE } from '../camera/moves';
 
 export const MOTION_JOBS: Record<Beat, string[]> = {
   hook: ['stop-the-scroll', 'establish-hierarchy'],
@@ -187,6 +191,19 @@ export function directFilm(input: {
     hasProduct: Object.values(cutScenes).some((c) => c.identity.some((x) => x.startsWith('product'))),
     styleFamily: P.transitions.filter(known),
   });
+  // ── Motion Intent System: what each element is, why it moves, and the subject the camera serves
+  const rtl = brief.language !== 'en';
+  const intentPlans = scenes.map((s, i) =>
+    planSceneIntent({ content: s.content, category: cutScenes[i].category, beat: s.beat, personality: pick.id, hero: i === hero, first: i === 0, sharedAssets: cutChoices[i - 1]?.shared?.asset ? [cutChoices[i - 1].shared!.asset] : undefined }),
+  );
+  // ── Transition Intelligence 2.0: upgrade cuts to continuity devices where the two scenes share shape/colour/motion
+  const edges: SceneEdge[] = scenes.map((s, i) => {
+    const legacy = camOn.has(i) && s.camera !== 'none' ? s.camera : 'none';
+    return { id: s.id, beat: s.beat, category: cutScenes[i].category, shape: edgeShape(cutScenes[i].category, s.family), focus: { x: 0.5, y: 0.45 }, camera: LEGACY_MOVE[legacy], hero: i === hero };
+  });
+  const refined = refineContinuity({ scenes: edges, choices: cutChoices, personality: pick.id, seed: input.seed, rhythmic: plan.pace === 'fast' || Boolean(onBeat?.some(Boolean)) });
+  refined.forEach((c, i) => (cutChoices[i] = c));
+
   // ── Text Motion Engine: hierarchy + variety per scene
   const textPlan = planTextMotion(
     scenes.map((s) => ({ id: s.id, beat: s.beat, arabic: hasArabic(textOf(s.content)) && brief.language !== 'en', hasHighlight: Array.isArray(s.content.highlight) && (s.content.highlight as unknown[]).length > 0 })),
@@ -206,11 +223,18 @@ export function directFilm(input: {
     if (i < n - 1 && cutChoices[i]) {
       s.transition = cutChoices[i].type === 'cut' ? 'cut' : cutChoices[i].type;
       if (cutChoices[i].duration > 0) s.transitionDuration = cutChoices[i].duration;
+      const hint = refined[i]?.hint;
+      if (hint) s.transitionHint = hint;
     }
+    const ip = intentPlans[i];
+    s.intents = ip.elements.filter((e) => e.role !== 'background').map((e) => ({ role: e.role, intent: e.intent, entrance: e.entrance, sound: e.sound, importance: e.importance }));
+    const cam = planCamera({ legacy: s.camera, role: ip.primary.role, intent: ip.primary.intent, personality: pick.id, beat: s.beat, hero: i === hero, first: i === 0, rtl, r: rng() });
+    if (cam) s.cameraPlan = cam;
+    else delete s.cameraPlan;
     const jobs = [...MOTION_JOBS[s.beat]];
     if (i === hero) jobs.unshift('hero-moment');
     if (s.camera !== 'none') jobs.push(`camera-${s.camera}-for-${i === hero ? 'emphasis' : i === 0 ? 'energy' : 'focus'}`);
-    s.movement = s.camera === 'none' ? `still frame; ${pick.id} element motion (${jobs[0]})` : `camera ${s.camera}; ${pick.id} element motion`;
+    s.movement = s.camera === 'none' ? `still frame; ${pick.id} element motion (${jobs[0]})` : `camera ${s.cameraPlan?.move ?? s.camera}; ${pick.id} element motion`;
     const physics: Partial<Record<ElementKind, string>> = {};
     for (const el of ELEMENTS) physics[el] = physicsFor(pick.id, el).id;
     return { id: s.id, beat: s.beat, family: s.family, variant: s.variant, jobs, hero: i === hero, intensity: s.intensity, camera: s.camera, transitionOut: s.transition, transitionReason: cutChoices[i]?.reason, text: textPlan.scenes[i]?.text as Record<string, string>, physics, why: i === hero ? 'peak of the film: the answer/product lands here' : i === 0 ? 'hook: stop the scroll in the first second' : i === n - 1 ? 'resolve on one clear action' : `carries the ${s.beat} beat` };
@@ -244,6 +268,15 @@ export function directFilm(input: {
 
   const tl = buildTimeline(scenes.map((s) => ({ id: s.id, duration: s.duration, transition: s.transition === 'none' ? undefined : { type: s.transition, duration: s.transitionDuration } })), 30);
   tl.entries.forEach((e, i) => (scenes[i].start = Math.round(e.startSec * 100) / 100));
+  // beat accents (music-led only): the camera/motion punctuates downbeats inside the scene
+  if (input.beats && input.beats.downbeats.length > 2 && !input.voiceLed) {
+    scenes.forEach((s) => {
+      const acc = sceneAccents(s.start, s.duration, input.beats!.downbeats, P.intensity > 0.6 ? 3 : 2);
+      if (!acc.length) return;
+      s.accents = acc;
+      if (s.cameraPlan && !/premium|corporate/.test(pick.id)) s.cameraPlan = { ...s.cameraPlan, accents: acc };
+    });
+  }
   const physics: Partial<Record<ElementKind, string>> = {};
   for (const el of ELEMENTS) physics[el] = physicsFor(pick.id, el).id;
   const motion: MotionSpec = {
@@ -279,7 +312,7 @@ export function directFilm(input: {
     beat: s.beat,
     scene: `${s.family}/${s.variant}`,
     framing: s.composition,
-    camera: s.camera,
+    camera: s.cameraPlan?.move ?? s.camera,
     transitionOut: s.transition,
     message: s.visibleMessage,
     motionJobs: directions[i].jobs,

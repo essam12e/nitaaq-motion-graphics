@@ -8,7 +8,7 @@ import { SceneRegistry } from '../scenes';
 import type { QcIssue, QualityReport } from './quality';
 import type { RepairEntry } from '../validation/repair';
 
-const NON_REPAIRABLE = new Set(['MEDIA_BROKEN', 'MEDIA_DISTORTED', 'AUDIO_SILENT', 'AUDIO_MISSING', 'FONT_LOAD_FAILED', 'SCENE_CRASHED', 'PROBE_MISSING', 'DEVELOPER_SIGNATURE', 'MP4_SIGNATURE', 'ARABIC_SPLIT_GLYPHS', 'MP4_NO_VIDEO', 'MP4_CODEC', 'MP4_ASPECT']);
+const NON_REPAIRABLE = new Set(['MEDIA_BROKEN', 'MEDIA_DISTORTED', 'AUDIO_SILENT', 'AUDIO_MISSING', 'FONT_LOAD_FAILED', 'SCENE_CRASHED', 'PROBE_MISSING', 'DEVELOPER_SIGNATURE', 'MP4_SIGNATURE', 'ARABIC_SPLIT_GLYPHS', 'MP4_NO_VIDEO', 'MP4_CODEC', 'MP4_ASPECT', 'PRODUCT_ALTERED', 'PRODUCT_DISTORTED', 'MOTION_NONDETERMINISTIC']);
 
 export function blockingUnrepairable(report: QualityReport): QcIssue[] {
   return report.issues.filter((i) => i.severity === 'critical' && NON_REPAIRABLE.has(i.code));
@@ -35,6 +35,19 @@ export function applyQcRepairs(input: VideoSpec, report: QualityReport, pass: nu
     const p = `scenes[${idx}]`;
     const actions = new Set(list.map((i) => i.repair!.action));
     const reason = [...new Set(list.map((i) => i.code))].join(', ');
+    if (actions.has('camera-solve')) {
+      // Camera Engine 2.0: the framing solver's plan (re-aimed / smaller / still) replaces the move — text stays as is
+      const solved = list.find((i) => i.repair!.action === 'camera-solve')?.repair?.data?.plan as NonNullable<typeof s.motion>['cameraPlan'] | undefined;
+      const cur = s.motion?.cameraPlan;
+      if (solved && cur && JSON.stringify(solved) !== JSON.stringify(cur)) {
+        log(`${p}.motion.cameraPlan`, reason, `${cur.move} ×${cur.amplitude} → ${solved.move} ×${solved.amplitude}${solved.focus ? ` @(${solved.focus.x}, ${solved.focus.y})` : ''}`);
+        s.motion = { ...s.motion, cameraPlan: solved };
+      } else if (cur && cur.move !== 'static') {
+        const next = Math.round(cur.amplitude * 0.5 * 100) / 100;
+        log(`${p}.motion.cameraPlan.amplitude`, reason, `${cur.amplitude} → ${next}`);
+        s.motion = { ...s.motion, cameraPlan: { ...cur, amplitude: next } };
+      }
+    }
     if (actions.has('shrink-text')) {
       const next = Math.max(0.6, Math.round(s.layout.textScale * 0.88 * 100) / 100);
       if (next < s.layout.textScale) {

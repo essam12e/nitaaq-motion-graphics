@@ -6,6 +6,29 @@
 import { useEffect, useState } from 'react';
 import { continueRender, delayRender, useCurrentFrame } from 'remotion';
 import { useVideo } from './context';
+import { isSafeBreak } from '../typography/arabic';
+
+/**
+ * Broken-join detection: two Arabic text nodes rendered in separate elements of the same word
+ * (no whitespace between them, same line) whose letters would connect. Splitting where letters do
+ * NOT connect (after ا د ذ ر ز و ة …) is legal — Arabic Kinetic 2.0 animates such letter groups.
+ */
+export function brokenJoins(root: Element): boolean {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let prev: { text: string; line: Element | null } | null = null;
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    const text = n.textContent ?? '';
+    if (!text || (n.parentElement && getComputedStyle(n.parentElement).visibility === 'hidden')) continue;
+    const line = (n.parentElement?.closest('div') as Element | null) ?? null;
+    if (/^\s/.test(text) || !prev || prev.line !== line || /\s$/.test(prev.text)) {
+      prev = { text, line };
+      continue;
+    }
+    if (/[؀-ۿ]$/.test(prev.text.trim()) && /^[؀-ۿ]/.test(text) && !isSafeBreak(prev.text, text)) return true;
+    prev = { text, line };
+  }
+  return false;
+}
 
 export interface ProbeText {
   scene: string;
@@ -40,6 +63,11 @@ export interface ProbeMedia {
   rect: { x: number; y: number; width: number; height: number };
   objectFit: string;
   opacity: number;
+  /** Colour-altering CSS filters on the asset or its ancestors (Product Protection). */
+  colorFilter?: string;
+  /** Laid-out (untransformed) size: a non-uniform ancestor scale shows as an aspect mismatch with rect. */
+  layoutW?: number;
+  layoutH?: number;
 }
 
 export interface ProbeCharacter {
@@ -81,6 +109,18 @@ function effOpacity(el: Element | null): number {
     cur = cur.parentElement;
   }
   return o;
+}
+
+/** Colour-changing filters (hue/saturation/invert/sepia/grayscale) from the element up to its scene. */
+function colorFilters(el: Element | null): string {
+  const out: string[] = [];
+  let cur: Element | null = el;
+  while (cur && cur instanceof HTMLElement && cur.getAttribute('data-qc') !== 'scene') {
+    const f = getComputedStyle(cur).filter;
+    if (f && f !== 'none') for (const m of f.match(/(hue-rotate|saturate|invert|sepia|grayscale)\([^)]*\)/g) ?? []) if (!/^(saturate\(1\)|hue-rotate\(0(deg)?\)|(invert|sepia|grayscale)\(0\))$/.test(m)) out.push(m);
+    cur = cur.parentElement;
+  }
+  return out.join(' ');
 }
 
 function rectOf(el: Element) {
@@ -126,9 +166,9 @@ export function collectProbe(frame: number, width: number, height: number): Prob
       if (w > h.clientWidth * 1.01 + 2) overflowX = true;
     }
     const arabic = el.getAttribute('data-qc-arabic') === '1';
-    // Per-glyph split detection: an Arabic word broken into single-letter spans breaks joining.
-    const spans = Array.from(h.querySelectorAll('span'));
-    const splitGlyphs = arabic && spans.some((s) => s.children.length === 0 && /^[؀-ۿ]$/.test((s.textContent ?? '').trim()));
+    // Per-glyph split detection: an Arabic word split between two letters that connect breaks joining
+    // (a lone-letter span next to a connecting letter is the classic case).
+    const splitGlyphs = arabic && brokenJoins(h);
     return {
       scene: sceneOf(el),
       role: el.getAttribute('data-qc-role') ?? '',
@@ -164,6 +204,9 @@ export function collectProbe(frame: number, width: number, height: number): Prob
       rect: img ? rectOf(img) : rectOf(el),
       objectFit: img ? getComputedStyle(img).objectFit : '',
       opacity: effOpacity(el),
+      colorFilter: colorFilters(img ?? el),
+      layoutW: (img as HTMLElement | null)?.offsetWidth ?? (el as HTMLElement).offsetWidth,
+      layoutH: (img as HTMLElement | null)?.offsetHeight ?? (el as HTMLElement).offsetHeight,
     };
   });
   const boxes = Array.from(document.querySelectorAll('[data-qc="box"]')).map((el) => ({ scene: sceneOf(el), rect: rectOf(el), opacity: effOpacity(el) }));

@@ -18,13 +18,53 @@ import { prepare, getBrowser, renderConcurrency, bundleKey } from '../node/rende
 import type { ProbeResult as DomProbe } from '../engine/QCProbe';
 import { blobDir, getJson, hashOf, setJson, pool, fileHash } from '../cache/store';
 import { referencedFiles } from '../node/assets';
+import { momentSamples } from './vqa';
 
 export interface Sample {
   frame: number;
   time: number;
   scene: string;
   sceneIndex: number;
-  kind: 'hold' | 'transition' | 'edge';
+  kind: 'hold' | 'transition' | 'edge' | 'hero' | 'mid' | 'transition-end' | 'logo' | 'cta';
+}
+
+/** Hold/transition/edge samples + the Visual QA 2.0 moments (hero, mid-motion, transition end, logo, CTA). */
+export function sampleFramesV2(spec: VideoSpec, maxPerScene = 3): Sample[] {
+  const base = sampleFrames(spec, maxPerScene);
+  const tl = buildTimeline(spec.scenes, spec.canvas.fps);
+  const have = new Set(base.map((s) => s.frame));
+  const extra = momentSamples(spec, tl).filter((s) => !have.has(s.frame) && (have.add(s.frame), true));
+  return [...base, ...extra].sort((a, b) => a.frame - b.frame);
+}
+
+/**
+ * Deterministic seek: renders frame A, seeks far away (frame B), renders A again
+ * and compares pixels. Any difference means the frame depends on render history
+ * (state, randomness, wall clock) — a non-deterministic scene.
+ */
+export async function determinismCheck(spec: VideoSpec, projectDir: string, a: number, b: number, dir: string): Promise<{ meanDiff: number; maxDiff: number; ok: boolean }> {
+  const sharp = (await import('sharp')).default;
+  mkdirSync(dir, { recursive: true });
+  const prep = await prepare(spec, projectDir, 'render', 'reduced');
+  const browser = await getBrowser();
+  const composition = await selectComposition({ serveUrl: prep.serveUrl, id: 'Main', inputProps: prep.inputProps, puppeteerInstance: browser, logLevel: 'error' });
+  const shot = async (frame: number, name: string) => {
+    const out = join(dir, name);
+    await renderStill({ serveUrl: prep.serveUrl, composition, inputProps: prep.inputProps, frame, output: out, scale: 0.25, puppeteerInstance: browser, logLevel: 'error' });
+    return (await sharp(out).removeAlpha().raw().toBuffer()) as Buffer;
+  };
+  const first = await shot(a, 'seek-a1.png');
+  await shot(b, 'seek-b.png');
+  const again = await shot(a, 'seek-a2.png');
+  let sum = 0;
+  let max = 0;
+  for (let i = 0; i < first.length; i++) {
+    const d = Math.abs(first[i] - again[i]);
+    sum += d;
+    if (d > max) max = d;
+  }
+  const meanDiff = Math.round((sum / Math.max(1, first.length)) * 1000) / 1000;
+  return { meanDiff, maxDiff: max, ok: meanDiff < 0.5 && max < 48 };
 }
 
 export function sampleFrames(spec: VideoSpec, maxPerScene = 3): Sample[] {

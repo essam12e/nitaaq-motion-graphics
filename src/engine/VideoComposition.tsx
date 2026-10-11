@@ -22,6 +22,8 @@ import { QCProbe } from './QCProbe';
 import { alpha } from '../brand/color';
 import type { TimelineEntry } from '../core/timeline';
 import { useVideo } from './context';
+import { CameraRig, DepthLayer } from '../camera/CameraRig';
+import type { CameraPlan } from '../camera/moves';
 
 export interface VideoCompositionProps {
   spec: VideoSpec;
@@ -53,16 +55,20 @@ function SceneShell({ entry, prevTransition, dirSign }: { entry: TimelineEntry; 
   const variant = mod ? (scene.variant && mod.manifest.variants.includes(scene.variant) ? scene.variant : mod.manifest.defaultVariant) : '';
   let style: React.CSSProperties = {};
   let overlay: { kind: OverlayKind; p: number } | undefined;
+  const W = v.canvas.width;
+  const H = v.canvas.height;
+  const ctxOf = (t?: { focus?: { x: number; y: number }; rect?: { x: number; y: number; w: number; h: number }; shape?: string; color?: string; direction?: 'left' | 'right' | 'up' | 'down' }, seed?: string) => ({ W, H, focus: t?.focus, rect: t?.rect, shape: t?.shape, color: t?.color, direction: t?.direction, seed });
   if (entry.transitionIn > 0 && frame < entry.transitionIn && prevTransition) {
     const tr = TRANSITIONS[prevTransition] ?? TRANSITIONS.crossfade;
-    const f = tr.frame(frame / entry.transitionIn, dirSign);
+    const prevSpec = entry.index > 0 ? v.spec.scenes[entry.index - 1].transition : undefined;
+    const f = tr.frame(frame / entry.transitionIn, dirSign, ctxOf(prevSpec, v.spec.scenes[entry.index - 1]?.id));
     style = f.enter;
     overlay = f.overlay;
   }
   const outStart = entry.durationInFrames - entry.transitionOut;
   if (entry.transitionOut > 0 && frame >= outStart) {
     const tr = TRANSITIONS[scene.transition?.type ?? 'crossfade'] ?? TRANSITIONS.crossfade;
-    const f = tr.frame((frame - outStart) / entry.transitionOut, dirSign);
+    const f = tr.frame((frame - outStart) / entry.transitionOut, dirSign, ctxOf(scene.transition, scene.id));
     style = { ...style, ...f.exit };
   }
   // Seamless loop: the last scene dissolves back to the (periodic) background, which is
@@ -87,6 +93,7 @@ function SceneShell({ entry, prevTransition, dirSign }: { entry: TimelineEntry; 
   if (!mod) return <div data-qc="scene-error" data-qc-scene={scene.id} data-qc-error={`Unknown scene type ${scene.type}`} />;
   const Cmp = mod.Component;
   const bg = scene.background;
+  const plan = scene.motion.cameraPlan as CameraPlan | undefined;
   // layout.scale / offset apply to every scene uniformly, scaled about the safe-area centre
   const L = scene.layout;
   const sa = v.canvas.safe;
@@ -97,14 +104,36 @@ function SceneShell({ entry, prevTransition, dirSign }: { entry: TimelineEntry; 
   return (
     <SceneCtx.Provider value={ctx}>
       <AbsoluteFill data-qc="scene" data-qc-scene={scene.id} data-qc-type={scene.type} data-qc-variant={variant} style={{ ...style, overflow: 'hidden' }}>
-        {bg && (bg.kind || bg.color || bg.image) ? <SceneBackground frame={entry.from + frame} kind={bg.kind} color={bg.color} image={bg.image} accent={bg.accent} /> : null}
-        <AbsoluteFill style={layoutTf}>
-          <SceneBoundary id={scene.id}>
-            <Cmp content={scene.content as never} variant={variant} />
-          </SceneBoundary>
-        </AbsoluteFill>
+        {plan ? (
+          // Camera Engine 2.0: the scene background sits on the background plane (true parallax), content on the hero plane
+          <CameraRig plan={plan}>
+            {bg && (bg.kind || bg.color || bg.image) ? (
+              <DepthLayer plane="background">
+                {/* overscan about the centre (12.5% a side): orbits/arcs shift the far plane by up to ~11%
+                    (an `inset` with AbsoluteFill's 100% size only moved the layer and left an edge showing) */}
+                <AbsoluteFill style={{ transform: 'scale(1.25)' }}>
+                  <SceneBackground frame={entry.from + frame} kind={bg.kind} color={bg.color} image={bg.image} accent={bg.accent} />
+                </AbsoluteFill>
+              </DepthLayer>
+            ) : null}
+            <AbsoluteFill style={layoutTf}>
+              <SceneBoundary id={scene.id}>
+                <Cmp content={scene.content as never} variant={variant} />
+              </SceneBoundary>
+            </AbsoluteFill>
+          </CameraRig>
+        ) : (
+          <>
+            {bg && (bg.kind || bg.color || bg.image) ? <SceneBackground frame={entry.from + frame} kind={bg.kind} color={bg.color} image={bg.image} accent={bg.accent} /> : null}
+            <AbsoluteFill style={layoutTf}>
+              <SceneBoundary id={scene.id}>
+                <Cmp content={scene.content as never} variant={variant} />
+              </SceneBoundary>
+            </AbsoluteFill>
+          </>
+        )}
       </AbsoluteFill>
-      {overlay ? <TransitionOverlay kind={overlay.kind} p={overlay.p} dirSign={dirSign} word={sweepWord(scene.content)} /> : null}
+      {overlay ? <TransitionOverlay kind={overlay.kind} p={overlay.p} dirSign={dirSign} word={sweepWord(scene.content)} hint={entry.index > 0 ? v.spec.scenes[entry.index - 1].transition : undefined} /> : null}
     </SceneCtx.Provider>
   );
 }
@@ -131,9 +160,27 @@ function sweepWord(content: Record<string, unknown>): string | undefined {
   return w && w.length <= 14 ? w : undefined;
 }
 
-function TransitionOverlay({ kind, p, dirSign, word }: { kind: OverlayKind; p: number; dirSign: 1 | -1; word?: string }) {
+function TransitionOverlay({ kind, p, dirSign, word, hint }: { kind: OverlayKind; p: number; dirSign: 1 | -1; word?: string; hint?: { color?: string; focus?: { x: number; y: number } } }) {
   const v = useVideo();
   const resolve = useAsset();
+  if (kind === 'color-flood') {
+    // the colour both scenes share floods out of the subject, holds for a beat, then opens onto the next scene
+    const f = hint?.focus ?? { x: 0.5, y: 0.5 };
+    const grow = Math.min(1, p / 0.45);
+    const open = Math.max(0, (p - 0.55) / 0.45);
+    const R = Math.hypot(Math.max(f.x, 1 - f.x) * v.canvas.width, Math.max(f.y, 1 - f.y) * v.canvas.height) * 1.05;
+    const e = (x: number) => x * x * (3 - 2 * x);
+    const r = R * e(grow);
+    const hole = R * e(open);
+    return (
+      <AbsoluteFill
+        style={{
+          pointerEvents: 'none',
+          background: `radial-gradient(circle at ${f.x * 100}% ${f.y * 100}%, transparent ${hole}px, ${hint?.color ?? v.tokens.palette.primary} ${hole + 1}px, ${hint?.color ?? v.tokens.palette.primary} ${r}px, transparent ${r + 1}px)`,
+        }}
+      />
+    );
+  }
   if (kind === 'color-dip') {
     const k = Math.max(0, 1 - Math.abs(p * 2 - 1) * 1.15);
     return <AbsoluteFill style={{ pointerEvents: 'none', background: v.tokens.palette.primary, opacity: Math.min(1, k * 1.6) }} />;

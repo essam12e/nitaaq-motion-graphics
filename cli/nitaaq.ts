@@ -17,6 +17,9 @@
  *   nitaaq cache    [summary|clear [namespace]]
  *   nitaaq character prepare|inspect|bench <brief.json|art|package>   → character package (cached), bible, pose contact sheet
  *   nitaaq character sheet <projectDir> [--video f]                    → acting sheet: one settled frame per character shot
+ *   nitaaq seek     <projectDir|video.json> <seconds> [--png [out.png]] [--scale 0.5]  → the film's exact state at t (deterministic)
+ *   nitaaq audio    index | search <query> [--kind sfx|music] [--online] | fetch <query> [--provider ogsi|atomcut]
+ *                   → local audio registry (CC0 library + generated + yours); online CC0 fallback only with NITAAQ_AUDIO_ONLINE=1
  *   nitaaq preflight [--full] | scenes [--json] | styles | schema-export [--out dir] | voices
  *
  * Exit codes: 0 ok · 1 failed · 2 needs user input (questions printed as JSON).
@@ -232,6 +235,41 @@ async function main(): Promise<number> {
       }
       out(results);
       return results.every((r) => r.ok) ? 0 : 1;
+    }
+    case 'seek': {
+      // deterministic seek(t): the film's full state at t (+ the rendered frame with --png)
+      const pr = project(pos[0]);
+      const t = Number(pos[1]);
+      if (!Number.isFinite(t)) throw new Error('Usage: nitaaq seek <projectDir|video.json> <seconds> [--png out.png]');
+      const { seek } = await import('../src/engine/seek');
+      const { loadSpec, prepare, renderFrame, closeBrowser } = await import('../src/node/render');
+      const spec = loadSpec(pr.spec);
+      const st = seek(spec, t);
+      if (flag('png')) {
+        const prep = await prepare(spec, pr.dir, 'render');
+        await renderFrame(prep, st.frame, resolve(flag('png') === 'true' ? join(pr.dir, 'qc', `seek-${st.frame}.png`) : flag('png')!), Number(flag('scale') ?? 0.5));
+        await closeBrowser();
+      }
+      out(st);
+      return 0;
+    }
+    case 'audio': {
+      // Audio Engine 2.0: registry (local first), bilingual search, optional online fallback
+      const sub = pos[0] ?? 'search';
+      const { buildRegistry, findSound } = await import('../src/node/audio-library');
+      if (sub === 'index') {
+        const r = await buildRegistry();
+        const by: Record<string, number> = {};
+        for (const e of r) by[`${e.kind}:${e.license}`] = (by[`${e.kind}:${e.license}`] ?? 0) + 1;
+        out({ entries: r.length, by, file: join(workspace().root, '.audio', 'registry.json') });
+        return 0;
+      }
+      const q = pos.slice(1).join(' ');
+      if (!q) throw new Error('Usage: nitaaq audio index | search <query> [--kind sfx|music] [--online] | fetch <query> [--provider ogsi|atomcut|sfxmint]');
+      const kind = flag('kind') as 'sfx' | 'music' | undefined;
+      const r = await findSound({ text: q, kind, limit: Number(flag('limit') ?? 8) }, { online: sub === 'fetch' || flag('online') === 'true', minScore: sub === 'fetch' ? Infinity : undefined, providers: flag('provider') ? [flag('provider')!] : undefined });
+      out({ from: r.from, note: r.note, hits: r.hits.map((h) => ({ id: h.entry.id, score: h.score, why: h.why, license: h.entry.license, duration: h.entry.duration, path: h.entry.path })) });
+      return 0;
     }
     case 'beats': {
       if (!pos[0]) throw new Error('Usage: nitaaq beats <audio file>');

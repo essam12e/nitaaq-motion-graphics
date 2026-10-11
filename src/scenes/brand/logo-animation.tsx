@@ -20,6 +20,11 @@ import { alpha } from '../../brand/color';
 import { LOGO_REVEAL_IDS } from '../../brand/logo-reveal';
 import { createRng } from '../../core/rng';
 import type { MotionEventDecl } from '../../audio/events';
+import { useSilhouette } from '../../morph/useSilhouette';
+import { cachedMorph } from '../../morph/Morph';
+import { morphAt } from '../../morph/path';
+import { blobPath } from '../../morph/shapes';
+import { springAt } from '../../motion/spring';
 
 const Rect = z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() });
 const Content = z.object({
@@ -222,6 +227,8 @@ function LogoAnimation({ content: c, variant }: { content: C; variant: string })
     body = <Layer src={src} w={W} h={H} style={{ transform: `scale(${1.6 - 0.6 * k})`, opacity: clamp(k * 3) }} />;
   }
 
+  if (src && variant === 'liquid-morph') body = <LiquidMorphLogo src={src} W={W} H={H} />;
+
   const taglineDelay = Math.min(durSec * 0.55, variant === 'icon-wordmark' ? 1.4 : 1);
   return (
     <Stage>
@@ -234,11 +241,39 @@ function LogoAnimation({ content: c, variant }: { content: C; variant: string })
   );
 }
 
+/**
+ * Liquid morph (Motion 2.0): a breathing blob in the brand colour → the logo's own silhouette
+ * (true path morph, sub-paths grow from their centroids) → the untouched logo fades in inside it.
+ * The settled frame is exactly the logo (identity), the silhouette is gone.
+ */
+function LiquidMorphLogo({ src, W, H }: { src: string; W: number; H: number }) {
+  const resolve = useAsset();
+  const { tokens: t } = useVideo();
+  const { m } = useSceneTime();
+  const sil = useSilhouette(resolve(src), { width: W, height: H });
+  const sec = m.frame / m.fps;
+  const r = Math.min(W, H) * 0.32;
+  const blob = blobPath(W / 2, H / 2, r * (0.6 + 0.4 * clamp(sec / 0.5)), 'logo-blob', { phase: sec * 2.4, wobble: 0.22 });
+  if (!sil) return <Layer src={src} w={W} h={H} style={{ opacity: progress(m, 0.2, 0.8, 'smooth') }} />;
+  const k = springAt(Math.max(0, sec - 0.45), 0, 1, { stiffness: 120, damping: 16, mass: 1 }).value;
+  const d = morphAt(cachedMorph(blob, sil, 120), Math.max(0, Math.min(1.06, k)));
+  const logoIn = progress(m, 1.25, 0.6, 'smooth');
+  return (
+    <>
+      <svg width={W} height={H} style={{ position: 'absolute', inset: 0, overflow: 'visible', opacity: 1 - logoIn }} data-qc="morph">
+        <path d={d} fill={t.palette.primary} fillRule="evenodd" />
+      </svg>
+      <Layer src={src} w={W} h={H} style={{ opacity: logoIn }} />
+    </>
+  );
+}
+
 const events = (c: C, variant: string): MotionEventDecl[] => {
   const ev: MotionEventDecl[] = [];
   if (variant === 'icon-wordmark') ev.push({ type: 'logo_reveal', at: 0.1, element: 'logo', importance: 0.8, anchor: 'contact' }, { type: 'text_reveal', at: 0.65, importance: 0.45 });
   else if (variant === 'energetic' || variant === 'scale') ev.push({ type: 'logo_reveal', at: 0.05, element: 'logo', importance: 0.95, anchor: 'contact' });
   else if (variant === 'shape-assembly') ev.push({ type: 'logo_reveal', at: 0.05, element: 'logo', importance: 0.9, anchor: 'completion' });
+  else if (variant === 'liquid-morph') ev.push({ type: 'logo_reveal', at: 0.45, element: 'logo', importance: 0.85, anchor: 'completion' }, { type: 'text_reveal', at: 1.3, importance: 0.3 });
   else if (variant === 'light-sweep') ev.push({ type: 'logo_reveal', at: 0.0, element: 'logo', importance: 0.7 }, { type: 'text_reveal', at: 0.45, importance: 0.35 });
   else ev.push({ type: 'logo_reveal', at: 0.1, element: 'logo', importance: 0.9 });
   if (c.tagline) ev.push({ type: 'text_reveal', at: 1, importance: 0.3 });

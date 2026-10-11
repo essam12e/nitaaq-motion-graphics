@@ -24,7 +24,7 @@ export { bundleKey };
 import { referencedFiles, assertInsideProject } from './assets';
 import { validateSpec } from '../validation/validate';
 import { checkFontFile } from './fonts';
-import { ffmpegRun } from './audio';
+import { ffmpegRun, masterAudio, type MasterReport } from './audio';
 import { blobDir, fileHash, hashOf } from '../cache/store';
 
 export type RenderProfile = 'preview' | 'animatic' | 'draft' | 'production';
@@ -168,7 +168,7 @@ export function renderKey(spec: VideoSpec, projectDir: string, profile: RenderPr
     }
   });
   const { metadata: _m, ...rest } = spec;
-  return hashOf('render-v1', bundleKey(), profile, PROFILES[profile], rest, files);
+  return hashOf('render-v2', bundleKey(), profile, PROFILES[profile], rest, files);
 }
 
 export async function renderVideo(opts: { spec: VideoSpec; projectDir: string; output: string; profile?: RenderProfile; onProgress?: (p: number) => void; cache?: boolean }): Promise<RenderResult> {
@@ -229,6 +229,17 @@ export async function renderVideo(opts: { spec: VideoSpec; projectDir: string; o
         }
       },
     });
+    // master bus: loudness to the delivery target, true-peak limiter, clipping count (audio only; video copied)
+    const hasAudio = Boolean(opts.spec.audio.voice || opts.spec.audio.music || opts.spec.audio.sfx.enabled);
+    if (hasAudio && profile !== 'animatic' && process.env.NITAAQ_NO_MASTER !== '1') {
+      try {
+        const mr = masterAudio(opts.output, { targetLufs: opts.spec.audio.master?.targetLufs ?? -14, truePeak: opts.spec.audio.master?.truePeak ?? -1, bitrate: P.audioBitrate });
+        lastMaster.set(opts.output, mr);
+        log.stage('MASTER', mr.note);
+      } catch (e) {
+        log.warn('MASTER', `mastering skipped: ${(e as Error).message.slice(0, 200)}`);
+      }
+    }
     stripEncoderStrings(opts.output);
     if (useCache) copyFileSync(opts.output, blob);
     const bytes = statSync(opts.output).size;
@@ -254,6 +265,9 @@ export function stripEncoderStrings(file: string): void {
     log.warn('RENDER', `could not remove encoder strings from ${file}: ${(e as Error).message}`);
   }
 }
+
+/** Master report of the last render of each output file (performance/quality reports read it). */
+export const lastMaster = new Map<string, MasterReport>();
 
 /** Renders a single frame (thumbnails, QC). */
 export async function renderFrame(prep: PreparedRender, frame: number, output: string, scale = 1): Promise<void> {

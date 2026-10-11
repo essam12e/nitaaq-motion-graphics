@@ -47,6 +47,19 @@ const CTA_FAMILIES: Record<MotionPersonalityId, string[]> = {
   playful: ['controlled-bounce', 'scale-impact', 'rotation-reveal'],
 };
 
+/** Arabic Kinetic Typography 2.0: Arabic-first families joined to the pools when the copy is Arabic. */
+export const ARABIC_HEADLINE: Record<MotionPersonalityId, string[]> = {
+  premium: ['ar-ink-sweep', 'ar-fill-sweep', 'ar-cluster-rise'],
+  cinematic: ['ar-fill-sweep', 'ar-ink-sweep', 'ar-cluster-cascade'],
+  corporate: ['ar-ink-sweep', 'ar-fill-sweep'],
+  tech: ['ar-cluster-rise', 'ar-fill-sweep', 'ar-cluster-cascade'],
+  energetic: ['ar-weight-settle', 'ar-cluster-cascade', 'ar-cluster-drop'],
+  sport: ['ar-weight-settle', 'ar-cluster-rise'],
+  playful: ['ar-cluster-drop', 'ar-kashida-stretch', 'ar-cluster-cascade'],
+};
+const ARABIC_SUPPORT = ['ar-ink-sweep', 'ar-fill-sweep'];
+const ARABIC_CTA: Record<MotionPersonalityId, string[]> = { premium: ['ar-fill-sweep'], cinematic: ['ar-fill-sweep'], corporate: ['ar-ink-sweep'], tech: ['ar-cluster-rise'], energetic: ['ar-weight-settle'], sport: ['ar-weight-settle'], playful: ['ar-cluster-drop'] };
+
 const LABEL_FAMILIES = ['vertical-reveal', 'line-reveal', 'wipe-reveal', 'tracking-reveal'];
 
 export interface TextMotionScene {
@@ -76,12 +89,15 @@ export function planTextMotion(scenes: TextMotionScene[], personality: MotionPer
     if (!f) return false;
     if (s.arabic && f.unit === 'char') return false; // would only degrade: pick a real word-group family instead
     if (f.highlight && f.highlight !== 'pulse' && !s.hasHighlight) return false; // highlight families need emphasised words
+    if (f.kashida && !s.hasHighlight) return false; // kashida stretches the emphasised word only
+    if (f.arabicFirst && !s.arabic) return false;
     return true;
   };
   scenes.forEach((s, i) => {
     const isHook = i === 0;
     const isCta = s.beat === 'cta' || i === n - 1;
-    let pool = (isCta ? CTA_FAMILIES : HEADLINE_FAMILIES)[personality].filter((id) => allowed(id, s));
+    const ar = (list: string[], extra: string[]) => (s.arabic ? [...extra, ...list] : list);
+    let pool = ar((isCta ? CTA_FAMILIES : HEADLINE_FAMILIES)[personality], (isCta ? ARABIC_CTA : ARABIC_HEADLINE)[personality]).filter((id) => allowed(id, s));
     if (!pool.length) pool = HEADLINE_FAMILIES[personality].filter((id) => allowed(id, s));
     // variety: not used in the previous two scenes, under the per-film cap, and "up" moves rationed to ⅓ of scenes
     let fresh = pool.filter((id) => !recent.slice(-2).includes(id) && (usage[id] ?? 0) < cap);
@@ -94,10 +110,10 @@ export function planTextMotion(scenes: TextMotionScene[], personality: MotionPer
     else headline = fresh[Math.floor(rng() * fresh.length)];
     const hE = fam(headline)!.energy;
     // support: calmer than the headline, a different family, a different direction when possible
-    const sPool = SUPPORT_FAMILIES[personality].filter((id) => id !== headline && allowed(id, s) && fam(id)!.energy <= hE + 0.05);
+    const sPool = ar(SUPPORT_FAMILIES[personality], ARABIC_SUPPORT).filter((id) => id !== headline && allowed(id, s) && fam(id)!.energy <= hE + 0.05);
     const sDiff = sPool.filter((id) => fam(id)!.direction !== fam(headline)!.direction);
     const support = (sDiff.length ? sDiff : sPool.length ? sPool : ['line-reveal'])[Math.floor(rng() * (sDiff.length || sPool.length || 1))];
-    const ctaPool = CTA_FAMILIES[personality].filter((id) => id !== headline && allowed(id, s));
+    const ctaPool = ar(CTA_FAMILIES[personality], ARABIC_CTA[personality]).filter((id) => id !== headline && allowed(id, s));
     const cta = isCta ? headline : ctaPool[0] ?? 'mask-reveal';
     const labelPool = LABEL_FAMILIES.filter((id) => id !== headline && id !== support);
     const label = labelPool[Math.floor(rng() * labelPool.length)];

@@ -39,6 +39,20 @@ export const SFX: SfxSound[] = [
   { id: 'riser-long', file: 'sfx/riser-long.mp3', duration: 3.06, categories: ['riser', 'cinematic'], gain: 0.5 },
   { id: 'swell', file: 'sfx/swell.mp3', duration: 1.67, categories: ['riser', 'cinematic', 'sweep'], gain: 0.55 },
   { id: 'shutter', file: 'sfx/shutter.mp3', duration: 0.16, categories: ['shutter', 'ui'], gain: 0.7 },
+  // Motion 2.0 curated additions (CC0, Kenney via the Open Game SFX Index — cli/curate-sfx.ts reproduces them)
+  { id: 'glass-tink', file: 'sfx/glass-tink.mp3', duration: 0.24, categories: ['notification', 'digital'], gain: 0.55 },
+  { id: 'confirm-soft', file: 'sfx/confirm-soft.mp3', duration: 0.31, categories: ['success', 'ui'], gain: 0.6 },
+  { id: 'pluck', file: 'sfx/pluck.mp3', duration: 0.13, categories: ['pop', 'ui'], gain: 0.65 },
+  { id: 'ui-open', file: 'sfx/ui-open.mp3', duration: 0.29, categories: ['sweep', 'ui', 'transition'], gain: 0.6 },
+  { id: 'toggle', file: 'sfx/toggle.mp3', duration: 0.13, categories: ['click', 'ui'], gain: 0.7 },
+  { id: 'bong', file: 'sfx/bong.mp3', duration: 0.16, categories: ['notification', 'ui'], gain: 0.6 },
+  { id: 'bell-resonant', file: 'sfx/bell-resonant.mp3', duration: 0.6, categories: ['impact', 'cinematic'], gain: 0.45 },
+  { id: 'latch', file: 'sfx/latch.mp3', duration: 0.24, categories: ['click', 'ui'], gain: 0.6 },
+  { id: 'drop-soft', file: 'sfx/drop-soft.mp3', duration: 0.24, categories: ['pop', 'ui'], gain: 0.65 },
+  { id: 'impact-wood', file: 'sfx/impact-wood.mp3', duration: 0.16, categories: ['impact'], gain: 0.6 },
+  { id: 'thump-soft', file: 'sfx/thump-soft.mp3', duration: 0.55, categories: ['impact'], gain: 0.65 },
+  { id: 'scroll', file: 'sfx/scroll.mp3', duration: 0.99, categories: ['sweep', 'ui'], gain: 0.5 },
+  { id: 'error-soft', file: 'sfx/error-soft.mp3', duration: 0.21, categories: ['notification', 'ui'], gain: 0.55 },
 ];
 
 export const SFX_CATEGORIES = [

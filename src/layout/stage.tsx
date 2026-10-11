@@ -8,6 +8,8 @@ import React, { type CSSProperties } from 'react';
 import { AbsoluteFill } from 'remotion';
 import { useScene, useVideo, useMotion } from '../engine/context';
 import { cameraStyle, type CameraMove } from '../motion/primitives';
+import { CameraRig, useCamera } from '../camera/CameraRig';
+import type { CameraPlan } from '../camera/moves';
 import type { Rect } from './canvas';
 
 export function useLayout() {
@@ -48,13 +50,16 @@ export function Stage({
   const sc = useScene();
   const m = useMotion();
   const L = sc.scene.layout;
+  // the scene shell already runs the Camera Engine rig for planned scenes
+  const outer = useCamera();
+  const plan = outer.active ? undefined : (sc.scene.motion.cameraPlan as CameraPlan | undefined);
   const cam = (sc.scene.motion.camera ?? 'none') as CameraMove;
   const t = m.frame / Math.max(1, sc.entry.durationInFrames);
-  const camS = camera ? cameraStyle(cam, t, (sc.intensity ?? 0.5) * 1.0, canvas.u) : {};
+  // Camera Engine 2.0 plan wins; legacy named moves keep their original look
+  const camS = camera && !plan && !sc.scene.motion.cameraPlan ? cameraStyle(cam, t, (sc.intensity ?? 0.5) * 1.0, canvas.u) : {};
   const s = canvas.safe;
   const g = gap ?? canvas.u * 3 * tokens.spacing.unit;
-  return (
-    <AbsoluteFill style={{ ...camS }}>
+  const inner = (
       <div
         data-qc="stage"
         style={{
@@ -73,8 +78,8 @@ export function Stage({
       >
         {children}
       </div>
-    </AbsoluteFill>
   );
+  return camera && plan ? <CameraRig plan={plan}>{inner}</CameraRig> : <AbsoluteFill style={{ ...camS }}>{inner}</AbsoluteFill>;
 }
 
 /** Split the safe area into [primary, secondary] rects. Landscape: side by side (RTL: primary on the right). Portrait: stacked. */

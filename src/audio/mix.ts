@@ -87,6 +87,27 @@ export function duckGain(t: number, intervals: { start: number; end: number }[],
 
 const smooth = (x: number) => x * x * (3 - 2 * x);
 
+/**
+ * Sidechain (sound hierarchy Voice > SFX > Music > Ambient): the music dips under
+ * impact-layer cues (hero hits, logo stings) so the hit reads without raising it.
+ * Gain in (0, 1]; fast attack just before the hit, smooth release after.
+ */
+export function sidechainGain(t: number, cues: { atSec: number; anchorSec?: number; layer?: string; volume: number }[], depthDb: number): number {
+  if (!depthDb) return 1;
+  const floor = Math.pow(10, -depthDb / 20);
+  let g = 1;
+  for (const c of cues) {
+    if (c.layer !== 'impact' || c.volume < 0.3) continue;
+    const at = c.anchorSec ?? c.atSec;
+    let d = 0;
+    if (t >= at - 0.04 && t <= at + 0.08) d = 1;
+    else if (t < at - 0.04 && t > at - 0.1) d = smooth(1 - (at - 0.04 - t) / 0.06);
+    else if (t > at + 0.08 && t < at + 0.5) d = smooth(1 - (t - at - 0.08) / 0.42);
+    g = Math.min(g, 1 - d * (1 - floor));
+  }
+  return g;
+}
+
 /** Full music volume at time t (absolute seconds). */
 export function musicVolumeAt(t: number, spec: VideoSpec, totalSec: number): number {
   const m = spec.audio.music;
@@ -94,5 +115,6 @@ export function musicVolumeAt(t: number, spec: VideoSpec, totalSec: number): num
   const fin = m.fadeIn > 0 ? Math.min(1, t / m.fadeIn) : 1;
   const fout = m.fadeOut > 0 ? Math.min(1, Math.max(0, (totalSec - t) / m.fadeOut)) : 1;
   const duck = m.ducking.enabled ? duckGain(t, voiceIntervals(spec), m.ducking.level, m.ducking.attack, m.ducking.release) : 1;
-  return m.volume * smooth(fin) * smooth(fout) * duck;
+  const side = spec.audio.sidechainDb ? sidechainGain(t, spec.audio.sfx.cues ?? [], spec.audio.sidechainDb) : 1;
+  return m.volume * smooth(fin) * smooth(fout) * duck * side;
 }

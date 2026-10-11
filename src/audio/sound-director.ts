@@ -104,7 +104,10 @@ export function intentOf(e: MotionEvent, p: SoundPersonality): Intent | null {
       return 'signature';
     case 'scene_transition': {
       const t = e.transition ?? '';
-      if (['cut', 'none', 'crossfade', 'match-cut', 'shared', 'morph'].includes(t)) return null; // continuity transitions stay silent
+      if (['cut', 'none', 'crossfade', 'match-cut', 'shared', 'morph', 'shape-match', 'color-match'].includes(t)) return null; // continuity transitions stay silent
+      if (t === 'liquid') return soft ? null : 'motion-air';
+      if (['camera-match', 'motion-match'].includes(t)) return 'motion-fast';
+      if (t === 'zoom-through') return heavy ? 'motion-heavy' : 'motion-fast';
       if (['whip', 'speed-ramp', 'object-sweep', 'text-sweep', 'glitch'].includes(t)) return 'motion-fast';
       if (['camera-push', 'zoom-in', 'depth', 'camera-pull', 'zoom-out'].includes(t)) return heavy ? 'motion-heavy' : 'motion-air';
       if (t === 'page' || t === 'push' || t === 'slide') return 'ui-swipe';

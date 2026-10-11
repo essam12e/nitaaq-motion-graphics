@@ -15,7 +15,8 @@
 import type { CSSProperties } from 'react';
 import { CapabilityRegistry } from '../core/registry';
 
-export type TextUnit = 'block' | 'line' | 'word' | 'char';
+/** `cluster` = joining-safe letter groups for Arabic (split only where letters do not connect), characters for Latin. */
+export type TextUnit = 'block' | 'line' | 'word' | 'cluster' | 'char';
 export type RoleGroup = 'headline' | 'support' | 'cta' | 'number' | 'label';
 
 export interface UnitCtx {
@@ -49,6 +50,10 @@ export interface TextMotionFamily {
   highlight?: 'marker' | 'underline' | 'box' | 'pulse';
   /** Progress curve: 'spring' families may overshoot; 'curve' families never do. */
   curve: 'spring' | 'curve' | 'step';
+  /** Kashida (tatweel) stretch on emphasised Arabic words: max tatweels (Arabic Kinetic 2.0). */
+  kashida?: number;
+  /** Arabic-first family (Arabic Kinetic Typography 2.0). */
+  arabicFirst?: boolean;
   unit_(p: number, c: UnitCtx): CSSProperties;
 }
 
@@ -101,10 +106,36 @@ def({ id: 'typography-punch', label: 'Typography punch', unit: 'word', arabicUni
 def({ id: 'follow-through', label: 'Text follow-through', unit: 'word', arabicUnit: 'word', roles: ['headline', 'support'], energy: 0.6, duration: 0.7, stagger: 0.8, direction: 'side', curve: 'spring' }, (p, c) => ({ opacity: op(p, 2.2), transform: `translateX(${side(c) * (1 - p) * 4 * c.u}px) skewX(${-side(c) * (1 - p) * 10}deg)` }));
 def({ id: 'kinetic-sequence', label: 'Kinetic word sequencing', unit: 'word', arabicUnit: 'word', roles: ['headline', 'cta'], energy: 0.9, duration: 0.28, stagger: 1.8, direction: 'none', curve: 'step' }, (p) => ({ opacity: p > 0.01 ? 1 : 0, transform: `scale(${1.12 - 0.12 * c01(p)})` }));
 
+// ── Arabic Kinetic Typography 2.0 ───────────────────────────────────────────
+// Sub-word motion that never breaks a join: `cluster` units split a word only
+// after letters that do not connect forward (ا د ذ ر ز و ة …), so each group
+// keeps the exact letterforms of the whole word. Fill/weight/ink families
+// animate the whole shaped word with masks and same-colour strokes (no glyph
+// splitting, no letter-spacing, no outline seams at the joins).
+const feather = (dir: 'rtl' | 'ltr', p: number, soft = 14, ghost = 0) => {
+  const a = -soft + (100 + soft) * c01(p);
+  const g = `rgba(0,0,0,${ghost})`;
+  return `linear-gradient(${dir === 'rtl' ? 'to left' : 'to right'}, #000 ${a.toFixed(1)}%, ${g} ${(a + soft).toFixed(1)}%)`;
+};
+def({ id: 'ar-cluster-rise', label: 'Arabic letter-group rise (joining-safe)', unit: 'cluster', arabicUnit: 'cluster', roles: ['headline', 'cta'], energy: 0.6, duration: 0.5, stagger: 0.75, mask: true, direction: 'up', curve: 'spring', arabicFirst: true }, (p) => ({ transform: `translateY(${(1 - p) * 108}%)` }));
+def({ id: 'ar-cluster-cascade', label: 'Arabic letter-group cascade (joining-safe)', unit: 'cluster', arabicUnit: 'cluster', roles: ['headline', 'cta'], energy: 0.65, duration: 0.45, stagger: 0.7, direction: 'depth', curve: 'spring', arabicFirst: true }, (p, c) => ({ opacity: op(p, 2.4), transform: `translateY(${(1 - p) * 1.6 * c.u}px) scale(${1.25 - 0.25 * p})`, filter: `blur(${(1 - c01(p)) * 0.6 * c.u}px)` }));
+def({ id: 'ar-cluster-drop', label: 'Arabic letter-group drop (joining-safe)', unit: 'cluster', arabicUnit: 'cluster', roles: ['headline', 'cta'], energy: 0.75, duration: 0.5, stagger: 0.6, direction: 'down', curve: 'spring', arabicFirst: true }, (p, c) => ({ opacity: op(p, 3), transform: `translateY(${-(1 - p) * 4 * c.u}px) rotate(${(1 - p) * side(c) * 4}deg)` }));
+def({ id: 'ar-fill-sweep', label: 'Arabic fill sweep (ghost → ink, RTL)', unit: 'word', arabicUnit: 'word', roles: ['headline', 'support', 'cta'], energy: 0.45, duration: 0.8, stagger: 0.8, direction: 'side', curve: 'curve', arabicFirst: true }, (p, c) => {
+  const m = feather(c.dir, p, 18, 0.16);
+  return { opacity: op(p, 6), WebkitMaskImage: m, maskImage: m };
+});
+def({ id: 'ar-ink-sweep', label: 'Arabic ink sweep (feathered line wipe)', unit: 'line', arabicUnit: 'line', roles: ['headline', 'support', 'label'], energy: 0.4, duration: 0.9, stagger: 1.3, direction: 'side', curve: 'curve', arabicFirst: true }, (p, c) => {
+  const m = feather(c.dir, p, 22);
+  return { WebkitMaskImage: m, maskImage: m, transform: `translateX(${side(c) * (1 - c01(p)) * 0.8 * c.u}px)` };
+});
+def({ id: 'ar-weight-settle', label: 'Arabic weight settle (heavy → regular, same-colour stroke)', unit: 'word', arabicUnit: 'word', roles: ['headline', 'cta'], energy: 0.7, duration: 0.55, stagger: 1, direction: 'depth', curve: 'spring', arabicFirst: true }, (p) => ({ opacity: op(p, 3), transform: `scale(${1.18 - 0.18 * p})`, WebkitTextStroke: `${(0.05 * (1 - c01(p))).toFixed(4)}em currentColor` }));
+def({ id: 'ar-kashida-stretch', label: 'Arabic kashida stretch (calligraphic emphasis)', unit: 'word', arabicUnit: 'word', roles: ['headline'], energy: 0.55, duration: 0.6, stagger: 1, direction: 'none', curve: 'curve', kashida: 3, highlight: 'pulse', arabicFirst: true }, (p, c) => ({ opacity: op(p, 1.6), transform: `translateX(${side(c) * (1 - p) * 1.5 * c.u}px)` }));
+
 export const TEXT_MOTION_IDS = () => TextMotionRegistry.ids();
 
 /** The unit a family actually animates for this text (Arabic never goes below word groups). */
 export function effectiveUnit(f: TextMotionFamily, hasArabicText: boolean): TextUnit {
+  if (f.unit === 'cluster') return 'cluster';
   return hasArabicText && f.unit === 'char' ? f.arabicUnit : f.unit;
 }
 

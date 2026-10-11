@@ -19,6 +19,7 @@ import { alpha, mix, adjust } from '../brand/color';
 import type { BackgroundKind } from '../styles/tokens';
 import { resolveBackgroundKind } from '../design/patterns';
 import { createRng, hashString } from '../core/rng';
+import { blobPath } from '../morph/shapes';
 
 /** Deterministic slow oscillator. Periodic over the whole film in loop mode. */
 export function makeWave(frame: number, fps: number, loopFrames: number | null) {
@@ -119,6 +120,30 @@ export function Background({ frame, kind: kindOverride, color, accent }: { frame
       case 'aurora': {
         const bands = [0, 1].map((i) => `linear-gradient(${158 + i * 24 + wv(0.02, i) * 5}deg, transparent ${28 + i * 18}%, ${alpha(i ? p.secondary : ac, 0.22 * I)} ${40 + i * 18}%, transparent ${54 + i * 18}%)`);
         return <AbsoluteFill style={{ opacity: o, background: bands.join(', ') }} />;
+      }
+      case 'liquid': {
+        // Background Motion 2.0: two large organic bodies breathing slowly (never a pattern). The
+        // wobble is frame-driven; in a seamless loop only the drift moves (the wobble is not periodic).
+        const ph = loopFrames || !t.background.animate ? 0 : (frame / fps) * 0.45;
+        const R = Math.min(W, H) * 0.55;
+        const a = { x: side > 0 ? W * 0.82 : W * 0.18, y: H * 0.22 };
+        const b = { x: side > 0 ? W * 0.12 : W * 0.88, y: H * 0.82 };
+        return (
+          <AbsoluteFill style={{ opacity: o, overflow: 'hidden' }}>
+            {/* overscanned so a camera move / parallax never reveals the layer's edge */}
+            <svg width={W * 1.4} height={H * 1.4} viewBox={`${-W * 0.2} ${-H * 0.2} ${W * 1.4} ${H * 1.4}`} style={{ position: 'absolute', left: -W * 0.2, top: -H * 0.2 }}>
+              <defs>
+                <filter id="liquid-soft" x="-30%" y="-30%" width="160%" height="160%">
+                  <feGaussianBlur stdDeviation={u * 2.2} />
+                </filter>
+              </defs>
+              <g filter="url(#liquid-soft)">
+              <path d={blobPath(a.x + wv(0.03) * u * 2, a.y + wv(0.025, 1) * u * 2, R, `${spec.project.id}:liquid-a`, { phase: ph, wobble: 0.24 })} fill={alpha(ac, (dark ? 0.13 : 0.09) * (0.5 + I))} />
+              <path d={blobPath(b.x + wv(0.025, 2) * u * 2, b.y + wv(0.03, 3) * u * 2, R * 0.8, `${spec.project.id}:liquid-b`, { phase: ph * 0.8 + 1.3, wobble: 0.26 })} fill={alpha(p.secondary, (dark ? 0.1 : 0.07) * (0.5 + I))} />
+              </g>
+            </svg>
+          </AbsoluteFill>
+        );
       }
       case 'geometry': {
         // 1 huge disc + 1 ring + 1 diagonal slab: big, quiet, off-centre.

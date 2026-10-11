@@ -44,6 +44,10 @@ import { brandKey, deriveBrandMotion, recordFilm, type BrandMotion } from '../br
 import { loadBrandMotion, saveBrandMotion } from './brand-motion-store';
 import { chooseLogoReveal } from '../brand/logo-reveal';
 import { pickPersonality } from '../motion/personality';
+import { SceneRegistry } from '../scenes';
+import { diversify, fingerprint } from '../director/anti-template';
+import { rhythmPlan, motionLanguage } from '../director/rhythm';
+import { loadHistory, recordHistory } from './film-history';
 
 export interface DirectResult {
   status: 'ready' | 'needs-input';
@@ -124,6 +128,21 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
       return r;
     });
   })();
+  // Audio Engine 2.0: `music: "library"` / `"library:<query>"` picks a licensed track from the local registry
+  // (user library + validated cache; online providers only when NITAAQ_AUDIO_ONLINE=1)
+  let libraryMusic: { file: string; license: string; attribution?: string; id: string; candidates: import('../audio/registry').AudioHit[] } | null = null;
+  let libraryMiss: import('../audio/registry').AudioHit[] = [];
+  if (brief.audio.music && /^library(:|$)/.test(brief.audio.music)) {
+    const { findSound } = await import('./audio-library');
+    const q = brief.audio.music.slice('library'.length + 1).trim() || `${brief.tone.join(' ')} music`;
+    const r = await findSound({ text: q, kind: 'music', minDuration: 6 }, { minScore: 1 });
+    const fit = r.hits.find((h) => !h.entry.path.startsWith('procedural:'));
+    if (fit) libraryMusic = { file: fit.entry.path, license: fit.entry.license, attribution: fit.entry.attribution, id: fit.entry.id, candidates: r.hits };
+    else libraryMiss = r.hits;
+    log.stage('AUDIO', `music library "${q}": ${fit ? `${fit.entry.id} (${fit.entry.license})` : 'no licensed track — procedural soundtrack'}; ${r.note}`);
+    brief.audio.music = libraryMusic?.file;
+    if (libraryMusic) brief.audio.musicLicense = `${libraryMusic.license}${libraryMusic.attribution ? ` — ${libraryMusic.attribution}` : ''} (${libraryMusic.id})`;
+  }
   const musicSrcAbs = brief.audio.music ? abs(brief.audio.music) : undefined;
   const beatsJob = (async (): Promise<(BeatAnalysis & { source: string; hash: string }) | null> => {
     if (!musicSrcAbs || !cls.budget.beatEngine) return null;
@@ -357,11 +376,46 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
   }
   if (charFilm) spec.character = charFilm.spec;
   if (chapters.length) spec.timeline.chapters = chapters.map((ch, i) => ({ id: `chapter-${i + 1}`, title: ch.title, startScene: ch.scenes[0] }));
+
+  // ── Anti-Template: a film too close to a recent one varies its non-semantic choices (cuts, camera, variants)
+  if (process.env.NITAAQ_NO_ANTI_TEMPLATE !== '1') {
+    const orientation = plan.aspect === '16:9' ? 'landscape' : plan.aspect === '1:1' ? 'square' : 'portrait';
+    const anti = diversify(spec, loadHistory(projectId), {
+      variants: (type) => {
+        const m = SceneRegistry.get(type)?.manifest;
+        const list = m?.aspectVariants?.[orientation];
+        return m && list && list.length > 1 ? { list, capacity: m.textCapacity as Record<string, number> | undefined } : null;
+      },
+      preferredTransitions: (type) => SceneRegistry.get(type)?.manifest.preferredTransitions ?? [],
+    }, { seed });
+    writeFileSync(join(projectDir, 'anti_template.json'), JSON.stringify(anti, null, 2));
+    if (anti.changes.length) log.stage('DIRECTOR', `anti-template: ${Math.round(anti.before.similarity * 100)}% → ${Math.round(anti.after.similarity * 100)}% similar to ${anti.before.nearest}; ${anti.changes.join(', ')}`);
+    if (!opts.dryRun) recordHistory({ id: projectId, at: new Date().toISOString(), features: fingerprint(spec) });
+  }
+  // ── Motion Director 2.0: the film's rhythm and motion language, written down
+  const rhythm = rhythmPlan(spec, { heroScene: film.motion.heroScene, escalation: film.motion.escalation });
+  writeFileSync(join(projectDir, 'rhythm_plan.json'), JSON.stringify({ ...rhythm, language: motionLanguage(spec, { personality: film.motion.personality, heroScene: film.motion.heroScene, rules: film.motion.rules }) }, null, 2));
+  log.stage('DIRECTOR', `rhythm ${rhythm.pace.label} (mean shot ${rhythm.pace.meanShot}s, variation ${Math.round(rhythm.pace.cv * 100)}%), checks ${rhythm.score}/100${rhythm.checks.filter((c) => !c.ok).map((c) => `; ${c.code}: ${c.note}`).join('')}`);
   perf.mark('director', Date.now() - tDir);
 
   // ── sound: procedural soundtrack (only without user music) → Sound Director plan
   await perf.stage('sound', async () => {
     const st = await ensureSoundtrack(spec, projectDir, { heroSceneId: film.motion.heroScene ?? undefined, style: brief.audio.soundtrack });
+    const { planMusic } = await import('../audio/music-director');
+    const musicPlan = planMusic({
+      personality: film.motion.personality,
+      pace: plan.pace,
+      durationSec: storyboard.totalDuration,
+      voiceLed: Boolean(spec.audio.voice),
+      userMusic: brief.audio.music && !libraryMusic ? { file: brief.audio.music, license: brief.audio.musicLicense, duration: spec.audio.music?.duration } : undefined,
+      wantLibrary: Boolean(libraryMusic) || libraryMiss.length > 0,
+      library: libraryMusic ? libraryMusic.candidates : libraryMiss,
+      proceduralAllowed: spec.modules.includes('soundtrack'),
+      beats: beats ? { bpm: beats.bpm, confidence: beats.confidence } : null,
+      sfx: spec.audio.sfx.enabled,
+    });
+    if (spec.audio.music || musicPlan.source === 'procedural') spec.audio.sidechainDb = musicPlan.hierarchy.sidechainDb;
+    writeFileSync(join(projectDir, 'music_plan.json'), JSON.stringify(musicPlan, null, 2));
     const { report } = await planSound(spec, projectDir, { beats, write: !opts.dryRun });
     log.stage('SOUND', `${st.reason}; ${spec.audio.sfx.cues?.length ?? 0} cue(s), personality ${spec.audio.sfx.personality ?? '—'}${report ? `, ${report.uniqueVariants} variants, sync ≤${report.syncErrorMaxMs} ms` : ''}`);
   });

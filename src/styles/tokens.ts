@@ -9,6 +9,7 @@ import type { MotionPersonalityId } from '../motion/personality';
  */
 export type CleanBackgroundKind =
   | 'solid'
+  | 'liquid'
   | 'brand-solid'
   | 'soft-gradient'
   | 'directional-gradient'

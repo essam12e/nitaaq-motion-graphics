@@ -27,7 +27,8 @@ import { planSfx } from '../audio/mix';
 import { probe, loudness, ffmpegRun } from '../node/audio';
 import type { ProbeResult as DomProbe, ProbeText } from '../engine/QCProbe';
 import { log } from '../core/logger';
-import { sampleFrames, collectProbes, type Sample } from './probes';
+import { sampleFramesV2, collectProbes, determinismCheck, type Sample } from './probes';
+import { visualQa, categoryScores, gateOk, GATE, type Category } from './vqa';
 import { detectPatterns, type Rect } from './pattern-detect';
 import { characterStructuralQc, characterPixelQc } from './character-qc';
 import { checkBannedPatterns } from '../design/banned';
@@ -35,7 +36,7 @@ import { cached, fileHash, hashOf } from '../cache/store';
 import { resolveStyle } from '../styles/resolve';
 import { compatiblePersonalities, STYLE_PERSONALITY, type MotionPersonalityId } from '../motion/personality';
 
-export { sampleFrames, collectProbes } from './probes';
+export { sampleFrames, sampleFramesV2, collectProbes } from './probes';
 
 export type QcPass = 'structure' | 'design' | 'motion' | 'audio' | 'technical';
 
@@ -52,7 +53,7 @@ export interface QcIssue {
   /** Concrete, actionable fix in one sentence. */
   fix?: string;
   /** Machine-readable hint for the repair loop. */
-  repair?: { action: string; value?: number };
+  repair?: { action: string; value?: number; data?: Record<string, unknown> };
 }
 
 export interface QualityReport {
@@ -69,7 +70,11 @@ export interface QualityReport {
   critique: string[];
   checks: Record<string, 'pass' | 'fail' | 'skipped'>;
   issues: QcIssue[];
-  samples: { frame: number; time: number; scene: string; kind: 'hold' | 'transition' | 'edge' }[];
+  samples: { frame: number; time: number; scene: string; kind: Sample['kind'] }[];
+  /** Visual QA 2.0 category scores (composition, motion, typography, camera, brand, audio, technical, overall) — a delivery gate. */
+  categories?: Record<string, number>;
+  /** Deterministic seek check (render A, seek to B, render A again). */
+  determinism?: { frames: [number, number]; meanDiff: number; maxDiff: number; ok: boolean };
   media?: { duration: number; width?: number; height?: number; fps?: number; codec?: string; pixFmt?: string; hasAudio: boolean; bytes?: number };
   audio?: { integratedLufs: number | null; truePeak: number | null; meanVolume: number | null; maxVolume: number | null };
   contactSheet?: string;
@@ -182,6 +187,8 @@ function acceptanceOf(issues: QcIssue[], stage: 'structure' | 'final', checks: Q
     { rule: 'user media intact (no distortion / broken assets)', ok: none((i) => i.code === 'MEDIA_DISTORTED' || i.code === 'MEDIA_BROKEN') },
     { rule: 'CTA readable when the film ends on one', ok: checks.cta !== 'fail' },
     { rule: 'no debug overlay in output', ok: none((i) => i.code === 'DEBUG_OVERLAY') },
+    { rule: 'product and logo shown exactly as supplied (no recolour / stretch)', ok: none((i) => (i.code === 'PRODUCT_ALTERED' || i.code === 'PRODUCT_DISTORTED') && severityRank(i.severity) >= 2) },
+    { rule: 'camera never breaks framing of text / product / logo', ok: none((i) => i.code === 'CAMERA_FRAMING' && severityRank(i.severity) >= 2) },
   ];
   if (stage === 'final') {
     rules.push({ rule: 'valid H.264/yuv420p MP4 at the right size, fps and duration', ok: none((i) => i.code.startsWith('MP4_') && severityRank(i.severity) >= 2 && i.code !== 'MP4_SIGNATURE') });
@@ -206,6 +213,12 @@ const FIX: Record<string, string> = {
   HOLD_TOO_SHORT: 'extend the scene or cut words so it can be read',
   VOICE_DRIFT: 'move the scene cut to the voice phrase start',
   CTA_NOT_VISIBLE: 'extend the CTA scene so it settles fully before the end',
+  CAMERA_FRAMING: 'the framing solver re-aims or reduces the camera move (camera-solve); the text is never shrunk for a camera',
+  PRODUCT_OBSTRUCTED: 'move or shrink the text so the product/logo stays clear',
+  COMPOSITION_UNBALANCED: 'centre the group or give the empty side a counterweight',
+  FRAME_EMPTY: 'scale the content up so it holds the frame',
+  RTL_PUNCTUATION: 'use Arabic punctuation (؟ ، ؛) and never start a line with punctuation',
+  MOTION_NONDETERMINISTIC: 'remove state/randomness/clock from the scene: every value must be a pure function of the frame',
   MOTION_NO_PURPOSE: 'give each scene a motion job (reveal, focus, connect, prove, resolve)',
   CAMERA_OVERUSE: 'keep camera moves for 1–2 key beats; leave the rest still',
   TRANSITION_MONOTONY: 'vary transitions with the beat (cut on energy, morph between states)',
@@ -225,11 +238,14 @@ function finalize(spec: VideoSpec, issues: QcIssue[], checks: QualityReport['che
   const summary = { info: 0, warning: 0, error: 0, critical: 0 } as Record<Severity, number>;
   for (const i of final) summary[i.severity]++;
   const acceptance = acceptanceOf(final, extra.stage, checks);
+  const ran: Category[] = ['composition', 'motion', 'typography', 'camera', 'brand', 'technical', ...(passes.includes('audio') ? (['audio'] as Category[]) : [])];
+  const categories = categoryScores(final, ran);
+  acceptance.push({ rule: `quality gate: every category ≥ ${GATE.category}, overall ≥ ${GATE.overall}`, ok: gateOk(categories, ran) });
   const critique = final
     .filter((i) => i.severity !== 'info')
     .slice(0, 12)
     .map((i) => `[${i.severity}] ${i.scene ? `${i.scene}: ` : ''}${i.message}${i.fix ? ` → ${i.fix}` : ''}`);
-  return { version: '2.0', project: spec.project.id, createdAt: new Date().toISOString(), passed: acceptance.every((a) => a.ok), summary, scores: scoresOf(final, passes), acceptance, critique, checks, issues: final, ...extra };
+  return { version: '2.0', project: spec.project.id, createdAt: new Date().toISOString(), passed: acceptance.every((a) => a.ok), summary, scores: scoresOf(final, passes), categories, acceptance, critique, checks, issues: final, ...extra };
 }
 
 // ── contact sheets ──────────────────────────────────────────────────────────────
@@ -255,7 +271,7 @@ export async function structuralQc(opts: { spec: VideoSpec; projectDir: string; 
   const tl = buildTimeline(spec.scenes, fps);
   const canvas = makeCanvasProfile(spec.canvas.width, spec.canvas.height, spec.safeArea.preset, spec.safeArea.margin);
   mkdirSync(opts.outDir, { recursive: true });
-  const samples = sampleFrames(spec, opts.perScene ?? 3);
+  const samples = sampleFramesV2(spec, opts.perScene ?? 3);
   const stillsDir = join(opts.outDir, 'frames');
   rmSync(stillsDir, { recursive: true, force: true });
 
@@ -411,6 +427,37 @@ export async function structuralQc(opts: { spec: VideoSpec; projectDir: string; 
 
   // ── pass 3: motion ───────────────────────────────────────────────────────────
   motionPass(spec, tl, samples, probes, (i) => add('motion', i));
+
+  // ── Visual QA 2.0: camera framing (solved), product protection, obstruction, composition, RTL ──
+  const tv = Date.now();
+  const vqa = visualQa({ spec, tl, samples, probes, canvas });
+  for (const i of vqa.issues) add(i.code === 'CAMERA_FRAMING' ? 'motion' : i.code.startsWith('PRODUCT_') ? 'structure' : 'design', i);
+  // text pushed out of the safe area by a camera move: the camera is fixed (solver), not the text
+  for (const i of issues) {
+    const sol = i.scene ? vqa.cameraScenes.get(i.scene) : undefined;
+    if (sol && (i.code === 'TEXT_OUTSIDE_SAFE' || i.code === 'TEXT_OFF_CANVAS')) {
+      i.message = `${i.message} (camera move — ${sol.note})`;
+      i.code = 'CAMERA_FRAMING';
+      i.repair = { action: 'camera-solve', data: { plan: sol.plan } };
+    }
+  }
+  checks.camera = vqa.cameraScenes.size ? 'fail' : 'pass';
+  // deterministic seek (first pass only): render A, seek away to B, render A again
+  let determinism: QualityReport['determinism'];
+  if ((opts.pass ?? 1) <= 1 && process.env.NITAAQ_SKIP_DETERMINISM !== '1') {
+    const a = samples.find((x) => x.kind === 'mid' && x.sceneIndex === 0)?.frame ?? samples[0].frame;
+    const b = samples[samples.length - 1].frame;
+    try {
+      const d = await determinismCheck(spec, projectDir, a, b, join(opts.outDir, 'seek'));
+      determinism = { frames: [a, b], ...d };
+      checks.determinism = d.ok ? 'pass' : 'fail';
+      if (!d.ok) add('structure', { severity: d.meanDiff > 2 ? 'critical' : 'error', code: 'MOTION_NONDETERMINISTIC', frame: a, message: `frame ${a} renders differently after seeking to ${b} and back (mean Δ ${d.meanDiff}, max Δ ${d.maxDiff}) — something depends on render history` });
+    } catch (e) {
+      checks.determinism = 'skipped';
+      log.warn('QUALITY', `determinism check skipped: ${(e as Error).message.slice(0, 160)}`);
+    }
+  }
+  timings.vqaMs = Date.now() - tv;
   checks.timing = issues.some((i) => i.code === 'HOLD_TOO_SHORT' || i.code === 'VOICE_DRIFT') ? 'fail' : 'pass';
 
   // ── sheets ───────────────────────────────────────────────────────────────────
@@ -432,7 +479,7 @@ export async function structuralQc(opts: { spec: VideoSpec; projectDir: string; 
   timings.sheetMs = Date.now() - ts;
   timings.totalMs = Date.now() - t0;
 
-  const report = finalize(spec, issues, checks, { video: null, stage: 'structure', samples: samples.map((s) => ({ frame: s.frame, time: Math.round(s.time * 100) / 100, scene: s.scene, kind: s.kind })), contactSheet, phoneSheet, repairPass: opts.pass, timings, probeCache: { rendered: run.rendered, cached: run.cached } }, ['structure', 'design', 'motion']);
+  const report = finalize(spec, issues, checks, { video: null, stage: 'structure', samples: samples.map((s) => ({ frame: s.frame, time: Math.round(s.time * 100) / 100, scene: s.scene, kind: s.kind })), determinism, contactSheet, phoneSheet, repairPass: opts.pass, timings, probeCache: { rendered: run.rendered, cached: run.cached } }, ['structure', 'design', 'motion']);
   writeFileSync(join(opts.outDir, 'quality-report.json'), JSON.stringify(report, null, 2));
   log.stage('QUALITY', `structure ${report.passed ? 'PASSED' : 'FAILED'} — critical ${report.summary.critical}, error ${report.summary.error}, warning ${report.summary.warning}; probes ${run.rendered} rendered / ${run.cached} cached (${(timings.totalMs / 1000).toFixed(1)}s)`);
   return { report, samples, probes, stills: run.stills };

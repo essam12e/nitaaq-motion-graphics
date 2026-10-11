@@ -132,3 +132,86 @@ export function readingTime(text: string): number {
   // ~3.2 words/sec for short display copy, + perception base.
   return 0.6 + words / 3.2;
 }
+
+// ── Arabic joining (Unicode ArabicShaping joining types) ─────────────────────
+// Kinetic typography may only split a word where the two sides do NOT join:
+// after a right-joining letter (ا د ذ ر ز و ة …) or next to a non-joining
+// character. Splitting there renders the exact same letterforms as the whole
+// word, so groups can animate independently without breaking a single join.
+const MARK_RE = /[ؐ-ًؚ-ٰٟۖ-ۜ۟-۪ۤۧۨ-ۭ࣓-ࣿ]/;
+/** Right-joining only (join to the previous letter, never to the next). */
+const R_JOIN = new Set([...'آأؤإاةدذرزوٱٲٳٵٶٷڈډڊڋڌڍڎڏڐڑڒړڔڕږڗژڙۀۃۄۅۆۇۈۉۊۋۍۏےۓەۮۯݙݚݛݫݬݱݳݴݸݹ']);
+/** Non-joining Arabic characters (hamza, punctuation, digits are non-letters anyway). */
+const U_JOIN = new Set([...'ء']);
+const TATWEEL = 'ـ';
+
+function isArabicLetter(ch: string): boolean {
+  const c = ch.codePointAt(0) ?? 0;
+  return (c >= 0x0620 && c <= 0x064a) || (c >= 0x066e && c <= 0x06d3) || c === 0x06d5 || (c >= 0x06ee && c <= 0x06ef) || (c >= 0x06fa && c <= 0x06fc) || c === 0x06ff || (c >= 0x0750 && c <= 0x077f) || (c >= 0x08a0 && c <= 0x08c9) || ch === TATWEEL;
+}
+/** Does this character connect to the FOLLOWING letter (dual-joining or tatweel)? */
+export function joinsNext(ch: string): boolean {
+  return isArabicLetter(ch) && !R_JOIN.has(ch) && !U_JOIN.has(ch);
+}
+/** Does this character connect to the PREVIOUS letter (dual- or right-joining, or tatweel)? */
+export function joinsPrev(ch: string): boolean {
+  return isArabicLetter(ch) && !U_JOIN.has(ch);
+}
+const lastBase = (s: string) => {
+  const cs = [...s];
+  for (let i = cs.length - 1; i >= 0; i--) if (!MARK_RE.test(cs[i])) return cs[i];
+  return '';
+};
+/** True when `left` + `right` may be rendered as separate elements without changing a letterform. */
+export function isSafeBreak(left: string, right: string): boolean {
+  const l = lastBase(left);
+  const r = [...right].find((c) => !MARK_RE.test(c)) ?? '';
+  if (!l || !r) return true;
+  return !(joinsNext(l) && joinsPrev(r));
+}
+
+/**
+ * Joining-safe letter groups of one word (marks stay with their base).
+ * "مواعيدك" → ["مو","ا","عيد","ك"]; "السلام" → ["ا","لسلا","م"]. Latin → characters.
+ */
+export function joiningClusters(word: string): string[] {
+  if (!hasArabic(word)) return [...word];
+  const out: string[] = [];
+  let cur = '';
+  for (const ch of [...word]) {
+    if (cur && !MARK_RE.test(ch) && isSafeBreak(cur, ch)) {
+      out.push(cur);
+      cur = '';
+    }
+    cur += ch;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+/**
+ * Kashida (tatweel) elongation — the calligraphic way to stretch Arabic.
+ * Inserts up to `n` tatweels at the best joined connection (the last one before
+ * the word's final letter group, never inside lam-alef, never after a
+ * right-joining letter). Returns the word unchanged when no legal slot exists.
+ */
+export function kashida(word: string, n: number): string {
+  if (n <= 0 || !hasArabic(word)) return word;
+  const cs = [...word];
+  // candidate slots: between a base that joins next and a base that joins prev (skipping marks)
+  const slots: number[] = [];
+  for (let i = 0; i < cs.length - 1; i++) {
+    if (MARK_RE.test(cs[i])) continue;
+    let j = i + 1;
+    while (j < cs.length && MARK_RE.test(cs[j])) j++;
+    if (j >= cs.length) break;
+    const a = cs[i];
+    const b = cs[j];
+    if (!joinsNext(a) || !joinsPrev(b) || a === TATWEEL || b === TATWEEL) continue;
+    if (a === 'ل' && /[آأإاٱ]/.test(b)) continue; // lam-alef ligature
+    slots.push(j);
+  }
+  if (!slots.length) return word;
+  const at = slots[slots.length - 1];
+  return cs.slice(0, at).join('') + TATWEEL.repeat(Math.round(n)) + cs.slice(at).join('');
+}

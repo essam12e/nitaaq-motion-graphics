@@ -188,6 +188,10 @@ export const AudioSchema = z.object({
       cues: z.array(SfxCueSchema).optional(),
     })
     .default({}),
+  /** Master bus (Audio Engine 2.0): delivery loudness and true-peak ceiling (applied after render). */
+  master: z.object({ targetLufs: z.number().min(-30).max(-8).default(-14), truePeak: z.number().min(-6).max(0).default(-1) }).optional(),
+  /** Music sidechain: the music dips under hero impacts (dB, 0 = off). */
+  sidechainDb: z.number().min(0).max(12).optional(),
 });
 
 export const TransitionSchema = z.object({
@@ -196,6 +200,11 @@ export const TransitionSchema = z.object({
   direction: z.enum(['left', 'right', 'up', 'down']).optional(),
   /** Why the Transition Engine chose it (continuity, contrast, beat, …). Not rendered. */
   reason: z.string().optional(),
+  /** Continuity hints (Transition Intelligence 2.0): subject focus, matched rect, shape, shared colour. */
+  focus: z.object({ x: z.number(), y: z.number() }).optional(),
+  rect: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }).optional(),
+  shape: z.string().optional(),
+  color: HexColor.optional(),
 });
 
 export const SfxEventSchema = z.object({
@@ -219,6 +228,19 @@ export const SceneLayoutSchema = z.object({
   maxLines: z.number().int().min(1).max(8).optional(),
 });
 
+export const CameraPlanSchema = z.object({
+  move: z.string(),
+  amplitude: z.number().min(0).max(1.5).default(1),
+  start: z.number().min(0).max(1).optional(),
+  end: z.number().min(0).max(1).optional(),
+  focus: z.object({ x: z.number(), y: z.number() }).optional(),
+  ease: z.string().optional(),
+  accents: z.array(z.number()).optional(),
+  waypoints: z.array(z.object({ t: z.number(), focus: z.object({ x: z.number(), y: z.number() }), close: z.number().optional() })).optional(),
+  dof: z.boolean().optional(),
+  reason: z.string().optional(),
+});
+
 export const SceneMotionSchema = z.object({
   intensity: Unit.optional(),
   entrance: z.string().optional(),
@@ -228,6 +250,12 @@ export const SceneMotionSchema = z.object({
   jobs: z.array(z.string()).optional(),
   /** Text Motion Engine families per text role group (headline, support, cta, number, label). */
   text: z.record(z.string()).optional(),
+  /** Camera Engine 2.0 plan (preferred over the legacy `camera` name when present). */
+  cameraPlan: CameraPlanSchema.optional(),
+  /** Motion Intent System: the scene's elements, why they move and how (written by the Director). */
+  intents: z.array(z.object({ role: z.string(), intent: z.string(), entrance: z.string().optional(), sound: z.string().optional(), importance: z.number().optional() })).optional(),
+  /** Beat accents (scene-local seconds) the scene's motion may punctuate (music-led films only). */
+  accents: z.array(z.number()).optional(),
 });
 
 export const SceneBackgroundSchema = z.object({

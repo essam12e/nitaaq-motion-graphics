@@ -6,8 +6,10 @@
 import type { CSSProperties } from 'react';
 import { clamp, EASE, speedRamp } from '../motion/primitives';
 import { CapabilityRegistry } from '../core/registry';
+import { ADVANCED, type TransitionCtx } from './advanced';
+export type { TransitionCtx };
 
-export type OverlayKind = 'light-sweep' | 'color-sweep' | 'color-dip' | 'object-sweep' | 'text-sweep';
+export type OverlayKind = 'light-sweep' | 'color-sweep' | 'color-dip' | 'object-sweep' | 'text-sweep' | 'color-flood';
 
 export interface TransitionFrame {
   exit: CSSProperties;
@@ -24,7 +26,8 @@ export interface TransitionDef {
   energy: number;
   /** Suggested SFX category at the cut point. */
   sfx?: string;
-  frame: (p: number, dirSign: 1 | -1) => TransitionFrame;
+  /** ctx (canvas size + the scenes' shared shape/colour/focus/direction) is passed by the engine; older transitions ignore it. */
+  frame: (p: number, dirSign: 1 | -1, ctx?: TransitionCtx) => TransitionFrame;
   /** Relationships it expresses (Transition Engine). */
   meaning?: TransitionMeaning[];
   /** Default seconds at medium pace. */
@@ -287,6 +290,8 @@ const EXTRA: Record<string, TransitionDef> = {
   },
 };
 Object.assign(TRANSITIONS, EXTRA);
+// Transition Intelligence 2.0: continuity transitions (the old clip-inset `morph` becomes a true shape morph)
+Object.assign(TRANSITIONS, ADVANCED);
 
 /** Meaning / duration / peak metadata for the original transitions. */
 const META: Record<string, Pick<TransitionDef, 'meaning' | 'duration' | 'peak'>> = {

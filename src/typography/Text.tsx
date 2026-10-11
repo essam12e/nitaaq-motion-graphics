@@ -9,7 +9,7 @@ import React, { useMemo, type CSSProperties } from 'react';
 import { useVideo, useContextScene } from './text-context';
 import { fitText } from './fit';
 import { canvasMeasure } from './measure-browser';
-import { baseDirection, hasArabic, prepareText, safeLetterSpacing, type Token } from './arabic';
+import { baseDirection, hasArabic, joiningClusters, kashida, prepareText, safeLetterSpacing, type Token } from './arabic';
 import { entranceStyle, progress, clamp, type MotionCtx } from '../motion/primitives';
 import { useMotion } from '../engine/context';
 import type { EntranceFamily, StyleTokens } from '../styles/tokens';
@@ -99,7 +99,8 @@ export function Text(props: TextProps) {
   const animateEarly = props.animate ?? (role === 'headline' || role === 'title' || role === 'cta' ? 'words' : 'lines');
   const famEarly = TextMotionRegistry.get(props.motion ?? (props.entrance === undefined && animateEarly !== 'none' ? scene?.scene.motion?.text?.[roleGroupOf(role)] : undefined));
   const drawnHl = famEarly?.highlight && famEarly.highlight !== 'pulse' ? famEarly.highlight : hlStyle;
-  const hlPad = drawnHl === 'box' ? 0.4 : drawnHl === 'marker' ? 0.12 : 0;
+  // kashida families stretch emphasised Arabic words: the fitter reserves the stretched width (no reflow overflow)
+  const hlPad = (drawnHl === 'box' ? 0.4 : drawnHl === 'marker' ? 0.12 : 0) + (famEarly?.kashida ? 0.32 * famEarly.kashida : 0);
 
   const fit = useMemo(
     () =>
@@ -151,7 +152,7 @@ export function Text(props: TextProps) {
   const famHl = fam?.highlight && fam.highlight !== 'pulse' ? fam.highlight : undefined;
   const numericCount = fam?.id === 'number-count' || (fam && role === 'number');
   let unitTotal = 0;
-  if (fam && unit === 'word') unitTotal = fit.lines.reduce((a, l) => a + groupRuns(l).length, 0);
+  if (fam && (unit === 'word' || unit === 'cluster')) unitTotal = fit.lines.reduce((a, l) => a + groupRuns(l).length, 0);
 
   let wordIndex = 0;
   function renderFamilyLines() {
@@ -165,18 +166,23 @@ export function Text(props: TextProps) {
         // Arabic word groups: a particle glued to the next word animates with it
         const idx = gluePrev ? Math.max(0, wi - 1) : wi++;
         gluePrev = run[run.length - 1].glueNext;
-        const d = unit === 'word' || unit === 'char' ? delay + idx * famGap : unit === 'line' ? lineStart : delay;
+        const perWord = unit === 'word' || unit === 'char' || unit === 'cluster';
+        const d = perWord ? delay + idx * famGap : unit === 'line' ? lineStart : delay;
         const isLatin = run[0].script === 'latin' || run[0].script === 'neutral';
         const content = run.map((x) => x.text).join(' ');
         const runArabic = hasArabic(content);
-        const p = unit === 'word' || unit === 'char' ? famP(d) : unit === 'line' ? lp : famP(delay);
+        const p = perWord ? famP(d) : unit === 'line' ? lp : famP(delay);
         const wordStyle = unit === 'word' || (unit === 'char' && runArabic) ? fam!.unit_(p, famCtx(idx, unitTotal, runArabic)) : undefined;
         const chars = unit === 'char' && !runArabic ? [...content] : null;
+        // Arabic Kinetic 2.0: joining-safe letter groups (Latin: characters); each group springs on its own
+        const clusters = unit === 'cluster' ? (runArabic ? content.split(' ').map((w) => joiningClusters(w)) : null) : null;
+        const settledK = m.frame / m.fps - (d + famDur * 0.7);
+        const stretch = fam!.kashida && run[0].highlight && runArabic && settledK > 0 ? Math.round(fam!.kashida * clamp(settledK / 0.35)) : 0;
         const settledFor = m.frame / m.fps - (d + famDur);
         const pulse = fam!.highlight === 'pulse' && run[0].highlight && settledFor > 0 ? Math.sin(clamp(settledFor / 0.45) * Math.PI) * 0.09 : 0;
         const word = (
           <Word
-            text={content}
+            text={stretch ? kashida(content, stretch) : content}
             latin={isLatin && dir === 'rtl'}
             latinFamily={v.fonts.latin}
             highlight={run[0].highlight}
@@ -188,7 +194,21 @@ export function Text(props: TextProps) {
             hlDelay={d + famDur * 0.6}
             count={numericCount ? clamp(p) : undefined}
             numerals={v.spec.project.numerals}
-            chars={chars ? chars.map((ch, ci) => ({ ch, style: fam!.unit_(famP(d + ci * famGap * 0.35), famCtx(ci, chars.length, false)) })) : undefined}
+            chars={
+              chars
+                ? chars.map((ch, ci) => ({ ch, style: fam!.unit_(famP(d + ci * famGap * 0.35), famCtx(ci, chars.length, false)) }))
+                : unit === 'cluster' && !runArabic
+                  ? [...content].map((ch, ci, all) => ({ ch, style: fam!.unit_(famP(d + ci * famGap * 0.3), famCtx(ci, all.length, false)) }))
+                  : undefined
+            }
+            clusters={
+              clusters
+                ? clusters.map((groups) => {
+                    // RTL reading order: the first group in logical order (rightmost) moves first
+                    return groups.map((g, ci) => ({ text: g, style: fam!.unit_(famP(d + ci * famGap * 0.3), famCtx(ci, groups.length, true)), mask: Boolean(fam!.mask) }));
+                  })
+                : undefined
+            }
             style={{ ...(wordStyle ?? {}), ...(pulse ? { transform: `${wordStyle?.transform ?? ''} scale(${1 + pulse})` } : {}) }}
           />
         );
@@ -304,6 +324,8 @@ function Word(props: {
   numerals?: 'latin' | 'arabic-indic';
   /** Latin-only per-character units (never for Arabic: it would break the joins). */
   chars?: { ch: string; style: CSSProperties }[];
+  /** Arabic joining-safe letter groups per word (Arabic Kinetic 2.0): never splits a join. */
+  clusters?: { text: string; style: CSSProperties; mask: boolean }[][];
 }) {
   const { highlight, hlStyle, hl, tokens: t } = props;
   const counted = props.count !== undefined ? countText(props.text, props.count, props.numerals ?? 'latin') : null;
@@ -313,6 +335,31 @@ function Word(props: {
       <span style={{ display: 'inline-block', position: 'relative', fontVariantNumeric: 'tabular-nums', ...props.style, ...(highlight ? { color: hl } : {}) }}>
         <span style={{ visibility: 'hidden' }}>{props.text}</span>
         <span style={{ position: 'absolute', inset: 0, textAlign: 'center', whiteSpace: 'nowrap' }}>{counted}</span>
+      </span>
+    );
+  }
+  if (props.clusters) {
+    // each group is an inline-block that shapes exactly as inside the whole word (split only where letters do not join)
+    return (
+      <span data-ar-clusters="1" style={{ display: 'inline-block', whiteSpace: 'nowrap', ...(highlight ? { color: hl } : {}), ...props.style }}>
+        {props.clusters.map((groups, wi) => (
+          <React.Fragment key={wi}>
+            {wi > 0 ? ' ' : null}
+            <span data-ar-word="1" style={{ display: 'inline-block', whiteSpace: 'nowrap' }}>
+              {groups.map((g, gi) =>
+                g.mask ? (
+                  <span key={gi} style={{ display: 'inline-block', overflow: 'hidden', verticalAlign: 'bottom', padding: '0.22em 0', margin: '-0.22em 0' }}>
+                    <span data-ar-cluster="1" style={{ display: 'inline-block', ...g.style }}>{g.text}</span>
+                  </span>
+                ) : (
+                  <span key={gi} data-ar-cluster="1" style={{ display: 'inline-block', ...g.style }}>
+                    {g.text}
+                  </span>
+                ),
+              )}
+            </span>
+          </React.Fragment>
+        ))}
       </span>
     );
   }

@@ -12,7 +12,7 @@ export const PATTERN_KINDS: PatternBackgroundKind[] = ['dots', 'grid', 'halftone
 export const CLEAN_KINDS: CleanBackgroundKind[] = [
   'solid', 'brand-solid', 'soft-gradient', 'directional-gradient', 'radial-light', 'cinematic-light', 'vignette', 'brand-shapes', 'geometry',
   'depth-layers', 'glass-depth', 'editorial', 'atmosphere', 'product-stage', 'paper', 'light-sweep', 'shadow-field',
-  'gradient', 'mesh', 'aurora', 'spotlight', 'rays', 'noise-gradient',
+  'gradient', 'mesh', 'aurora', 'spotlight', 'rays', 'noise-gradient', 'liquid',
 ];
 
 /** What a disallowed pattern becomes: the closest clean, large-form look. */
