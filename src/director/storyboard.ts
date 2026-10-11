@@ -149,7 +149,7 @@ export function buildStoryboard(plan: CreativePlan, ctx: RecipeCtx, opts: { seed
     if (family === 'form-fill') return 'form';
     if (family === 'state-flow') return 'flow';
     if (family === 'data-table') return 'table';
-    if (['process-steps', 'workflow', 'timeline'].includes(family)) return 'steps';
+    if (['process-steps', 'workflow', 'timeline', 'morph-story'].includes(family)) return 'steps';
     // a whiteboard writes out the brief's steps (or features) — the same payload as a steps/features scene
     if (family === 'whiteboard') return ctx.brief.content.steps?.length ? 'steps' : ctx.brief.content.features?.length ? 'features' : null;
     if (['feature-set', 'icon-list', 'product-details'].includes(family)) return 'features';
