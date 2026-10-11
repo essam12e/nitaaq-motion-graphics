@@ -212,7 +212,43 @@ function scanSign(L: Float32Array, blur: Float32Array, masked: Uint8Array, w: nu
 
   const findings: PatternFinding[] = [];
   if (centroids.length >= 30 && lattice < 0.35) findings.push({ kind: 'dot-lattice', count: centroids.length, regularity: Math.round((1 - lattice) * 100) / 100, message: `${centroids.length} small dots in a regular lattice` });
-  else if (centroids.length >= 70 && spread(centroids, w, h)) findings.push({ kind: 'particle-field', count: centroids.length, regularity: Math.round((1 - lattice) * 100) / 100, message: `${centroids.length} scattered small points (particle field)` });
+  else if (centroids.length >= 70 && spread(centroids, w, h) && streakShare(centroids) < 0.4) findings.push({ kind: 'particle-field', count: centroids.length, regularity: Math.round((1 - lattice) * 100) / 100, message: `${centroids.length} scattered small points (particle field)` });
   if (colL.count >= 4 && rowL.count >= 4 && colL.regular < 0.25 && rowL.regular < 0.25) findings.push({ kind: 'line-grid', count: colL.count + rowL.count, regularity: 1, message: `${colL.count}×${rowL.count} regularly spaced grid lines` });
   return { findings, centroids: centroids.length, lattice: Math.round(lattice * 100) / 100, gridLines: { cols: colL.count, rows: rowL.count }, points: centroids };
+}
+
+/**
+ * Share of points that are fragments of thin straight streaks (speed lines, light rays): an
+ * anti-aliased diagonal line thresholds into a chain of small blobs. A point whose nearest
+ * neighbours all lie on one straight line (PCA of the neighbourhood: minor/major spread < 0.12) is
+ * a streak fragment; scattered particles are not collinear with their neighbours.
+ */
+export function streakShare(pts: { x: number; y: number }[], k = 5): number {
+  if (pts.length <= k) return 0;
+  const sample = pts.length > 400 ? pts.filter((_, i) => i % Math.ceil(pts.length / 400) === 0) : pts;
+  let streak = 0;
+  for (const a of sample) {
+    const near = pts
+      .filter((b) => b !== a)
+      .map((b) => ({ b, d: (a.x - b.x) ** 2 + (a.y - b.y) ** 2 }))
+      .sort((x, y) => x.d - y.d)
+      .slice(0, k)
+      .map((x) => x.b);
+    const g = [a, ...near];
+    const mx = g.reduce((s, p) => s + p.x, 0) / g.length;
+    const my = g.reduce((s, p) => s + p.y, 0) / g.length;
+    let sxx = 0, syy = 0, sxy = 0;
+    for (const p of g) {
+      sxx += (p.x - mx) ** 2;
+      syy += (p.y - my) ** 2;
+      sxy += (p.x - mx) * (p.y - my);
+    }
+    const tr = sxx + syy;
+    const det = sxx * syy - sxy * sxy;
+    const disc = Math.sqrt(Math.max(0, (tr * tr) / 4 - det));
+    const major = tr / 2 + disc;
+    const minor = Math.max(0, tr / 2 - disc);
+    if (major > 0 && minor / major < 0.12) streak++;
+  }
+  return streak / sample.length;
 }

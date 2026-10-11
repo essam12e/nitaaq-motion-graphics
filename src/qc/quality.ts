@@ -144,7 +144,7 @@ function patternMasks(p: DomProbe | undefined, scale: number): Rect[] {
 
 /** Pixel pattern scan of one PNG, cached by image bytes + masks. */
 async function scanPatterns(png: string, masks: Rect[]) {
-  return cached('patterns', hashOf('pat-v2', fileHash(png), masks), async () => {
+  return cached('patterns', hashOf('pat-v3', fileHash(png), masks), async () => {
     const { data, info } = await sharp(png).greyscale().raw().toBuffer({ resolveWithObject: true });
     return detectPatterns(data, info.width, info.height, masks);
   });
