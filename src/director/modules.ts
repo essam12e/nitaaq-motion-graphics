@@ -12,6 +12,7 @@
  *   gsap       → gsap chunk in the render bundle, loaded by gsap-sequence scenes only
  *   logo       → logo structure analysis (sharp), only when a logo exists
  *   variants   → strategy re-planner, only when variants are requested
+ *   lottie     → Lottie ingest (node) + lottie-web chunk, only when a Lottie file is supplied
  *
  * Pure and deterministic.
  */
@@ -76,6 +77,8 @@ export interface ModuleDef {
 
 export const ModuleRegistry = new CapabilityRegistry<ModuleDef>('module');
 
+/** The logo is a Lottie file: it animates itself (lottie-moment), the raster logo engine does not apply. */
+const lottieLogo = (b: Brief) => /\.(json|lottie)$/i.test(b.brand?.logo ?? b.assets.find((a) => a.kind === 'logo')?.path ?? '');
 const soundtrackStyle = (b: Brief) => b.audio.soundtrack;
 export function wantsSoundtrack(c: Pick<ModuleCtx, 'brief' | 'genre' | 'hasMusic'>): string | null {
   if (c.hasMusic) return null; // user / licensed music always wins; the synthesiser never runs
@@ -100,7 +103,7 @@ const MODULES: ModuleDef[] = [
   },
   { id: 'shared-elements', title: 'Shared-element continuity', needs: (c) => (c.brief.content.product?.image || c.brief.content.ui?.screenshot || c.hasLogo ? 'identity media appears in more than one scene' : null) },
   { id: 'brand-motion', title: 'Brand Motion Guidelines', needs: (c) => (c.hasLogo || c.brief.brand?.colors?.length || c.brief.brand?.name ? 'brand identity supplied — persist brand-motion.json' : null) },
-  { id: 'logo-animation', title: 'Logo Animation Engine', scenes: ['logo-animation'], needs: (c) => (c.hasLogo ? 'user logo supplied' : null), load: () => import('../node/logo-structure') },
+  { id: 'logo-animation', title: 'Logo Animation Engine', scenes: ['logo-animation'], needs: (c) => (c.hasLogo && !lottieLogo(c.brief) ? 'user logo supplied' : null), load: () => import('../node/logo-structure') },
   { id: 'product-commercial', title: 'E-commerce Product Director', scenes: ['product-detail', 'product-hero', 'product-depth'], needs: (c) => (c.genre === 'product' ? 'product commercial' : null) },
   { id: 'launch-film', title: 'Launch / Hype Director', scenes: ['tease-reveal', 'feature-montage', 'product-depth'], needs: (c) => (c.genre === 'launch' ? 'launch / hype structure' : null) },
   { id: 'variants', title: 'Ad Creative Variants', needs: (c) => (c.brief.variants ? `${c.brief.variants.strategies.length} strategic variant(s) requested` : null), load: () => import('./variants') },
@@ -120,6 +123,13 @@ const MODULES: ModuleDef[] = [
     load: () => import('../node/character/film'),
   },
   { id: 'video-media', title: 'Video Media (frame-driven clips)', scenes: ['video-showcase'], needs: (c) => (c.brief.assets.some((a) => a.kind === 'video') ? 'user video clips supplied' : null), load: () => import('../node/video-assets') },
+  {
+    id: 'lottie',
+    title: 'Lottie (frame-driven vector animation)',
+    scenes: ['lottie-moment'],
+    needs: (c) => (c.brief.assets.some((a) => a.kind === 'lottie' || /\.(json|lottie)$/i.test(a.path)) || lottieLogo(c.brief) ? 'Lottie animation supplied' : null),
+    load: () => import('../node/lottie-assets'),
+  },
   { id: 'reference', title: 'Reference analysis', needs: (c) => (c.brief.reference ? 'style reference supplied' : null) },
 ];
 for (const m of MODULES) if (!ModuleRegistry.has(m.id)) ModuleRegistry.register(m);

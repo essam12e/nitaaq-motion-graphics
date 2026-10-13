@@ -55,8 +55,10 @@ export interface ProbeMedia {
   scene: string;
   role: string;
   src: string;
-  /** image (default) or video (VideoMedia). */
+  /** image (default), video (VideoMedia) or lottie (LottieMedia). */
   kind?: string;
+  /** LottieMedia player state: loading | loaded | missing (lottie-web not installed) | error. */
+  lottieState?: string;
   fit: string;
   identity: boolean;
   loaded: boolean;
@@ -193,6 +195,28 @@ export function collectProbe(frame: number, width: number, height: number): Prob
     };
   });
   const media: ProbeMedia[] = Array.from(document.querySelectorAll('[data-qc="media"]')).map((el) => {
+    if (el.getAttribute('data-qc-kind') === 'lottie') {
+      // vector animation: loaded = the player drew its SVG; contain/cover is its preserveAspectRatio; no pixel size
+      const svg = el.querySelector('svg');
+      return {
+        scene: sceneOf(el),
+        role: el.getAttribute('data-qc-role') ?? '',
+        src: el.getAttribute('data-qc-src') ?? '',
+        kind: 'lottie',
+        lottieState: el.getAttribute('data-qc-lottie') ?? '',
+        fit: el.getAttribute('data-qc-fit') ?? '',
+        identity: el.getAttribute('data-qc-identity') === '1',
+        loaded: el.getAttribute('data-qc-lottie') === 'loaded' && Boolean(svg),
+        naturalWidth: 0,
+        naturalHeight: 0,
+        rect: rectOf(el),
+        objectFit: el.getAttribute('data-qc-fit') ?? 'contain',
+        opacity: effOpacity(el),
+        colorFilter: colorFilters(el),
+        layoutW: (el as HTMLElement).offsetWidth,
+        layoutH: (el as HTMLElement).offsetHeight,
+      };
+    }
     const img = el.querySelector('img') as HTMLImageElement | null;
     return {
       scene: sceneOf(el),
@@ -266,15 +290,16 @@ export function QCProbe() {
     };
     // Wait for images to decode + two frames for layout to settle.
     const imgs = Array.from(document.images).filter((i) => !i.complete);
-    // Videos (OffthreadVideo) mount their frame <img> asynchronously: wait until each one has decoded (max 6 s).
+    // Videos (OffthreadVideo) mount their frame <img> asynchronously, Lottie players draw after loading: wait (max 6 s).
     const videosReady = () =>
       new Promise<void>((r) => {
         const t0 = performance.now();
         const tick = () => {
-          const pending = Array.from(document.querySelectorAll('[data-qc-kind="video"]')).some((el) => {
-            const img = el.querySelector('img');
-            return !img || !img.complete || img.naturalWidth === 0;
-          });
+          const pending =
+            Array.from(document.querySelectorAll('[data-qc-kind="video"]')).some((el) => {
+              const img = el.querySelector('img');
+              return !img || !img.complete || img.naturalWidth === 0;
+            }) || document.querySelector('[data-qc-lottie="loading"]') !== null;
           if (!pending || performance.now() - t0 > 6000) r();
           else setTimeout(tick, 40);
         };

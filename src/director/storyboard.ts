@@ -143,9 +143,11 @@ export function buildStoryboard(plan: CreativePlan, ctx: RecipeCtx, opts: { seed
   const usedFamilies = new Map<string, number>();
   // user-supplied material each family shows: unseen material is preferred, shown material is not repeated
   const shown = new Set<string>();
-  const payloadOf = (family: string): string | null => {
+  const payloadOf = (family: string, content?: Record<string, unknown>): string | null => {
     if (['browser-scene', 'screenshot-focus', 'landing-page'].includes(family)) return ctx.assets.screenshot ? 'screenshot' : null;
     if (family === 'video-showcase') return 'video';
+    // each user Lottie is its own material (a Lottie logo and a Lottie icon are both shown)
+    if (family === 'lottie-moment') return `lottie:${String(content?.lottie ?? '')}`;
     if (family === 'integration-hub') return 'integrations';
     if (family === 'form-fill') return 'form';
     if (family === 'state-flow') return 'flow';
@@ -207,9 +209,9 @@ export function buildStoryboard(plan: CreativePlan, ctx: RecipeCtx, opts: { seed
         // two hero shots of the same product (classic + 2.5D depth) would repeat one message back to back
         const HERO_SHOTS = ['product-hero', 'product-depth'];
         if (HERO_SHOTS.includes(r.family) && picked.some((p) => HERO_SHOTS.includes(p.r.family))) w *= 0.12;
-        const pay = payloadOf(r.family);
+        const pay = payloadOf(r.family, r.build(ctx));
         // the user's real footage and screenshot come first
-        if (pay) w *= shown.has(pay) ? 0.12 : pay === 'video' ? 2.6 : pay === 'screenshot' ? 1.8 : 1.5;
+        if (pay) w *= shown.has(pay) ? 0.12 : pay === 'video' ? 2.6 : pay.startsWith('lottie:') ? 2.2 : pay === 'screenshot' ? 1.8 : 1.5;
         // match the beat's energy
         w *= 1 - Math.abs(m.energy - BEAT_ENERGY[beat]) * 0.5;
         // copy longer than every variant of the family can hold → strongly prefer roomier families
@@ -225,7 +227,7 @@ export function buildStoryboard(plan: CreativePlan, ctx: RecipeCtx, opts: { seed
       .sort((a, b) => b.w - a.w);
     if (!scored.length) return;
     // a beat whose best option would only re-show steps/features already on screen is dropped, not repeated
-    const topPay = payloadOf(scored[0].r.family);
+    const topPay = payloadOf(scored[0].r.family, scored[0].r.build(ctx));
     if (topPay && (topPay === 'steps' || topPay === 'features') && shown.has(topPay)) return;
     const r = scored[0].r;
     const content = strip(r.build(ctx));
@@ -234,7 +236,7 @@ export function buildStoryboard(plan: CreativePlan, ctx: RecipeCtx, opts: { seed
     if (!parsed.success) return; // recipe could not be satisfied by the brief — skip rather than guess
     picked.push({ r, beat, content, message: r.message(ctx) });
     usedFamilies.set(r.family, (usedFamilies.get(r.family) ?? 0) + 1);
-    const pay = payloadOf(r.family);
+    const pay = payloadOf(r.family, r.build(ctx));
     if (pay) shown.add(pay);
     if (r.family === 'problem-solution') beats.forEach((b, j) => j > bi && b === 'bridge' && skip.add(j));
   });

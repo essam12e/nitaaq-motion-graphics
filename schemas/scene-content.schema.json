@@ -2278,6 +2278,216 @@
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
   },
+  "lottie-moment": {
+    "variants": [
+      "logo",
+      "icon",
+      "hero"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "lottie": {
+          "type": "string",
+          "minLength": 1
+        },
+        "clip": {
+          "type": "object",
+          "properties": {
+            "startFrom": {
+              "type": "number",
+              "minimum": 0
+            },
+            "endAt": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "loop": {
+              "type": "boolean"
+            },
+            "playbackRate": {
+              "type": "number",
+              "minimum": 0.25,
+              "maximum": 4
+            },
+            "delay": {
+              "type": "number",
+              "minimum": 0
+            },
+            "marker": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          "additionalProperties": false
+        },
+        "caption": {
+          "type": "string",
+          "maxLength": 80
+        }
+      },
+      "required": [
+        "lottie"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "video-showcase": {
+    "variants": [
+      "card",
+      "split",
+      "mask",
+      "full"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "video": {
+          "type": "string",
+          "minLength": 1
+        },
+        "videos": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "maxItems": 3
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "video",
+            "product",
+            "screenshot"
+          ],
+          "default": "video"
+        },
+        "mask": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "clip": {
+          "type": "object",
+          "properties": {
+            "startFrom": {
+              "type": "number",
+              "minimum": 0
+            },
+            "endAt": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "loop": {
+              "type": "boolean"
+            },
+            "playbackRate": {
+              "type": "number",
+              "minimum": 0.25,
+              "maximum": 4
+            },
+            "delay": {
+              "type": "number",
+              "minimum": 0
+            },
+            "muted": {
+              "type": "boolean"
+            },
+            "volume": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "clips": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "startFrom": {
+                "type": "number",
+                "minimum": 0
+              },
+              "endAt": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "loop": {
+                "type": "boolean"
+              },
+              "playbackRate": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 4
+              },
+              "delay": {
+                "type": "number",
+                "minimum": 0
+              },
+              "muted": {
+                "type": "boolean"
+              },
+              "volume": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 3
+        },
+        "caption": {
+          "type": "string",
+          "maxLength": 80
+        }
+      },
+      "required": [
+        "video"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
   "feature-set": {
     "variants": [
       "grid",
@@ -3987,6 +4197,7 @@
       "icon-wordmark",
       "depth",
       "minimal-premium",
+      "liquid-morph",
       "energetic"
     ],
     "content": {
@@ -6255,6 +6466,124 @@
       "required": [
         "line",
         "shot"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "kinetic-arabic": {
+    "variants": [
+      "stack",
+      "hero-word",
+      "rise"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "minItems": 1,
+          "maxItems": 3
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "kicker": {
+          "type": "string",
+          "maxLength": 40
+        }
+      },
+      "required": [
+        "lines"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "morph-story": {
+    "variants": [
+      "icons",
+      "shapes"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "stages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "icon": {
+                "type": "string"
+              },
+              "shape": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 40
+              }
+            },
+            "required": [
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 5
+        }
+      },
+      "required": [
+        "stages"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "product-depth": {
+    "variants": [
+      "center",
+      "side"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 90
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "price": {
+          "type": "string",
+          "maxLength": 30
+        }
+      },
+      "required": [
+        "image",
+        "title"
       ],
       "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"

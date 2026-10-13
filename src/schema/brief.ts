@@ -44,10 +44,10 @@ export const TestimonialSchema = z.object({
 
 export const BriefAssetSchema = z.object({
   path: z.string().min(1),
-  kind: z.enum(['logo', 'product', 'screenshot', 'image', 'background', 'icon', 'svg', 'audio', 'video', 'font', 'avatar', 'music', 'voice']),
+  kind: z.enum(['logo', 'product', 'screenshot', 'image', 'background', 'icon', 'svg', 'audio', 'video', 'font', 'avatar', 'music', 'voice', 'lottie']),
   label: z.string().optional(),
-  /** Video only: which part plays (seconds in the source), loop, speed. Omitted → the best 4 s window is chosen. */
-  clip: VideoClipSchema.pick({ startFrom: true, endAt: true, loop: true, playbackRate: true }).optional(),
+  /** Video / Lottie: which part plays (seconds in the source, or a Lottie marker), loop, speed. Omitted → video: the best 4 s window; Lottie: the whole animation. */
+  clip: VideoClipSchema.pick({ startFrom: true, endAt: true, loop: true, playbackRate: true, marker: true }).optional(),
 });
 
 export const GENRES = ['auto', 'social-ad', 'product', 'saas', 'launch', 'kinetic', 'logo', 'data', 'map', 'explainer', 'whiteboard', 'illustrated', 'procedural', 'web-ui', 'music', 'character'] as const;

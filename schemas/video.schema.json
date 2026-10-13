@@ -383,7 +383,8 @@
                   "audio",
                   "video",
                   "font",
-                  "avatar"
+                  "avatar",
+                  "lottie"
                 ]
               },
               "src": {
@@ -417,6 +418,127 @@
               },
               "duration": {
                 "type": "number"
+              },
+              "fps": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "hasAudio": {
+                "type": "boolean"
+              },
+              "codec": {
+                "type": "string"
+              },
+              "original": {
+                "type": "string"
+              },
+              "proxy": {
+                "type": "string"
+              },
+              "clip": {
+                "type": "object",
+                "properties": {
+                  "startFrom": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "endAt": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "loop": {
+                    "type": "boolean"
+                  },
+                  "playbackRate": {
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 4
+                  },
+                  "delay": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "muted": {
+                    "type": "boolean"
+                  },
+                  "volume": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "marker": {
+                    "type": "string",
+                    "maxLength": 80
+                  }
+                },
+                "additionalProperties": false
+              },
+              "segmentReason": {
+                "type": "string"
+              },
+              "lottie": {
+                "type": "object",
+                "properties": {
+                  "ip": {
+                    "type": "number"
+                  },
+                  "op": {
+                    "type": "number"
+                  },
+                  "markers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "start": {
+                          "type": "number"
+                        },
+                        "duration": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "start",
+                        "duration"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "default": []
+                  },
+                  "layers": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "complexity": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "colors": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  },
+                  "warnings": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  }
+                },
+                "required": [
+                  "ip",
+                  "op",
+                  "layers",
+                  "complexity"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -755,6 +877,29 @@
               },
               "additionalProperties": false,
               "default": {}
+            },
+            "master": {
+              "type": "object",
+              "properties": {
+                "targetLufs": {
+                  "type": "number",
+                  "minimum": -30,
+                  "maximum": -8,
+                  "default": -14
+                },
+                "truePeak": {
+                  "type": "number",
+                  "minimum": -6,
+                  "maximum": 0,
+                  "default": -1
+                }
+              },
+              "additionalProperties": false
+            },
+            "sidechainDb": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 12
             }
           },
           "additionalProperties": false,
@@ -1295,6 +1440,134 @@
                     "additionalProperties": {
                       "type": "string"
                     }
+                  },
+                  "cameraPlan": {
+                    "type": "object",
+                    "properties": {
+                      "move": {
+                        "type": "string"
+                      },
+                      "amplitude": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1.5,
+                        "default": 1
+                      },
+                      "start": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "end": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "focus": {
+                        "type": "object",
+                        "properties": {
+                          "x": {
+                            "type": "number"
+                          },
+                          "y": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "x",
+                          "y"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "ease": {
+                        "type": "string"
+                      },
+                      "accents": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        }
+                      },
+                      "waypoints": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "t": {
+                              "type": "number"
+                            },
+                            "focus": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number"
+                                },
+                                "y": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "close": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "t",
+                            "focus"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "dof": {
+                        "type": "boolean"
+                      },
+                      "reason": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "move"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "intents": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "role": {
+                          "type": "string"
+                        },
+                        "intent": {
+                          "type": "string"
+                        },
+                        "entrance": {
+                          "type": "string"
+                        },
+                        "sound": {
+                          "type": "string"
+                        },
+                        "importance": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "role",
+                        "intent"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "accents": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    }
                   }
                 },
                 "additionalProperties": false,
@@ -1324,6 +1597,53 @@
                   },
                   "reason": {
                     "type": "string"
+                  },
+                  "focus": {
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "rect": {
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "w": {
+                        "type": "number"
+                      },
+                      "h": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y",
+                      "w",
+                      "h"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "shape": {
+                    "type": "string"
+                  },
+                  "color": {
+                    "type": "string",
+                    "pattern": "^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$"
                   }
                 },
                 "required": [

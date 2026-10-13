@@ -9,7 +9,7 @@ mkdir -p "$TMP/nitaaq-motion-graphics"
 git -C "$ROOT" archive HEAD | tar -x -C "$TMP/nitaaq-motion-graphics"
 # claude.ai runs the pipeline only: dev suites, the studio, adapters, dev scripts and derived schemas stay in the repo
 (cd "$TMP/nitaaq-motion-graphics" && rm -rf public/fonts test studio AGENTS.md .env.example schemas/video.schema.json adapters vitest.config.ts dist bin install.sh .gitignore \
-  cli/benchmark.ts cli/build-geo.ts cli/dot-regression.ts cli/gallery.ts cli/gen-docs.ts cli/make-demo-assets.ts cli/make-test-audio.ts cli/make-textures.ts cli/pack-claude-ai.sh cli/make-test-videos.ts cli/test-videos.ts cli/test-characters.ts cli/make-character-assets.ts cli/curate-sfx.ts cli/stills.ts \
+  cli/benchmark.ts cli/build-geo.ts cli/dot-regression.ts cli/gallery.ts cli/gen-docs.ts cli/make-demo-assets.ts cli/make-test-audio.ts cli/make-textures.ts cli/pack-claude-ai.sh cli/make-test-videos.ts cli/make-test-lottie.ts cli/test-videos.ts cli/test-characters.ts cli/make-character-assets.ts cli/curate-sfx.ts cli/stills.ts \
   docs/TEST_RESULTS.md docs/performance-report.json schemas/creative-plan.schema.json schemas/scene-content.schema.json schemas/storyboard.schema.json)
 # claude.ai counts files: the library sounds, demo images, paper textures and map data travel as one tar
 # (npm run setup unpacks it), and related docs are merged into one file per topic (the full repo keeps them
@@ -31,7 +31,7 @@ merge() {
   && merge MOTION_SYSTEM CAMERA MORPHING TRANSITIONS TEXT_MOTION \
   && merge AUDIO AUDIO_ENGINE SOUND_DIRECTOR \
   && merge BRAND_SYSTEM BRAND_MOTION REFERENCE_SYSTEM \
-  && merge PRODUCT_VIDEO VIDEO_MEDIA LAUNCH_FILM AD_VARIANTS \
+  && merge PRODUCT_VIDEO VIDEO_MEDIA LOTTIE_MEDIA LAUNCH_FILM AD_VARIANTS \
   && merge ILLUSTRATION WHITEBOARD MAP_ANIMATION DATA_ANIMATION GSAP \
   && merge QUALITY PERFORMANCE TROUBLESHOOTING \
   && merge ARCHITECTURE THIRD_PARTY \

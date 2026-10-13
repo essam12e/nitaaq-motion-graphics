@@ -86,7 +86,7 @@ export const DirectionSchema = z.object({
   transitionDensity: Unit.default(0.6),
 });
 
-export const AssetKindSchema = z.enum(['logo', 'product', 'screenshot', 'image', 'background', 'icon', 'svg', 'audio', 'video', 'font', 'avatar']);
+export const AssetKindSchema = z.enum(['logo', 'product', 'screenshot', 'image', 'background', 'icon', 'svg', 'audio', 'video', 'font', 'avatar', 'lottie']);
 
 /** Which part of a video plays and how (src/media/video.ts). All optional. */
 export const VideoClipSchema = z.object({
@@ -97,6 +97,19 @@ export const VideoClipSchema = z.object({
   delay: z.number().min(0).optional(),
   muted: z.boolean().optional(),
   volume: Unit.optional(),
+  /** Lottie only: play one named marker of the animation instead of startFrom / endAt. */
+  marker: z.string().max(80).optional(),
+});
+
+/** What a Lottie file is and uses (measured at ingest by inspectLottie; src/media/lottie.ts). */
+export const LottieMetaSchema = z.object({
+  ip: z.number(),
+  op: z.number(),
+  markers: z.array(z.object({ name: z.string(), start: z.number(), duration: z.number() })).default([]),
+  layers: z.number().int().min(0),
+  complexity: z.number().min(0),
+  colors: z.array(z.string()).default([]),
+  warnings: z.array(z.string()).default([]),
 });
 
 export const AssetSchema = z.object({
@@ -125,6 +138,8 @@ export const AssetSchema = z.object({
   clip: VideoClipSchema.optional(),
   /** Why this segment was chosen (segment selection), not rendered. */
   segmentReason: z.string().optional(),
+  // ── Lottie assets (any kind — a logo or an icon can be a Lottie animation); `fps` / `duration` / `clip` apply too
+  lottie: LottieMetaSchema.optional(),
 });
 
 export const VoiceSegmentSchema = z.object({

@@ -10,10 +10,22 @@ import type { MapPrecomputed } from '../maps/geo';
 import { chooseVisualization } from '../data/visualize';
 import { matchIllustrations } from '../illustration/registry';
 
+export interface RecipeAssets {
+  logo?: string;
+  product?: string;
+  screenshot?: string;
+  images: string[];
+  videos?: string[];
+  /** Lottie animation asset ids (lottieIcons: the ones given as icons); lottieLogo: the logo is a Lottie file. */
+  lotties?: string[];
+  lottieIcons?: string[];
+  lottieLogo?: boolean;
+}
+
 export interface RecipeCtx {
   brief: Brief;
   orientation: 'portrait' | 'landscape' | 'square';
-  assets: { logo?: string; product?: string; screenshot?: string; images: string[]; videos?: string[] };
+  assets: RecipeAssets;
   brandName?: string;
   lang: 'ar' | 'en' | 'mixed';
   /** Production genre (src/director/modules.ts). */
@@ -141,7 +153,7 @@ export const MODULE_RECIPES: Recipe[] = [
   { family: 'kinetic-mixed', beats: ['hook', 'solution', 'brand'], weight: 1.15, visual: 'Arabic + English kinetic title', when: (c) => mod(c, 'kinetic-type') && Boolean(c.brief.content.english || (c.lang !== 'en' && LATIN.test(c.brief.content.hook))), message: (c) => c.brief.content.hook, build: (c) => { const en = c.brief.content.english ?? c.brief.content.hook.match(LATIN)![0].trim(); const ar = c.brief.content.english ? c.brief.content.hook : c.brief.content.hook.replace(en, '').replace(/\s+/g, ' ').trim() || c.brief.content.hook; return { arabic: ar.slice(0, 80), english: en.slice(0, 40), highlight: emph(c, ar) }; } },
   { family: 'kinetic-replace', beats: ['hook', 'feature', 'solution'], weight: 1.3, visual: 'word replacement', when: (c) => mod(c, 'kinetic-type') && Boolean(c.brief.content.rotate), message: (c) => `${c.brief.content.rotate!.prefix} ${c.brief.content.rotate!.words.join(' / ')}`, build: (c) => ({ prefix: c.brief.content.rotate!.prefix, words: c.brief.content.rotate!.words.slice(0, 6), suffix: c.brief.content.rotate!.suffix }) },
   // ───────── logo animation
-  { family: 'logo-animation', beats: ['brand', 'reveal', 'solution', 'cta'], weight: 1.6, visual: 'structure-aware logo reveal', when: (c) => mod(c, 'logo-animation') && Boolean(c.assets.logo && c.logo), message: (c) => c.brandName ?? 'logo', build: (c) => ({ logo: c.assets.logo, tagline: c.genre === 'logo' ? c.brief.content.subhook ?? c.brief.content.solution ?? c.brief.content.cta.text : c.brief.content.solution, structure: c.logo!.structure ? { layout: c.logo!.structure.layout, contentBox: c.logo!.structure.contentBox, parts: c.logo!.structure.parts, symmetry: c.logo!.structure.symmetry, dominantDirection: c.logo!.structure.dominantDirection } : undefined, revealReason: c.logo!.reason }), variants: (c) => [c.logo!.reveal] },
+  { family: 'logo-animation', beats: ['brand', 'reveal', 'solution', 'cta'], weight: 1.6, visual: 'structure-aware logo reveal', when: (c) => mod(c, 'logo-animation') && Boolean(c.assets.logo && c.logo) && !c.assets.lottieLogo, message: (c) => c.brandName ?? 'logo', build: (c) => ({ logo: c.assets.logo, tagline: c.genre === 'logo' ? c.brief.content.subhook ?? c.brief.content.solution ?? c.brief.content.cta.text : c.brief.content.solution, structure: c.logo!.structure ? { layout: c.logo!.structure.layout, contentBox: c.logo!.structure.contentBox, parts: c.logo!.structure.parts, symmetry: c.logo!.structure.symmetry, dominantDirection: c.logo!.structure.dominantDirection } : undefined, revealReason: c.logo!.reason }), variants: (c) => [c.logo!.reveal] },
   // ───────── product commercial
   { family: 'product-hero', beats: ['product', 'reveal', 'hook'], weight: 1.5, visual: 'product hero shot', when: (c) => mod(c, 'product-commercial') || mod(c, 'launch-film') ? Boolean(c.assets.product) : false, message: (c) => c.brief.content.product?.name ?? '', build: (c) => ({ image: c.assets.product, name: c.brief.content.product?.name, title: c.brief.content.product?.tagline, highlight: emph(c, c.brief.content.product?.tagline), price: c.genre === 'launch' ? undefined : c.brief.content.product?.price }), variants: (c) => (c.genre === 'launch' ? ['dark-reveal', 'drop-land'] : c.brief.tone.some((t) => /فخم|luxur|premium|راق/i.test(t)) ? ['rim-light', 'dark-reveal'] : ['drop-land', 'rim-light']) },
   { family: 'product-detail', beats: ['detail', 'feature'], weight: 1.4, visual: 'details on the real product', when: (c) => mod(c, 'product-commercial') && Boolean(c.assets.product) && (c.brief.content.features?.length ?? 0) >= 2, message: (c) => c.brief.content.features!.map((f) => f.title).join('، '), build: (c) => ({ image: c.assets.product, title: undefined, details: clip(c.brief.content.features, 5).map((f) => ({ label: f.title.slice(0, 40), value: f.description && f.description.length <= 30 ? f.description : undefined })) }), variants: (c) => (c.orientation === 'landscape' ? ['specs', 'callouts'] : ['specs', 'macro']) },
@@ -199,6 +211,8 @@ export const RECIPES: Recipe[] = [
   { family: 'product-grid', beats: ['product'], weight: 1.2, visual: 'grid of real products', when: (c) => (c.brief.content.products?.length ?? 0) >= 2, message: () => 'products', build: (c) => ({ title: c.brief.content.product?.tagline, products: clip(c.brief.content.products, 6) }) },
   { family: 'category-showcase', beats: ['product', 'feature'], weight: 0.9, visual: 'category tiles', when: (c) => (c.brief.content.categories?.length ?? 0) >= 3, message: () => 'categories', build: (c) => ({ categories: clip(c.brief.content.categories, 6).map((x) => ({ ...x, icon: x.icon ?? iconFor(x.label, 'Tag') })) }) },
   { family: 'video-showcase', beats: ['demo', 'product', 'hook', 'feature'], weight: 1.6, visual: "the user's own video clips (frame-accurate)", when: (c) => mod(c, 'video-media') && (c.assets.videos?.length ?? 0) > 0, message: (c) => c.brief.content.ui?.headline ?? c.brief.content.solution ?? c.brief.content.hook ?? 'video', build: (c) => ({ video: c.assets.videos![0], ...(c.assets.videos!.length > 1 ? { videos: c.assets.videos!.slice(1, 4) } : {}), role: 'video', title: c.brief.content.ui?.headline ?? c.brief.content.solution ?? c.brief.content.hook }), variants: (c) => (c.assets.videos!.length > 1 ? ['split'] : c.orientation === 'portrait' ? ['full', 'card', 'mask'] : ['card', 'full', 'mask']) },
+  { family: 'lottie-moment', beats: ['brand', 'reveal'], weight: 1.8, visual: "the user's own Lottie logo animation (frame-accurate)", when: (c) => mod(c, 'lottie') && Boolean(c.assets.lottieLogo && c.assets.logo), message: (c) => c.brandName ?? 'logo', build: (c) => ({ lottie: c.assets.logo, title: c.brandName ?? c.brief.content.solution }), variants: () => ['logo'] },
+  { family: 'lottie-moment', beats: ['hook', 'feature', 'solution'], weight: 1.5, visual: "the user's own Lottie animation (frame-accurate)", when: (c) => mod(c, 'lottie') && (c.assets.lotties?.length ?? 0) > 0, message: (c) => c.brief.content.solution ?? c.brief.content.hook ?? 'lottie', build: (c) => ({ lottie: c.assets.lotties![0], title: c.brief.content.solution ?? c.brief.content.hook }), variants: (c) => (c.assets.lottieIcons?.includes(c.assets.lotties![0]) ? ['icon'] : ['hero', 'icon']) },
   { family: 'image-reveal', beats: ['product', 'demo'], weight: 0.7, visual: 'image reveal', when: (c) => Boolean(c.assets.product || c.assets.images[0]), message: (c) => c.brief.content.product?.name ?? '', build: (c) => ({ image: c.assets.product ?? c.assets.images[0], role: c.assets.product ? 'product' : 'image', title: c.brief.content.product?.tagline ?? c.brief.content.product?.name }) },
 
   // ───────── demo

@@ -303,11 +303,38 @@
                   "font",
                   "avatar",
                   "music",
-                  "voice"
+                  "voice",
+                  "lottie"
                 ]
               },
               "label": {
                 "type": "string"
+              },
+              "clip": {
+                "type": "object",
+                "properties": {
+                  "startFrom": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "endAt": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "loop": {
+                    "type": "boolean"
+                  },
+                  "playbackRate": {
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 4
+                  },
+                  "marker": {
+                    "type": "string",
+                    "maxLength": 80
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "required": [

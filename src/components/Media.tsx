@@ -5,12 +5,14 @@
  * (frames, shadows, lighting) are applied AROUND the image, not to it —
  * except for `image`/`background` kinds where tone treatments are allowed.
  */
-import React, { type CSSProperties } from 'react';
+import React, { useContext, type CSSProperties } from 'react';
 import { Img } from 'remotion';
-import { useAsset, useAssetMeta, useSharedHidden, useVideo } from '../engine/context';
+import { SceneCtx, useAsset, useAssetMeta, useSharedHidden, useVideo } from '../engine/context';
 import { alpha } from '../brand/color';
 import { detectMediaKind, type VideoClip } from '../media/video';
 import { VideoMedia } from './VideoMedia';
+import { LottieMedia } from './LottieMedia';
+import { lottieLogoPlays, type LottieClip } from '../media/lottie';
 
 export interface MediaProps {
   src: string;
@@ -27,8 +29,8 @@ export interface MediaProps {
   treatment?: 'none' | 'duotone' | 'mono' | 'grain';
   objectPosition?: string;
   alt?: string;
-  /** Video only: trim / loop / rate overrides of the asset's default clip. */
-  clip?: VideoClip;
+  /** Video / Lottie: trim / loop / rate (and, for Lottie, marker) overrides of the asset's default clip. */
+  clip?: VideoClip & Pick<LottieClip, 'marker'>;
   /** Video only: named morph shape or CSS clip-path. */
   mask?: string;
 }
@@ -37,14 +39,20 @@ const IDENTITY: MediaProps['role'][] = ['logo', 'product', 'screenshot'];
 
 /**
  * Any user media. The kind is detected from the asset entry (or the file
- * extension): videos go to <VideoMedia> (frame-driven), everything else keeps
- * the original image path unchanged.
+ * extension): videos go to <VideoMedia> and Lottie animations to <LottieMedia>
+ * (both frame-driven); everything else keeps the original image path unchanged.
  */
 export function Media(p: MediaProps) {
   const meta = useAssetMeta()(p.src);
+  const sceneType = useContext(SceneCtx)?.scene.type;
   if (detectMediaKind(meta?.src ?? p.src, meta) === 'video') {
     const role = p.role === 'product' || p.role === 'screenshot' || p.role === 'background' ? p.role : 'video';
     return <VideoMedia src={p.src} width={p.width} height={p.height} fit={p.fit} radius={p.radius} shadow={p.shadow} frame={p.frame} style={p.style} videoStyle={p.imgStyle} role={role} objectPosition={p.objectPosition} clip={p.clip} mask={p.mask} />;
+  }
+  if (detectMediaKind(meta?.src ?? p.src, meta) === 'lottie') {
+    // a Lottie logo plays in the logo-moment families (LOTTIE_LOGO_PLAYS_IN); elsewhere it shows its finished pose
+    const pose = (p.role === 'logo' || meta?.kind === 'logo') && !p.clip && !lottieLogoPlays(sceneType) ? 'end' : 'play';
+    return <LottieMedia src={p.src} width={p.width} height={p.height} fit={p.fit === 'cover' && !IDENTITY.includes(p.role) ? 'cover' : 'contain'} radius={p.radius} style={p.style} role={p.role ?? meta?.kind} clip={p.clip} pose={pose} />;
   }
   return <ImageMedia {...p} />;
 }

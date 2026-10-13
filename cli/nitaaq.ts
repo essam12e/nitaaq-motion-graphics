@@ -20,6 +20,8 @@
  *   nitaaq seek     <projectDir|video.json> <seconds> [--png [out.png]] [--scale 0.5]  → the film's exact state at t (deterministic)
  *   nitaaq video    probe <file> | prepare <file> --project <dir> [--id] [--segment <sec>] [--proxy auto|always|never] [--loop] [--rate <x>]
  *                   → Video Asset Pipeline: probe, normalise (CFR H.264), preview proxy, best segment (cached)
+ *   nitaaq lottie   inspect <file.json|.lottie> | prepare <file> --project <dir> [--id] [--kind lottie|logo|icon] [--marker <name>] [--loop] [--rate <x>]
+ *                   → Lottie: inspect (timing, markers, refusals), ingest unchanged + self-contained copy (cached)
  *   nitaaq audio    index | search <query> [--kind sfx|music] [--online] | fetch <query> [--provider ogsi|atomcut]
  *                   → local audio registry (CC0 library + generated + yours); online CC0 fallback only with NITAAQ_AUDIO_ONLINE=1
  *   nitaaq preflight [--full] | scenes [--json] | styles | schema-export [--out dir] | voices
@@ -270,6 +272,21 @@ async function main(): Promise<number> {
       const seg = flag('segment');
       const r = v.prepareVideoAsset(dir, resolve(file), { id: flag('id'), segment: seg ? Number(seg) : undefined, proxy: (flag('proxy') as 'auto' | 'always' | 'never' | undefined) ?? 'auto', loop: flag('loop') ? true : undefined, playbackRate: flag('rate') ? Number(flag('rate')) : undefined });
       out({ id: r.id, asset: r.asset, normalized: r.normalized, cached: r.cached });
+      return 0;
+    }
+    case 'lottie': {
+      // Lottie: inspect a file (timing, markers, what it uses, what would be refused), or prepare it into a project
+      const sub = pos[0];
+      const file = pos[1];
+      if (!file || !['inspect', 'prepare'].includes(sub ?? '')) throw new Error('Usage: nitaaq lottie inspect <file.json|.lottie> | nitaaq lottie prepare <file> --project <dir> [--id lottie-1] [--kind lottie|logo|icon] [--marker name] [--loop] [--rate 1]');
+      const l = await import('../src/node/lottie-assets');
+      if (sub === 'inspect') {
+        out(l.inspectLottieFile(resolve(file)));
+        return 0;
+      }
+      const clip = { ...(flag('marker') ? { marker: flag('marker') } : {}), ...(flag('loop') ? { loop: true } : {}), ...(flag('rate') ? { playbackRate: Number(flag('rate')) } : {}) };
+      const r = l.prepareLottieAsset(resolve(flag('project') ?? '.'), resolve(file), { id: flag('id'), kind: (flag('kind') as 'lottie' | 'logo' | 'icon' | undefined) ?? 'lottie', clip });
+      out({ id: r.id, asset: r.asset, rewritten: r.rewritten, cached: r.cached });
       return 0;
     }
     case 'audio': {

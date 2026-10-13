@@ -71,6 +71,7 @@
     "test:visual": "vitest run test/visual"
   },
   "optionalDependencies": {
-    "gsap": "^3.15.0"
+    "gsap": "^3.15.0",
+    "lottie-web": "5.13.0"
   }
 }

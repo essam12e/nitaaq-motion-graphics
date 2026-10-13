@@ -1,4 +1,4 @@
-/** Media families: image-reveal, image-collage, image-parallax, before-after, video-showcase. User images and videos are framed and moved, never altered. */
+/** Media families: image-reveal, image-collage, image-parallax, before-after, video-showcase, lottie-moment. User images, videos and Lottie animations are framed and moved, never altered. */
 import React from 'react';
 import { z } from 'zod';
 import { defineScene, ALL_ASPECTS } from '../registry';
@@ -11,6 +11,7 @@ import { alpha } from '../../brand/color';
 import { gridShape } from '../../layout/stage';
 import { useLabel } from '../i18n';
 import { Surface } from '../../components/Surface';
+import { LottieMedia } from '../../components/LottieMedia';
 
 const Heading = z.object({ eyebrow: HeadingFields.eyebrow, title: z.string().max(160).optional(), highlight: HeadingFields.highlight, subtitle: HeadingFields.subtitle });
 const heading = (c: { eyebrow?: string; title?: string; highlight?: string[]; subtitle?: string }) => (c.title ? { eyebrow: c.eyebrow, title: c.title, highlight: c.highlight, subtitle: c.subtitle } : undefined);
@@ -480,6 +481,95 @@ export const videoShowcase = defineScene<VsC>(
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: u * 2 }}>
               <ShowcaseCard src={c.video} role={c.role} w={box.width} h={box.height} delay={0.05} clip={c.clip} tilt={(v.dir === 'rtl' ? -1 : 1) * 16} />
               {c.caption ? <Text text={c.caption} role="caption" delay={0.9} maxLines={2} maxWidth={box.width} /> : null}
+            </div>
+          );
+        }}
+      />
+    );
+  },
+);
+
+// ───────────────────────── lottie-moment
+// The user's own Lottie animation as the scene's subject (frame-driven LottieMedia): a logo that plays its
+// own reveal and then lets the name / tagline land, an animated icon on a tile next to a message, or a large
+// illustration with its headline. Trim (seconds or a marker), loop and speed come from the asset's clip and
+// can be overridden here.
+const LottieClipC = ClipC.pick({ startFrom: true, endAt: true, loop: true, playbackRate: true, delay: true }).extend({ marker: z.string().max(80).optional() });
+const LottieMomentC = Heading.extend({
+  lottie: z.string().min(1),
+  clip: LottieClipC.optional(),
+  caption: z.string().max(80).optional(),
+});
+type LmC = z.infer<typeof LottieMomentC>;
+
+export const lottieMoment = defineScene<LmC>(
+  {
+    id: 'lottie-moment',
+    version: '1.0.0',
+    category: 'media',
+    title: 'Lottie moment',
+    description: 'The user’s own Lottie animation, frame-accurate (trim by seconds or marker, loop, speed): a logo that plays its own reveal before the name lands, an animated icon on a tile beside the message, or a large illustration with its headline; variants logo / icon / hero.',
+    variants: ['logo', 'icon', 'hero'],
+    defaultVariant: 'hero',
+    content: LottieMomentC,
+    defaultDuration: 3.2,
+    minDuration: 1.6,
+    maxDuration: 10,
+    aspectRatios: ALL_ASPECTS,
+    preferredTransitions: ['crossfade', 'zoom-in', 'mask-wipe'],
+    sfx: [{ at: 0.1, category: 'whoosh', weight: 0.35 }],
+    safeArea: 'normal',
+    beats: ['brand', 'reveal', 'hook', 'feature', 'solution', 'cta'],
+    energy: 0.5,
+    requiresAssets: ['lottie'],
+    example: { lottie: 'lib:demo/mark.json', title: 'حركة من ملفك نفسه' },
+    editable: ['eyebrow', 'title', 'subtitle', 'caption'],
+  },
+  ({ content: c, variant }) => {
+    const v = useVideo();
+    const { m } = useSceneTime();
+    const t = v.tokens;
+    const u = v.canvas.u;
+    const ar = useAspect(c.lottie, 1);
+    const metaOf = useAssetMeta();
+    const meta = metaOf(c.lottie);
+    if (variant === 'logo') {
+      // the mark plays its own reveal; the words wait for it (its measured length, capped)
+      const playSec = meta?.duration ? Math.min(2.2, (c.clip?.endAt ?? meta.duration) - (c.clip?.startFrom ?? 0)) / (c.clip?.playbackRate ?? 1) : 1.2;
+      const { safe } = v.canvas;
+      const side = Math.min(safe.width * 0.62, safe.height * (c.title ? 0.42 : 0.6));
+      const box = fitBox(ar, side, side);
+      return (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: u * 3 }}>
+          <LottieMedia src={c.lottie} width={box.width} height={box.height} clip={c.clip} role="logo" />
+          {c.title ? <HeadlineBlock eyebrow={c.eyebrow} title={c.title} highlight={c.highlight} subtitle={c.subtitle} align="center" role="title" maxWidth={safe.width * 0.86} delay={Math.max(0.3, playSec * 0.85)} /> : null}
+        </div>
+      );
+    }
+    return (
+      <HeroSplit
+        heading={heading(c)}
+        visual={(w, h) => {
+          const p = progress(m, 0.05, 0.7, 'elastic');
+          if (variant === 'icon') {
+            const tile = Math.min(w, h) * 0.62;
+            const inner = fitBox(ar, tile * 0.7, tile * 0.7);
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: u * 2, transform: `scale(${0.8 + 0.2 * p})`, opacity: clamp(p * 1.8) }}>
+                <Surface radius={3.2} padding={0} qc="lottie-tile">
+                  <div style={{ width: tile, height: tile, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `radial-gradient(circle at 50% 40%, ${alpha(t.palette.primary, 0.16)}, transparent 70%)` }}>
+                    <LottieMedia src={c.lottie} width={inner.width} height={inner.height} clip={c.clip} role="icon" />
+                  </div>
+                </Surface>
+                {c.caption ? <Text text={c.caption} role="caption" delay={0.6} maxLines={2} maxWidth={tile * 1.4} /> : null}
+              </div>
+            );
+          }
+          const box = fitBox(ar, w * 0.96, h * (c.caption ? 0.84 : 0.96));
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: u * 2, opacity: clamp(p * 2) }}>
+              <LottieMedia src={c.lottie} width={box.width} height={box.height} clip={c.clip} role="illustration" />
+              {c.caption ? <Text text={c.caption} role="caption" delay={0.8} maxLines={2} maxWidth={box.width} /> : null}
             </div>
           );
         }}

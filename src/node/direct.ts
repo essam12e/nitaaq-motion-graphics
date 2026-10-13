@@ -14,6 +14,7 @@ import { hashString } from '../core/rng';
 import { intake, type IntakeQuestion } from '../director/intake';
 import { buildPlan, recipeCtx } from '../director/plan';
 import { buildStoryboard, type PlannedStoryboard } from '../director/storyboard';
+import type { RecipeAssets } from '../director/recipes';
 import { compileSpec, slug, type AudioPlan } from '../director/compile';
 import { ensureSoundtrack, planSound } from './sound';
 import { generatedBrand, pickStyle } from '../director/direction';
@@ -98,8 +99,19 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
 
   // ── user files (copied byte-identical; content refers to them by asset id)
   const byKind = (k: string) => brief.assets.filter((a) => a.kind === k);
+  // Lottie files (.json / .lottie): ingested by the lazy Lottie pipeline (inspected, refused if not deterministic)
+  const isLottie = (p: string) => !p.startsWith('lib:') && detectMediaKind(p) === 'lottie';
+  const lottieMod = brief.assets.some((a) => isLottie(a.path)) || Boolean(brief.brand?.logo && isLottie(brief.brand.logo)) ? await import('./lottie-assets') : null;
+  const addLottie = async (file: string, kind: 'lottie' | 'logo' | 'icon', id: string, clip?: import('../media/lottie').LottieClip) => {
+    const l = await perf.stage('lottie', () => lottieMod!.prepareLottieAsset(projectDir, abs(file), { id, kind, clip }));
+    assets[id] = l.asset;
+    log.stage('ASSETS', `Lottie ${file}: ${l.inspection.width}×${l.inspection.height}, ${l.inspection.fr} fps, ${l.inspection.duration.toFixed(2)} s, ${l.inspection.layers} layer(s), complexity ${l.inspection.complexity}${l.cached ? ' (cached)' : ''}`);
+    for (const w of l.inspection.warnings) assumptions.push(`${file}: ${w}`);
+    return l;
+  };
   const logoFile = brief.brand?.logo ?? byKind('logo')[0]?.path;
-  const logoId = logoFile ? await add(logoFile, 'logo', 'logo') : undefined;
+  const logoLottie = logoFile && isLottie(logoFile) ? await addLottie(logoFile, 'logo', 'logo', byKind('logo')[0]?.path === logoFile ? byKind('logo')[0]?.clip : undefined) : undefined;
+  const logoId = logoLottie ? 'logo' : logoFile ? await add(logoFile, 'logo', 'logo') : undefined;
   const productFile = c.product?.image ?? byKind('product')[0]?.path;
   const productId = productFile ? await add(productFile, 'product', 'product') : undefined;
   const shotFile = c.ui?.screenshot ?? byKind('screenshot')[0]?.path;
@@ -107,7 +119,16 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
   const images: string[] = [];
   // a file given as an image but that is a video (by extension) goes through the video pipeline
   const isVideoFile = (a: { path: string }) => detectMediaKind(a.path) === 'video';
-  for (const [i, a] of byKind('image').filter((a) => !isVideoFile(a)).entries()) images.push(await add(a.path, 'image', `image-${i + 1}`));
+  for (const [i, a] of byKind('image').filter((a) => !isVideoFile(a) && !isLottie(a.path)).entries()) images.push(await add(a.path, 'image', `image-${i + 1}`));
+  // Lottie animations: kind "lottie", an icon given as a Lottie file, or a Lottie listed as an image
+  const lotties: string[] = [];
+  const lottieIcons: string[] = [];
+  for (const [i, a] of [...byKind('lottie'), ...byKind('icon').filter((a) => isLottie(a.path)), ...byKind('image').filter((a) => isLottie(a.path))].entries()) {
+    const id = `lottie-${i + 1}`;
+    await addLottie(a.path, a.kind === 'icon' ? 'icon' : 'lottie', id, a.clip);
+    lotties.push(id);
+    if (a.kind === 'icon') lottieIcons.push(id);
+  }
   // user videos: Video Asset Pipeline (byte-identical original → probe → normalise → proxy → segment), cached
   const videos: string[] = [];
   for (const [i, a] of [...byKind('video'), ...byKind('image').filter(isVideoFile)].entries()) {
@@ -181,7 +202,14 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
   const tBrand = Date.now();
   const styleId = pickStyle(brief, classifyGenre(brief).genre).id;
   let brand: BrandProfile | null;
-  if (logoId) {
+  if (logoLottie) {
+    // a Lottie logo: no raster analysis; its own static colours give the palette unless the brief names colours
+    const colours = brief.brand?.colors?.length ? brief.brand.colors : logoLottie.inspection.colors.slice(0, 3);
+    brand = generatedBrand({ ...brief, brand: { ...brief.brand, colors: colours } } as Brief, styleId);
+    if (brand) brand = { ...brand, logo: assets.logo.src };
+    if (!brief.brand?.colors?.length && colours.length) assumptions.push(`palette from the Lottie logo's own colours (${colours.join(', ')})`);
+    log.stage('BRAND', brand ? `from Lottie logo colours: primary ${brand.primary}` : `style palette only (${styleId})`);
+  } else if (logoId) {
     const rel = assets[logoId].src;
     const lopts = { projectRelativeLogo: rel, name: brief.brand?.name, tone: brief.tone, mode: STYLE_PRESETS[styleId]?.mode ?? 'auto' } as const;
     const r = await cached('brand', hashOf('logo-brand-v1', fileHash(join(projectDir, rel)), lopts), async () => (await brandFromLogo(join(projectDir, rel), lopts)).brand);
@@ -290,7 +318,7 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
 
   // logo animation engine: measure the logo's structure, choose a reveal that fits it
   let logoCtx: { structure?: import('../brand/logo-reveal').LogoStructure; reveal: string; reason: string } | undefined;
-  if (loaded['logo-animation'] && logoId) {
+  if (loaded['logo-animation'] && logoId && !logoLottie) {
     const { analyzeLogoStructure } = loaded['logo-animation'] as typeof import('./logo-structure');
     const structure = await perf.stage('logo-structure', () => analyzeLogoStructure(join(projectDir, assets[logoId].src)));
     const choice = chooseLogoReveal({ structure, personality, durationSec: genre.genre === 'logo' ? Math.max(2, (brief.duration ?? 5) - 1.5) : 3, history: brandMotion?.logo.history, explicit: brief.preferences.logoReveal, seed });
@@ -315,7 +343,7 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
 
   // ── plan → storyboard → creative direction → video.json
   const tDir = Date.now();
-  const recipeAssets = { logo: logoId, product: productId, screenshot: shotId, images, ...(videos.length ? { videos } : {}) };
+  const recipeAssets = { logo: logoId, product: productId, screenshot: shotId, images, ...(videos.length ? { videos } : {}), ...(lotties.length || logoLottie ? { lotties, lottieIcons, lottieLogo: Boolean(logoLottie) } : {}) };
   const planExtras = { genre: genre.genre, modules: moduleIds, logo: logoCtx, map: mapPre };
   const plan = buildPlan({ brief, brand, assets: recipeAssets, voiceDuration: voiceTiming ? voiceTiming.end : undefined, voiceSegments: voiceTiming?.segments.length, ...planExtras });
   log.stage('DIRECTOR', `${plan.visualStyle} (${plan.styleReason}), ${plan.pace}, ${plan.duration}s, arc: ${plan.narrativeArc.map((a) => a.beat).join(' → ')}`);
@@ -451,7 +479,7 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
  * Long-form: each chapter is directed as its own short sequence (title + points),
  * all in the film's style; only the last chapter keeps the CTA.
  */
-function chapterBoards(brief: Brief, plan: CreativePlan, brand: BrandProfile | null, assets: { logo?: string; product?: string; screenshot?: string; images: string[]; videos?: string[] }, seed: string | number): { storyboard: PlannedStoryboard; chapters: { title: string; scenes: string[] }[] } {
+function chapterBoards(brief: Brief, plan: CreativePlan, brand: BrandProfile | null, assets: RecipeAssets, seed: string | number): { storyboard: PlannedStoryboard; chapters: { title: string; scenes: string[] }[] } {
   const list = brief.chapters!;
   const per = Math.max(12, plan.duration / list.length);
   const scenes: PlannedStoryboard['scenes'] = [];

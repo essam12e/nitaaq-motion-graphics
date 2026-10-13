@@ -26,7 +26,8 @@ const extOf = (src: string) => {
  * ingest); otherwise the file extension decides. Unknown → image (the old
  * behaviour of <Media>).
  */
-export function detectMediaKind(src: string | undefined, meta?: { kind?: string } | null): MediaKind {
+export function detectMediaKind(src: string | undefined, meta?: { kind?: string; lottie?: unknown } | null): MediaKind {
+  if (meta?.lottie) return 'lottie';
   if (meta?.kind === 'video') return 'video';
   if (meta?.kind === 'svg') return 'svg';
   if (meta?.kind === 'lottie') return 'lottie';

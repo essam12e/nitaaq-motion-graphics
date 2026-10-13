@@ -9,8 +9,9 @@
 | zod | MIT | schemas |
 | lucide-react 0.460.0 | ISC | icons (also as morph paths) |
 | qrcode | MIT | QR codes |
+| lottie-web 5.13.0 (optional, light SVG build, no expression engine) | MIT | playing user Lottie animations, frame by frame (`src/components/LottieMedia.tsx`) |
 
-Motion 2.0 added **no dependency**. Dev tooling (vitest, tsx, sharp, pngjs, pixelmatch, TypeScript) is MIT / Apache-2.0 / ISC.
+Motion 2.0 added **no dependency**. The Premium upgrade added one optional dependency, lottie-web (MIT), loaded only when a film shows a Lottie. Dev tooling (vitest, tsx, sharp, pngjs, pixelmatch, TypeScript) is MIT / Apache-2.0 / ISC.
 
 ## Ideas reimplemented (no code copied)
 

@@ -145,7 +145,7 @@ function patternMasks(p: DomProbe | undefined, scale: number): Rect[] {
 
 /** Pixel pattern scan of one PNG, cached by image bytes + masks. */
 async function scanPatterns(png: string, masks: Rect[]) {
-  return cached('patterns', hashOf('pat-v3', fileHash(png), masks), async () => {
+  return cached('patterns', hashOf('pat-v4', fileHash(png), masks), async () => {
     const { data, info } = await sharp(png).greyscale().raw().toBuffer({ resolveWithObject: true });
     return detectPatterns(data, info.width, info.height, masks);
   });
@@ -338,7 +338,18 @@ export async function structuralQc(opts: { spec: VideoSpec; projectDir: string; 
     }
     for (const m of p.media) {
       const mb = { ...base, scene: m.scene || s.scene, element: `${m.role}:${m.src}` };
-      if (!m.loaded) add('structure', { ...mb, severity: 'critical', code: 'MEDIA_BROKEN', message: `${m.kind === 'video' ? 'video frame' : 'image'} failed to load: ${m.src}` });
+      if (!m.loaded)
+        add('structure', {
+          ...mb,
+          severity: 'critical',
+          code: 'MEDIA_BROKEN',
+          message:
+            m.kind === 'lottie'
+              ? m.lottieState === 'missing'
+                ? `Lottie animation not drawn: the optional lottie-web package is not installed (${m.src}) — run npm run setup`
+                : `Lottie animation failed to load: ${m.src}`
+              : `${m.kind === 'video' ? 'video frame' : 'image'} failed to load: ${m.src}`,
+        });
       if (m.identity && m.objectFit !== 'contain') add('structure', { ...mb, severity: 'critical', code: 'MEDIA_DISTORTED', message: `${m.role} is not rendered with object-fit: contain (would crop/distort the user asset)` });
       if (m.loaded && m.naturalWidth && m.identity && m.opacity > 0.9 && hold) {
         const scaleUp = Math.max(m.rect.width / m.naturalWidth, m.rect.height / m.naturalHeight);

@@ -86,7 +86,7 @@ export async function ingestAsset(projectDir: string, file: string, kind: AssetK
 /** Heuristic for content values that point at project files. */
 export function looksLikeFile(v: string): boolean {
   if (v.startsWith('lib:') || /^(https?:|data:|blob:)/.test(v)) return false;
-  return /\.(png|jpe?g|webp|svg|gif|avif|mp3|wav|m4a|aac|ogg|flac|mp4|mov|webm|ttf|otf|woff2?)$/i.test(v);
+  return /\.(png|jpe?g|webp|svg|gif|avif|mp3|wav|m4a|aac|ogg|flac|mp4|m4v|mov|webm|ttf|otf|woff2?|json|lottie)$/i.test(v);
 }
 
 /** Every project-relative file the spec references (assets, scene content, audio, fonts). */

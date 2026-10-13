@@ -201,9 +201,10 @@ function scanSign(L: Float32Array, blur: Float32Array, masked: Uint8Array, w: nu
       }
       if (avail > len * 0.4 && c / avail > 0.45) hits.push(a);
     }
-    // merge adjacent indices (a 2px line is one line)
+    // merge nearby indices: a 2px line is one line, and so is one soft line whose anti-aliased edges
+    // pass the threshold a few px apart (a card border once read as a 4-line "grid" 3 px apart)
     const merged: number[] = [];
-    for (const x of hits) if (!merged.length || x - merged[merged.length - 1] > 2) merged.push(x);
+    for (const x of hits) if (!merged.length || x - merged[merged.length - 1] > 5) merged.push(x);
     const gaps = merged.slice(1).map((x, i) => x - merged[i]);
     return { count: merged.length, regular: gaps.length >= 3 ? cv(gaps) : 1 };
   };
