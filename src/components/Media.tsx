@@ -9,6 +9,8 @@ import React, { type CSSProperties } from 'react';
 import { Img } from 'remotion';
 import { useAsset, useAssetMeta, useSharedHidden, useVideo } from '../engine/context';
 import { alpha } from '../brand/color';
+import { detectMediaKind, type VideoClip } from '../media/video';
+import { VideoMedia } from './VideoMedia';
 
 export interface MediaProps {
   src: string;
@@ -25,11 +27,29 @@ export interface MediaProps {
   treatment?: 'none' | 'duotone' | 'mono' | 'grain';
   objectPosition?: string;
   alt?: string;
+  /** Video only: trim / loop / rate overrides of the asset's default clip. */
+  clip?: VideoClip;
+  /** Video only: named morph shape or CSS clip-path. */
+  mask?: string;
 }
 
 const IDENTITY: MediaProps['role'][] = ['logo', 'product', 'screenshot'];
 
+/**
+ * Any user media. The kind is detected from the asset entry (or the file
+ * extension): videos go to <VideoMedia> (frame-driven), everything else keeps
+ * the original image path unchanged.
+ */
 export function Media(p: MediaProps) {
+  const meta = useAssetMeta()(p.src);
+  if (detectMediaKind(meta?.src ?? p.src, meta) === 'video') {
+    const role = p.role === 'product' || p.role === 'screenshot' || p.role === 'background' ? p.role : 'video';
+    return <VideoMedia src={p.src} width={p.width} height={p.height} fit={p.fit} radius={p.radius} shadow={p.shadow} frame={p.frame} style={p.style} videoStyle={p.imgStyle} role={role} objectPosition={p.objectPosition} clip={p.clip} mask={p.mask} />;
+  }
+  return <ImageMedia {...p} />;
+}
+
+function ImageMedia(p: MediaProps) {
   const resolve = useAsset();
   const meta = useAssetMeta()(p.src);
   const { tokens: t, canvas } = useVideo();

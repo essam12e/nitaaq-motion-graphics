@@ -6,7 +6,7 @@
  * and `testimonials` supplied here.
  */
 import { z } from 'zod';
-import { AspectSchema, DialectSchema, LanguageSchema, PlatformSchema } from './video';
+import { AspectSchema, DialectSchema, LanguageSchema, PlatformSchema, VideoClipSchema } from './video';
 import { BriefCharacterSchema, CharacterBeatSchema } from '../character/schema';
 
 export const FeatureSchema = z.object({
@@ -46,6 +46,8 @@ export const BriefAssetSchema = z.object({
   path: z.string().min(1),
   kind: z.enum(['logo', 'product', 'screenshot', 'image', 'background', 'icon', 'svg', 'audio', 'video', 'font', 'avatar', 'music', 'voice']),
   label: z.string().optional(),
+  /** Video only: which part plays (seconds in the source), loop, speed. Omitted → the best 4 s window is chosen. */
+  clip: VideoClipSchema.pick({ startFrom: true, endAt: true, loop: true, playbackRate: true }).optional(),
 });
 
 export const GENRES = ['auto', 'social-ad', 'product', 'saas', 'launch', 'kinetic', 'logo', 'data', 'map', 'explainer', 'whiteboard', 'illustrated', 'procedural', 'web-ui', 'music', 'character'] as const;

@@ -21,6 +21,8 @@ import { STYLE_PRESETS } from '../styles/presets';
 import { brandFromLogo } from '../brand/logo-analyzer';
 import { getFont, FONT_IDS } from '../typography/registry';
 import { ingestAsset, type AssetKind } from './assets';
+import { prepareVideoAsset } from './video-assets';
+import { detectMediaKind } from '../media/video';
 import { assertUserFont } from './fonts';
 import { detectSpeechSegments, probe, cleanVoice } from './audio';
 import { requireVoiceProvider, voiceProviders } from './tts';
@@ -103,7 +105,20 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
   const shotFile = c.ui?.screenshot ?? byKind('screenshot')[0]?.path;
   const shotId = shotFile ? await add(shotFile, 'screenshot', 'screenshot') : undefined;
   const images: string[] = [];
-  for (const [i, a] of byKind('image').entries()) images.push(await add(a.path, 'image', `image-${i + 1}`));
+  // a file given as an image but that is a video (by extension) goes through the video pipeline
+  const isVideoFile = (a: { path: string }) => detectMediaKind(a.path) === 'video';
+  for (const [i, a] of byKind('image').filter((a) => !isVideoFile(a)).entries()) images.push(await add(a.path, 'image', `image-${i + 1}`));
+  // user videos: Video Asset Pipeline (byte-identical original → probe → normalise → proxy → segment), cached
+  const videos: string[] = [];
+  for (const [i, a] of [...byKind('video'), ...byKind('image').filter(isVideoFile)].entries()) {
+    const id = `video-${i + 1}`;
+    const given = a.clip?.startFrom !== undefined || a.clip?.endAt !== undefined ? { start: a.clip.startFrom ?? 0, end: a.clip.endAt ?? Number.MAX_SAFE_INTEGER } : undefined;
+    const v = await perf.stage('video', () => prepareVideoAsset(projectDir, abs(a.path), { id, segment: given ?? 4, loop: a.clip?.loop, playbackRate: a.clip?.playbackRate }));
+    assets[id] = v.asset;
+    videos.push(id);
+    if (v.normalized.length) assumptions.push(`${a.path}: normalised for rendering (${v.normalized.join('; ')}); the original is kept unchanged`);
+    if (v.asset.segmentReason) assumptions.push(`${a.path}: plays ${v.asset.clip?.startFrom ?? 0}–${v.asset.clip?.endAt ?? v.asset.duration} s (${v.asset.segmentReason})`);
+  }
   if (c.products) for (const [i, p] of c.products.entries()) p.image = await add(p.image, 'product', `product-${i + 1}`);
   if (c.categories) for (const [i, k] of c.categories.entries()) if (k.image) k.image = await add(k.image, 'image', `category-${i + 1}`);
   if (c.ui?.screens) for (const [i, s] of c.ui.screens.entries()) if (s.screenshot) s.screenshot = await add(s.screenshot, 'screenshot', `screen-${i + 1}`);
@@ -300,7 +315,7 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
 
   // ── plan → storyboard → creative direction → video.json
   const tDir = Date.now();
-  const recipeAssets = { logo: logoId, product: productId, screenshot: shotId, images };
+  const recipeAssets = { logo: logoId, product: productId, screenshot: shotId, images, ...(videos.length ? { videos } : {}) };
   const planExtras = { genre: genre.genre, modules: moduleIds, logo: logoCtx, map: mapPre };
   const plan = buildPlan({ brief, brand, assets: recipeAssets, voiceDuration: voiceTiming ? voiceTiming.end : undefined, voiceSegments: voiceTiming?.segments.length, ...planExtras });
   log.stage('DIRECTOR', `${plan.visualStyle} (${plan.styleReason}), ${plan.pace}, ${plan.duration}s, arc: ${plan.narrativeArc.map((a) => a.beat).join(' → ')}`);
@@ -436,7 +451,7 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
  * Long-form: each chapter is directed as its own short sequence (title + points),
  * all in the film's style; only the last chapter keeps the CTA.
  */
-function chapterBoards(brief: Brief, plan: CreativePlan, brand: BrandProfile | null, assets: { logo?: string; product?: string; screenshot?: string; images: string[] }, seed: string | number): { storyboard: PlannedStoryboard; chapters: { title: string; scenes: string[] }[] } {
+function chapterBoards(brief: Brief, plan: CreativePlan, brand: BrandProfile | null, assets: { logo?: string; product?: string; screenshot?: string; images: string[]; videos?: string[] }, seed: string | number): { storyboard: PlannedStoryboard; chapters: { title: string; scenes: string[] }[] } {
   const list = brief.chapters!;
   const per = Math.max(12, plan.duration / list.length);
   const scenes: PlannedStoryboard['scenes'] = [];

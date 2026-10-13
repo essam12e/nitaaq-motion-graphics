@@ -55,6 +55,8 @@ export interface ProbeMedia {
   scene: string;
   role: string;
   src: string;
+  /** image (default) or video (VideoMedia). */
+  kind?: string;
   fit: string;
   identity: boolean;
   loaded: boolean;
@@ -196,6 +198,7 @@ export function collectProbe(frame: number, width: number, height: number): Prob
       scene: sceneOf(el),
       role: el.getAttribute('data-qc-role') ?? '',
       src: el.getAttribute('data-qc-src') ?? '',
+      kind: el.getAttribute('data-qc-kind') ?? 'image',
       fit: el.getAttribute('data-qc-fit') ?? '',
       identity: el.getAttribute('data-qc-identity') === '1',
       loaded: Boolean(img && img.complete && img.naturalWidth > 0),
@@ -263,7 +266,22 @@ export function QCProbe() {
     };
     // Wait for images to decode + two frames for layout to settle.
     const imgs = Array.from(document.images).filter((i) => !i.complete);
+    // Videos (OffthreadVideo) mount their frame <img> asynchronously: wait until each one has decoded (max 6 s).
+    const videosReady = () =>
+      new Promise<void>((r) => {
+        const t0 = performance.now();
+        const tick = () => {
+          const pending = Array.from(document.querySelectorAll('[data-qc-kind="video"]')).some((el) => {
+            const img = el.querySelector('img');
+            return !img || !img.complete || img.naturalWidth === 0;
+          });
+          if (!pending || performance.now() - t0 > 6000) r();
+          else setTimeout(tick, 40);
+        };
+        tick();
+      });
     Promise.all(imgs.map((i) => new Promise((r) => { i.onload = r; i.onerror = r; setTimeout(r, 4000); })))
+      .then(videosReady)
       .then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
       .then(run);
   }, [frame, canvas.width, canvas.height, handle]);

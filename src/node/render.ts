@@ -26,6 +26,7 @@ import { validateSpec } from '../validation/validate';
 import { checkFontFile } from './fonts';
 import { ffmpegRun, masterAudio, type MasterReport } from './audio';
 import { blobDir, fileHash, hashOf } from '../cache/store';
+import { withVideoProxies } from './video-assets';
 
 export type RenderProfile = 'preview' | 'animatic' | 'draft' | 'production';
 export const RENDER_PROFILES: RenderProfile[] = ['preview', 'animatic', 'draft', 'production'];
@@ -171,8 +172,10 @@ export function renderKey(spec: VideoSpec, projectDir: string, profile: RenderPr
   return hashOf('render-v2', bundleKey(), profile, PROFILES[profile], rest, files);
 }
 
-export async function renderVideo(opts: { spec: VideoSpec; projectDir: string; output: string; profile?: RenderProfile; onProgress?: (p: number) => void; cache?: boolean }): Promise<RenderResult> {
-  const profile = opts.profile ?? 'production';
+export async function renderVideo(input: { spec: VideoSpec; projectDir: string; output: string; profile?: RenderProfile; onProgress?: (p: number) => void; cache?: boolean }): Promise<RenderResult> {
+  const profile = input.profile ?? 'production';
+  // preview / animatic decode light video proxies (same timing); draft / production use the full source
+  const opts = profile === 'preview' || profile === 'animatic' ? { ...input, spec: withVideoProxies(input.spec) } : input;
   const P = PROFILES[profile];
   const issues = validateSpec(opts.spec, nodeValidateOptions(opts.projectDir, opts.spec));
   const blocking = issues.filter((i) => i.severity === 'critical');

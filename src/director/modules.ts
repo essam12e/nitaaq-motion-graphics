@@ -119,6 +119,7 @@ const MODULES: ModuleDef[] = [
     needs: (c) => (c.brief.character ? 'character art supplied — a character performs the script' : null),
     load: () => import('../node/character/film'),
   },
+  { id: 'video-media', title: 'Video Media (frame-driven clips)', scenes: ['video-showcase'], needs: (c) => (c.brief.assets.some((a) => a.kind === 'video') ? 'user video clips supplied' : null), load: () => import('../node/video-assets') },
   { id: 'reference', title: 'Reference analysis', needs: (c) => (c.brief.reference ? 'style reference supplied' : null) },
 ];
 for (const m of MODULES) if (!ModuleRegistry.has(m.id)) ModuleRegistry.register(m);

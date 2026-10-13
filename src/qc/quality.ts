@@ -338,7 +338,7 @@ export async function structuralQc(opts: { spec: VideoSpec; projectDir: string; 
     }
     for (const m of p.media) {
       const mb = { ...base, scene: m.scene || s.scene, element: `${m.role}:${m.src}` };
-      if (!m.loaded) add('structure', { ...mb, severity: 'critical', code: 'MEDIA_BROKEN', message: `image failed to load: ${m.src}` });
+      if (!m.loaded) add('structure', { ...mb, severity: 'critical', code: 'MEDIA_BROKEN', message: `${m.kind === 'video' ? 'video frame' : 'image'} failed to load: ${m.src}` });
       if (m.identity && m.objectFit !== 'contain') add('structure', { ...mb, severity: 'critical', code: 'MEDIA_DISTORTED', message: `${m.role} is not rendered with object-fit: contain (would crop/distort the user asset)` });
       if (m.loaded && m.naturalWidth && m.identity && m.opacity > 0.9 && hold) {
         const scaleUp = Math.max(m.rect.width / m.naturalWidth, m.rect.height / m.naturalHeight);

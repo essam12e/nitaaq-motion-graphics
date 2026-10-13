@@ -18,6 +18,8 @@
  *   nitaaq character prepare|inspect|bench <brief.json|art|package>   → character package (cached), bible, pose contact sheet
  *   nitaaq character sheet <projectDir> [--video f]                    → acting sheet: one settled frame per character shot
  *   nitaaq seek     <projectDir|video.json> <seconds> [--png [out.png]] [--scale 0.5]  → the film's exact state at t (deterministic)
+ *   nitaaq video    probe <file> | prepare <file> --project <dir> [--id] [--segment <sec>] [--proxy auto|always|never] [--loop] [--rate <x>]
+ *                   → Video Asset Pipeline: probe, normalise (CFR H.264), preview proxy, best segment (cached)
  *   nitaaq audio    index | search <query> [--kind sfx|music] [--online] | fetch <query> [--provider ogsi|atomcut]
  *                   → local audio registry (CC0 library + generated + yours); online CC0 fallback only with NITAAQ_AUDIO_ONLINE=1
  *   nitaaq preflight [--full] | scenes [--json] | styles | schema-export [--out dir] | voices
@@ -25,7 +27,7 @@
  * Exit codes: 0 ok · 1 failed · 2 needs user input (questions printed as JSON).
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, dirname, extname, join, resolve } from 'node:path';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { formatMotionError, isMotionError } from '../src/core/errors';
 import { log } from '../src/core/logger';
@@ -251,6 +253,23 @@ async function main(): Promise<number> {
         await closeBrowser();
       }
       out(st);
+      return 0;
+    }
+    case 'video': {
+      // Video Asset Pipeline: probe a clip, or prepare it into a project (normalise / proxy / segment)
+      const sub = pos[0];
+      const file = pos[1];
+      if (!file || !['probe', 'prepare'].includes(sub ?? '')) throw new Error('Usage: nitaaq video probe <file> | nitaaq video prepare <file> --project <dir> [--id video-1] [--segment 4] [--proxy auto|always|never] [--loop] [--rate 1]');
+      const v = await import('../src/node/video-assets');
+      if (sub === 'probe') {
+        const info = v.probeVideo(resolve(file));
+        out({ ...info, normalize: v.normalizeReasons(info, extname(file).toLowerCase()), proxy: v.needsProxy(info) });
+        return 0;
+      }
+      const dir = resolve(flag('project') ?? '.');
+      const seg = flag('segment');
+      const r = v.prepareVideoAsset(dir, resolve(file), { id: flag('id'), segment: seg ? Number(seg) : undefined, proxy: (flag('proxy') as 'auto' | 'always' | 'never' | undefined) ?? 'auto', loop: flag('loop') ? true : undefined, playbackRate: flag('rate') ? Number(flag('rate')) : undefined });
+      out({ id: r.id, asset: r.asset, normalized: r.normalized, cached: r.cached });
       return 0;
     }
     case 'audio': {

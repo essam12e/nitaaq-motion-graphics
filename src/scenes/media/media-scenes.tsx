@@ -1,4 +1,4 @@
-/** Media families: image-reveal, image-collage, image-parallax, before-after. User images are framed and moved, never altered. */
+/** Media families: image-reveal, image-collage, image-parallax, before-after, video-showcase. User images and videos are framed and moved, never altered. */
 import React from 'react';
 import { z } from 'zod';
 import { defineScene, ALL_ASPECTS } from '../registry';
@@ -10,6 +10,7 @@ import { clamp, progress, float, EASE } from '../../motion/primitives';
 import { alpha } from '../../brand/color';
 import { gridShape } from '../../layout/stage';
 import { useLabel } from '../i18n';
+import { Surface } from '../../components/Surface';
 
 const Heading = z.object({ eyebrow: HeadingFields.eyebrow, title: z.string().max(160).optional(), highlight: HeadingFields.highlight, subtitle: HeadingFields.subtitle });
 const heading = (c: { eyebrow?: string; title?: string; highlight?: string[]; subtitle?: string }) => (c.title ? { eyebrow: c.eyebrow, title: c.title, highlight: c.highlight, subtitle: c.subtitle } : undefined);
@@ -338,3 +339,136 @@ export const beforeAfter = defineScene<BAC>(
 );
 
 export { EASE, Reveal };
+
+// ───────────────────────── video-showcase
+// User video clips in the scene: a card on a Surface, several clips playing at once, a clip inside a
+// shape mask, or one full-bleed clip under the title. Every clip is frame-driven (VideoMedia): trim,
+// loop and playback rate come from the asset's clip and can be overridden per clip here.
+const ClipC = z.object({
+  startFrom: z.number().min(0).optional(),
+  endAt: z.number().positive().optional(),
+  loop: z.boolean().optional(),
+  playbackRate: z.number().min(0.25).max(4).optional(),
+  delay: z.number().min(0).optional(),
+});
+const VideoShowcaseC = Heading.extend({
+  video: z.string().min(1),
+  /** More clips that play at the same time (split variant). */
+  videos: z.array(z.string().min(1)).max(3).optional(),
+  role: z.enum(['video', 'product', 'screenshot']).default('video'),
+  /** Mask variant: a morph-library shape name. */
+  mask: z.string().max(20).optional(),
+  clip: ClipC.optional(),
+  /** Per-clip overrides for `videos` (same order). */
+  clips: z.array(ClipC).max(3).optional(),
+  caption: z.string().max(80).optional(),
+});
+type VsC = z.infer<typeof VideoShowcaseC>;
+
+function ShowcaseCard({ src, role, w, h, delay, clip, tilt }: { src: string; role: VsC['role']; w: number; h: number; delay: number; clip?: VsC['clip']; tilt: number }) {
+  const { m } = useSceneTime();
+  const v = useVideo();
+  const u = v.canvas.u;
+  const p = progress(m, delay, 0.8, 'elastic');
+  return (
+    <div style={{ transform: `perspective(${u * 120}px) translateY(${(1 - p) * u * 6}px) rotateY(${(1 - p) * tilt}deg) scale(${0.86 + 0.14 * p})`, opacity: clamp(p * 1.8) }}>
+      <Surface radius={2.2} padding={0.9} qc="video-card">
+        <Media src={src} role={role === 'video' ? undefined : role} width={w} height={h} radius={1.5} clip={clip} />
+      </Surface>
+    </div>
+  );
+}
+
+export const videoShowcase = defineScene<VsC>(
+  {
+    id: 'video-showcase',
+    version: '1.0.0',
+    category: 'media',
+    title: 'Video showcase',
+    description: 'The user’s own video clips inside the film (frame-accurate trim / loop / speed): a card on a surface, up to four clips playing together, a clip inside a shape mask, or one full-bleed clip under the title; variants card / split / mask / full.',
+    variants: ['card', 'split', 'mask', 'full'],
+    defaultVariant: 'card',
+    content: VideoShowcaseC,
+    defaultDuration: 4,
+    minDuration: 2,
+    maxDuration: 12,
+    aspectRatios: ALL_ASPECTS,
+    preferredTransitions: ['crossfade', 'zoom-in', 'mask-wipe'],
+    sfx: [{ at: 0.1, category: 'whoosh', weight: 0.4 }],
+    safeArea: 'normal',
+    beats: ['hook', 'demo', 'product', 'feature', 'social'],
+    energy: 0.55,
+    requiresAssets: ['video'],
+    example: { video: 'lib:demo/clip.mp4', role: 'video', title: 'شوفه وهو يشتغل' },
+    editable: ['eyebrow', 'title', 'subtitle', 'caption'],
+  },
+  ({ content: c, variant }) => {
+    const v = useVideo();
+    const { m, s, durSec } = useSceneTime();
+    const t = v.tokens;
+    const u = v.canvas.u;
+    const ar = useAspect(c.video, 16 / 9);
+    if (variant === 'full') {
+      const { width: W, height: H, safe } = v.canvas;
+      const k = clamp(s / durSec);
+      return (
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', inset: 0, transform: `scale(${1.03 + 0.05 * k})` }}>
+            <Media src={c.video} width={W} height={H} fit="cover" clip={c.clip} />
+          </div>
+          {c.title ? (
+            <>
+              <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: H * 0.55, background: `linear-gradient(to top, ${alpha(t.palette.background, 0.92)}, ${alpha(t.palette.background, 0)})` }} />
+              <div style={{ position: 'absolute', left: safe.x, width: safe.width, bottom: H - safe.y - safe.height, display: 'flex', justifyContent: 'center' }}>
+                <HeadlineBlock title={c.title} highlight={c.highlight} subtitle={c.subtitle} role="title" maxWidth={safe.width} delay={0.3} />
+              </div>
+            </>
+          ) : null}
+        </div>
+      );
+    }
+    return (
+      <HeroSplit
+        heading={heading(c)}
+        visual={(w, h) => {
+          if (variant === 'split') {
+            const all = [c.video, ...(c.videos ?? [])];
+            const clips = [c.clip, ...(c.clips ?? [])];
+            const n = all.length;
+            const g = gridShape(n, w, h, ar);
+            const gap = u * 1.6;
+            const cellW = (w - gap * (g.cols - 1)) / g.cols;
+            const cellH = (h - gap * (g.rows - 1)) / g.rows;
+            const box = fitBox(ar, cellW - u * 1.8, cellH - u * 1.8);
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${g.cols}, ${cellW}px)`, gap, direction: v.dir, justifyItems: 'center', alignItems: 'center' }}>
+                {all.map((src, i) => (
+                  <ShowcaseCard key={i} src={src} role={c.role} w={box.width} h={box.height} delay={0.1 + i * 0.14} clip={clips[i]} tilt={(v.dir === 'rtl' ? -1 : 1) * 12} />
+                ))}
+              </div>
+            );
+          }
+          if (variant === 'mask') {
+            const side = Math.min(w, h * (c.caption ? 0.84 : 0.94));
+            const p = progress(m, 0.05, 1, 'cinematic');
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: u * 2 }}>
+                <div style={{ transform: `scale(${0.6 + 0.4 * p}) rotate(${(1 - p) * -8}deg)`, opacity: clamp(p * 1.6) }}>
+                  <Media src={c.video} width={side} height={side} fit="cover" mask={c.mask ?? 'squircle'} clip={c.clip} />
+                </div>
+                {c.caption ? <Text text={c.caption} role="caption" delay={0.9} maxLines={2} maxWidth={side} /> : null}
+              </div>
+            );
+          }
+          const box = fitBox(ar, w * 0.9, h * (c.caption ? 0.8 : 0.9));
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: u * 2 }}>
+              <ShowcaseCard src={c.video} role={c.role} w={box.width} h={box.height} delay={0.05} clip={c.clip} tilt={(v.dir === 'rtl' ? -1 : 1) * 16} />
+              {c.caption ? <Text text={c.caption} role="caption" delay={0.9} maxLines={2} maxWidth={box.width} /> : null}
+            </div>
+          );
+        }}
+      />
+    );
+  },
+);

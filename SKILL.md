@@ -11,7 +11,7 @@ You are the creative director. The engine in this folder is **one master directo
 
 ```bash
 cd <this skill folder>
-npm run setup          # npm ci (lockfile) + fonts + preflight
+npm run setup          # unpacks src/ + sounds if packed, npm ci (lockfile) + fonts + preflight
 ```
 
 If the skill folder is read-only (e.g. a claude.ai upload under `/mnt/skills/...`), copy it first: `cp -r <this skill folder> /tmp/nitaaq && cd /tmp/nitaaq && npm run setup`.

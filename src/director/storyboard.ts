@@ -145,6 +145,7 @@ export function buildStoryboard(plan: CreativePlan, ctx: RecipeCtx, opts: { seed
   const shown = new Set<string>();
   const payloadOf = (family: string): string | null => {
     if (['browser-scene', 'screenshot-focus', 'landing-page'].includes(family)) return ctx.assets.screenshot ? 'screenshot' : null;
+    if (family === 'video-showcase') return 'video';
     if (family === 'integration-hub') return 'integrations';
     if (family === 'form-fill') return 'form';
     if (family === 'state-flow') return 'flow';
@@ -207,7 +208,8 @@ export function buildStoryboard(plan: CreativePlan, ctx: RecipeCtx, opts: { seed
         const HERO_SHOTS = ['product-hero', 'product-depth'];
         if (HERO_SHOTS.includes(r.family) && picked.some((p) => HERO_SHOTS.includes(p.r.family))) w *= 0.12;
         const pay = payloadOf(r.family);
-        if (pay) w *= shown.has(pay) ? 0.12 : pay === 'screenshot' ? 1.8 : 1.5; // the user's real screenshot first
+        // the user's real footage and screenshot come first
+        if (pay) w *= shown.has(pay) ? 0.12 : pay === 'video' ? 2.6 : pay === 'screenshot' ? 1.8 : 1.5;
         // match the beat's energy
         w *= 1 - Math.abs(m.energy - BEAT_ENERGY[beat]) * 0.5;
         // copy longer than every variant of the family can hold → strongly prefer roomier families

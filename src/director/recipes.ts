@@ -13,7 +13,7 @@ import { matchIllustrations } from '../illustration/registry';
 export interface RecipeCtx {
   brief: Brief;
   orientation: 'portrait' | 'landscape' | 'square';
-  assets: { logo?: string; product?: string; screenshot?: string; images: string[] };
+  assets: { logo?: string; product?: string; screenshot?: string; images: string[]; videos?: string[] };
   brandName?: string;
   lang: 'ar' | 'en' | 'mixed';
   /** Production genre (src/director/modules.ts). */
@@ -198,6 +198,7 @@ export const RECIPES: Recipe[] = [
   { family: 'product-showcase', beats: ['product'], weight: 1.4, visual: "user's product, lit and framed", when: (c) => Boolean(c.assets.product), message: (c) => c.brief.content.product?.name ?? '', build: (c) => ({ image: c.assets.product, name: c.brief.content.product?.name, price: c.brief.content.product?.price, title: c.brief.content.product?.tagline, features: clip(c.brief.content.features?.map((f) => f.title), 3) }), variants: (c) => (c.orientation === 'landscape' ? ['split', 'hero', 'spotlight'] : ['hero', 'spotlight', 'orbit']) },
   { family: 'product-grid', beats: ['product'], weight: 1.2, visual: 'grid of real products', when: (c) => (c.brief.content.products?.length ?? 0) >= 2, message: () => 'products', build: (c) => ({ title: c.brief.content.product?.tagline, products: clip(c.brief.content.products, 6) }) },
   { family: 'category-showcase', beats: ['product', 'feature'], weight: 0.9, visual: 'category tiles', when: (c) => (c.brief.content.categories?.length ?? 0) >= 3, message: () => 'categories', build: (c) => ({ categories: clip(c.brief.content.categories, 6).map((x) => ({ ...x, icon: x.icon ?? iconFor(x.label, 'Tag') })) }) },
+  { family: 'video-showcase', beats: ['demo', 'product', 'hook', 'feature'], weight: 1.6, visual: "the user's own video clips (frame-accurate)", when: (c) => mod(c, 'video-media') && (c.assets.videos?.length ?? 0) > 0, message: (c) => c.brief.content.ui?.headline ?? c.brief.content.solution ?? c.brief.content.hook ?? 'video', build: (c) => ({ video: c.assets.videos![0], ...(c.assets.videos!.length > 1 ? { videos: c.assets.videos!.slice(1, 4) } : {}), role: 'video', title: c.brief.content.ui?.headline ?? c.brief.content.solution ?? c.brief.content.hook }), variants: (c) => (c.assets.videos!.length > 1 ? ['split'] : c.orientation === 'portrait' ? ['full', 'card', 'mask'] : ['card', 'full', 'mask']) },
   { family: 'image-reveal', beats: ['product', 'demo'], weight: 0.7, visual: 'image reveal', when: (c) => Boolean(c.assets.product || c.assets.images[0]), message: (c) => c.brief.content.product?.name ?? '', build: (c) => ({ image: c.assets.product ?? c.assets.images[0], role: c.assets.product ? 'product' : 'image', title: c.brief.content.product?.tagline ?? c.brief.content.product?.name }) },
 
   // ───────── demo

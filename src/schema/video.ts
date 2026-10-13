@@ -88,6 +88,17 @@ export const DirectionSchema = z.object({
 
 export const AssetKindSchema = z.enum(['logo', 'product', 'screenshot', 'image', 'background', 'icon', 'svg', 'audio', 'video', 'font', 'avatar']);
 
+/** Which part of a video plays and how (src/media/video.ts). All optional. */
+export const VideoClipSchema = z.object({
+  startFrom: z.number().min(0).optional(),
+  endAt: z.number().positive().optional(),
+  loop: z.boolean().optional(),
+  playbackRate: z.number().min(0.25).max(4).optional(),
+  delay: z.number().min(0).optional(),
+  muted: z.boolean().optional(),
+  volume: Unit.optional(),
+});
+
 export const AssetSchema = z.object({
   kind: AssetKindSchema,
   src: z.string().min(1),
@@ -101,6 +112,19 @@ export const AssetSchema = z.object({
   /** True when the image has meaningful transparency (cutout). */
   hasAlpha: z.boolean().optional(),
   duration: z.number().optional(),
+  // ── video assets (Video Asset Pipeline; all optional, images never carry them)
+  /** Source frame rate (constant after normalisation). */
+  fps: z.number().positive().optional(),
+  hasAudio: z.boolean().optional(),
+  codec: z.string().optional(),
+  /** The user's original file (byte-identical copy) when `src` is a normalised render copy. */
+  original: z.string().optional(),
+  /** Light proxy used by preview / animatic renders; production always uses `src`. */
+  proxy: z.string().optional(),
+  /** Default clip (trim / loop / rate) — the chosen segment of the source. */
+  clip: VideoClipSchema.optional(),
+  /** Why this segment was chosen (segment selection), not rendered. */
+  segmentReason: z.string().optional(),
 });
 
 export const VoiceSegmentSchema = z.object({
@@ -435,6 +459,7 @@ export type VideoInput = z.input<typeof VideoSchema>;
 export type SceneSpec = z.infer<typeof SceneSchema>;
 export type BrandProfile = z.infer<typeof BrandSchema>;
 export type AssetSpec = z.infer<typeof AssetSchema>;
+export type VideoClipSpec = z.infer<typeof VideoClipSchema>;
 export type AudioSpec = z.infer<typeof AudioSchema>;
 export type TransitionSpec = z.infer<typeof TransitionSchema>;
 export type SfxEvent = z.infer<typeof SfxEventSchema>;

@@ -37,7 +37,7 @@ function findFfmpegUncached(): { ffmpeg: string; ffprobe: string; source: 'env' 
   throw new MotionError({ code: 'DEPENDENCY_MISSING', what: 'ffmpeg/ffprobe not found', why: 'Neither a system ffmpeg nor Remotion’s bundled binaries were found.', action: 'Run `npm install` (Remotion ships ffmpeg) or install ffmpeg and ensure it is on PATH.' });
 }
 
-function ffEnv(): NodeJS.ProcessEnv {
+export function ffEnv(): NodeJS.ProcessEnv {
   const f = findFfmpeg();
   if (f.source !== 'remotion') return process.env;
   const dir = join(f.ffprobe, '..');
