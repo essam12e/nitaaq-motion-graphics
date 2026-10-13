@@ -60,7 +60,8 @@ curl -fsSL https://raw.githubusercontent.com/essam12e/nitaaq-motion-graphics/mai
 - **بيانات وخرائط:** رسوم بيانية وعدّادات من أرقامك بس، وخرائط من بيانات GeoJSON حقيقية. ما يخترع أي رقم أو موقع. التفاصيل في [docs/DATA_ANIMATION.md](docs/DATA_ANIMATION.md) و[docs/MAP_ANIMATION.md](docs/MAP_ANIMATION.md).
 - **رسوم توضيحية ووايت بورد وأنيميشن بدون ملفات:** رسوم متجهة تتولد بالكود. التفاصيل في [docs/ILLUSTRATION.md](docs/ILLUSTRATION.md) و[docs/WHITEBOARD.md](docs/WHITEBOARD.md).
 - **GSAP اختياري:** يتحمّل بس إذا احتاجه الفيلم، ونتيجته ثابتة في كل رندر. التفاصيل في [docs/GSAP.md](docs/GSAP.md).
-- **٩٣ عائلة مشاهد فيها ٢٦٨ تنويعة،** و**٢٤ ستايل** تتغيّر بألوان هويتك. التفاصيل في [docs/SCENE_LIBRARY.md](docs/SCENE_LIBRARY.md) و[docs/STYLE_LIBRARY.md](docs/STYLE_LIBRARY.md).
+- **٩٧ عائلة مشاهد فيها ٢٨٠ تنويعة،** و**٢٤ ستايل** تتغيّر بألوان هويتك. التفاصيل في [docs/SCENE_LIBRARY.md](docs/SCENE_LIBRARY.md) و[docs/STYLE_LIBRARY.md](docs/STYLE_LIBRARY.md).
+- **فيديوهاتك داخل الفيلم:** ترسل MP4 أو MOV أو WebM، فيُحفظ الأصل كما هو، ويُوحَّد عند الحاجة، ويُختار أفضل مقطع بالقياس (مو من الثانية صفر). تقدر تحدد القص والسرعة والتكرار، ويظهر الفيديو في بطاقة أو قناع أو ملء الشاشة أو حتى ٤ فيديوهات مع بعض، وكل فريم محسوب من زمن الفيلم بالضبط. التفاصيل في [docs/VIDEO_MEDIA.md](docs/VIDEO_MEDIA.md).
 
 **الشخصيات (محرك حركة الشخصيات)**
 - **الشخصية ممثل مو ديكور:** تعطيه شخصيتك (ورقة شخصية فيها عدة وضعيات، أو صور PNG لكل وضعية، أو SVG بطبقات، أو صورة وحدة)، ويحللها محلياً ويبني لها «كتاب شخصية» ومكتبة وضعيات، ويحفظها في الكاش عشان المرة الجاية ما يعيد التحليل.

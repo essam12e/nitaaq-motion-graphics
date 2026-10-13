@@ -73,11 +73,13 @@ export function VideoMedia(p: VideoMediaProps) {
         width: p.width,
         height: p.height,
         borderRadius: r,
-        overflow: 'hidden',
-        clipPath,
+        // the clip lives on the picture itself: Chrome's anti-aliasing of a clipped container around a
+        // changing video frame varies between render runs; on the <img> it is identical every time.
+        // (the box keeps it only when it also draws a frame / shadow that must follow the shape)
+        clipPath: p.frame || p.shadow ? clipPath : undefined,
         boxShadow: p.shadow ? `0 ${2 * canvas.u}px ${6 * canvas.u}px ${alpha(t.shadow.color, 0.25 + 0.4 * t.shadow.strength)}` : undefined,
         border: p.frame ? `${Math.max(2, canvas.u * 0.35)}px solid ${alpha(t.palette.textPrimary, 0.12)}` : undefined,
-        background: fit === 'contain' ? 'transparent' : alpha('#000000', 0.9),
+        background: fit === 'contain' || (clipPath && !(p.frame || p.shadow)) ? 'transparent' : alpha('#000000', 0.9),
         ...p.style,
       }}
     >
@@ -100,6 +102,8 @@ export function VideoMedia(p: VideoMediaProps) {
               objectFit: fit,
               objectPosition: p.objectPosition ?? 'center',
               display: 'block',
+              borderRadius: r,
+              clipPath,
               ...p.videoStyle,
               ...(handedOff ? { opacity: 0 } : {}),
             }}

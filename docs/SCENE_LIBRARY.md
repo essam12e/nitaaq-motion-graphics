@@ -2,7 +2,7 @@
 
 _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit by hand._
 
-**96 families · 276 variants · 14 categories.** Every family works in 9:16, 16:9, 1:1 and 4:5 unless noted, validates its `content` with Zod, and ships an example used by the Studio and the visual-regression gallery. **Cost** is the render-cost class used by the effect budget (LOW/MEDIUM/HIGH, see PERFORMANCE.md); **Motion** is the recommended physics and camera use.
+**97 families · 280 variants · 14 categories.** Every family works in 9:16, 16:9, 1:1 and 4:5 unless noted, validates its `content` with Zod, and ships an example used by the Studio and the visual-regression gallery. **Cost** is the render-cost class used by the effect budget (LOW/MEDIUM/HIGH, see PERFORMANCE.md); **Motion** is the recommended physics and camera use.
 
 ## Friendly aliases
 
@@ -71,7 +71,7 @@ _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit b
 | **product-hero**<br>Hero shot of the user's real product (pixels never altered); variants drop-land / rim-light / dark-reveal. | drop-land, **rim-light**, dark-reveal | product, reveal, hook | 2–8 (default 3.4) | MEDIUM | elements: product/card/button; jobs: show-the-product | image*, name, title, highlight, price |
 | **product-depth**<br>The product lands with a physical spring on the hero plane, a light form sits on the background plane and a streak on the foreground plane: a camera move produces real parallax. The product is never recoloured or distorted. | **center**, side | product, reveal, solution | 2.4–7 (default 4) | MEDIUM | elements: product/hero-title/camera; jobs: hero-reveal/show-the-product | image*, name, title*, highlight, price |
 
-## media (5)
+## media (6)
 
 | Family | Variants | Beats | Duration (s) | Cost | Motion | Content (required*) |
 |---|---|---|---|---|---|---|
@@ -80,6 +80,7 @@ _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit b
 | **image-collage**<br>Two to six user images as a grid, polaroid pile or stacked cards; variants grid / polaroid / stack. | **grid**, polaroid, stack | product, social, brand, feature | 2.2–8 (default 3.6) | HIGH | elements: panel/camera; jobs: show-the-product | eyebrow, title, highlight, subtitle, images*, role |
 | **image-parallax**<br>Full-frame image with slow camera and layered title (text sits on a scrim for contrast); variants kenburns / layers / pan. | **kenburns**, layers, pan | hook, brand, bridge, product | 2.2–10 (default 3.8) | HIGH | elements: panel/camera; jobs: show-the-product | image*, role, title, highlight, subtitle |
 | **image-reveal**<br>Reveals one user image through a mask, wipe, zoom or frame; variants mask / wipe / zoom / frame. | **mask**, wipe, zoom, frame | hook, product, demo, brand | 2–8 (default 3.4) | HIGH | elements: panel/camera; jobs: show-the-product | eyebrow, title, highlight, subtitle, image*, role, caption |
+| **video-showcase**<br>The user’s own video clips inside the film (frame-accurate trim / loop / speed): a card on a surface, up to four clips playing together, a clip inside a shape mask, or one full-bleed clip under the title; variants card / split / mask / full. | **card**, split, mask, full | hook, demo, product, feature, social | 2–12 (default 4) | HIGH | elements: panel/camera; jobs: show-the-product | eyebrow, title, highlight, subtitle, video*, videos, role, mask, clip, clips, caption |
 
 ## mobile (4)
 

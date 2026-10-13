@@ -3,7 +3,7 @@ import React from 'react';
 import { z } from 'zod';
 import { defineScene, ALL_ASPECTS } from '../registry';
 import { HeadingFields, HeroSplit, HeadlineBlock, useSceneTime, Reveal } from '../kit';
-import { useVideo } from '../../engine/context';
+import { useAssetMeta, useVideo } from '../../engine/context';
 import { Text } from '../../typography/Text';
 import { Media, fitBox, useAspect } from '../../components/Media';
 import { clamp, progress, float, EASE } from '../../motion/primitives';
@@ -350,6 +350,9 @@ const ClipC = z.object({
   loop: z.boolean().optional(),
   playbackRate: z.number().min(0.25).max(4).optional(),
   delay: z.number().min(0).optional(),
+  /** The clip's own sound (off by default: the Sound Director owns the mix). */
+  muted: z.boolean().optional(),
+  volume: z.number().min(0).max(1).optional(),
 });
 const VideoShowcaseC = Heading.extend({
   video: z.string().min(1),
@@ -408,6 +411,7 @@ export const videoShowcase = defineScene<VsC>(
     const t = v.tokens;
     const u = v.canvas.u;
     const ar = useAspect(c.video, 16 / 9);
+    const metaOf = useAssetMeta();
     if (variant === 'full') {
       const { width: W, height: H, safe } = v.canvas;
       const k = clamp(s / durSec);
@@ -435,16 +439,27 @@ export const videoShowcase = defineScene<VsC>(
             const all = [c.video, ...(c.videos ?? [])];
             const clips = [c.clip, ...(c.clips ?? [])];
             const n = all.length;
-            const g = gridShape(n, w, h, ar);
+            // each clip keeps its own shape (a 9:16 phone clip next to a 16:9 one is not cropped), and the
+            // grid is the one whose smallest clip is largest (no clip shrinks to a thumbnail), then the most picture
+            const ars = all.map((src) => {
+              const mt = metaOf(src);
+              return mt?.width && mt?.height ? mt.width / mt.height : 16 / 9;
+            });
             const gap = u * 1.6;
-            const cellW = (w - gap * (g.cols - 1)) / g.cols;
-            const cellH = (h - gap * (g.rows - 1)) / g.rows;
-            const box = fitBox(ar, cellW - u * 1.8, cellH - u * 1.8);
+            const cellOf = (cols: number) => {
+              const rows = Math.ceil(n / cols);
+              return { cols, cellW: (w - gap * (cols - 1)) / cols, cellH: (h - gap * (rows - 1)) / rows };
+            };
+            const areas = (c: ReturnType<typeof cellOf>) => ars.map((r) => { const b = fitBox(r, c.cellW - u * 1.8, c.cellH - u * 1.8); return b.width * b.height; });
+            const score = (c: ReturnType<typeof cellOf>) => { const a = areas(c); return Math.min(...a) + 0.1 * a.reduce((x, y) => x + y, 0) / n; };
+            const g = Array.from({ length: n }, (_, i) => cellOf(i + 1)).reduce((best, c) => (score(c) > score(best) * 1.02 ? c : best));
+            const { cellW, cellH } = g;
             return (
               <div style={{ display: 'grid', gridTemplateColumns: `repeat(${g.cols}, ${cellW}px)`, gap, direction: v.dir, justifyItems: 'center', alignItems: 'center' }}>
-                {all.map((src, i) => (
-                  <ShowcaseCard key={i} src={src} role={c.role} w={box.width} h={box.height} delay={0.1 + i * 0.14} clip={clips[i]} tilt={(v.dir === 'rtl' ? -1 : 1) * 12} />
-                ))}
+                {all.map((src, i) => {
+                  const box = fitBox(ars[i], cellW - u * 1.8, cellH - u * 1.8);
+                  return <ShowcaseCard key={i} src={src} role={c.role} w={box.width} h={box.height} delay={0.1 + i * 0.14} clip={clips[i]} tilt={(v.dir === 'rtl' ? -1 : 1) * 12} />;
+                })}
               </div>
             );
           }
