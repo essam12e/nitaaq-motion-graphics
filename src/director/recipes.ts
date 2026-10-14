@@ -20,6 +20,8 @@ export interface RecipeAssets {
   lotties?: string[];
   lottieIcons?: string[];
   lottieLogo?: boolean;
+  /** SVG artwork asset ids prepared by the Vector Engine (kind "svg"). */
+  vectors?: string[];
 }
 
 export interface RecipeCtx {
@@ -213,6 +215,7 @@ export const RECIPES: Recipe[] = [
   { family: 'video-showcase', beats: ['demo', 'product', 'hook', 'feature'], weight: 1.6, visual: "the user's own video clips (frame-accurate)", when: (c) => mod(c, 'video-media') && (c.assets.videos?.length ?? 0) > 0, message: (c) => c.brief.content.ui?.headline ?? c.brief.content.solution ?? c.brief.content.hook ?? 'video', build: (c) => ({ video: c.assets.videos![0], ...(c.assets.videos!.length > 1 ? { videos: c.assets.videos!.slice(1, 4) } : {}), role: 'video', title: c.brief.content.ui?.headline ?? c.brief.content.solution ?? c.brief.content.hook }), variants: (c) => (c.assets.videos!.length > 1 ? ['split'] : c.orientation === 'portrait' ? ['full', 'card', 'mask'] : ['card', 'full', 'mask']) },
   { family: 'lottie-moment', beats: ['brand', 'reveal'], weight: 1.8, visual: "the user's own Lottie logo animation (frame-accurate)", when: (c) => mod(c, 'lottie') && Boolean(c.assets.lottieLogo && c.assets.logo), message: (c) => c.brandName ?? 'logo', build: (c) => ({ lottie: c.assets.logo, title: c.brandName ?? c.brief.content.solution }), variants: () => ['logo'] },
   { family: 'lottie-moment', beats: ['hook', 'feature', 'solution'], weight: 1.5, visual: "the user's own Lottie animation (frame-accurate)", when: (c) => mod(c, 'lottie') && (c.assets.lotties?.length ?? 0) > 0, message: (c) => c.brief.content.solution ?? c.brief.content.hook ?? 'lottie', build: (c) => ({ lottie: c.assets.lotties![0], title: c.brief.content.solution ?? c.brief.content.hook }), variants: (c) => (c.assets.lottieIcons?.includes(c.assets.lotties![0]) ? ['icon'] : ['hero', 'icon']) },
+  { family: 'vector-draw', beats: ['hook', 'reveal', 'feature', 'solution'], weight: 1.5, visual: "the user's own SVG drawn from its real outlines (traced, filled, morphed)", when: (c) => mod(c, 'advanced-vector') && (c.assets.vectors?.length ?? 0) > 0, message: (c) => c.brief.content.solution ?? c.brief.content.hook ?? 'svg', build: (c) => ({ svg: c.assets.vectors![0], ...(c.assets.vectors!.length > 1 ? { morphTo: c.assets.vectors![1] } : {}), title: c.brief.content.solution ?? c.brief.content.hook }), variants: (c) => (c.assets.vectors!.length > 1 ? ['sequence', 'morph'] : ['draw', 'build']) },
   { family: 'image-reveal', beats: ['product', 'demo'], weight: 0.7, visual: 'image reveal', when: (c) => Boolean(c.assets.product || c.assets.images[0]), message: (c) => c.brief.content.product?.name ?? '', build: (c) => ({ image: c.assets.product ?? c.assets.images[0], role: c.assets.product ? 'product' : 'image', title: c.brief.content.product?.tagline ?? c.brief.content.product?.name }) },
 
   // ───────── demo

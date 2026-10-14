@@ -112,6 +112,23 @@ export const LottieMetaSchema = z.object({
   warnings: z.array(z.string()).default([]),
 });
 
+/** What an SVG is made of (measured at ingest by src/node/vector-assets.ts; Vector Engine 2.0). */
+export const VectorMetaSchema = z.object({
+  shapes: z.number().int().min(0),
+  groups: z.number().int().min(0),
+  segments: z.number().int().min(0),
+  clips: z.number().int().min(0).default(0),
+  masks: z.number().int().min(0).default(0),
+  gradients: z.number().int().min(0).default(0),
+  /** Text / embedded images (drawn as they are, faded in rather than traced). */
+  raw: z.number().int().min(0).default(0),
+  complexity: z.number().min(0),
+  colors: z.array(z.string()).default([]),
+  /** Parsed, sanitised VectorDoc (JSON) the render reads instead of parsing the SVG again. */
+  doc: z.string().optional(),
+  warnings: z.array(z.string()).default([]),
+});
+
 export const AssetSchema = z.object({
   kind: AssetKindSchema,
   src: z.string().min(1),
@@ -140,6 +157,8 @@ export const AssetSchema = z.object({
   segmentReason: z.string().optional(),
   // ── Lottie assets (any kind — a logo or an icon can be a Lottie animation); `fps` / `duration` / `clip` apply too
   lottie: LottieMetaSchema.optional(),
+  // ── SVG assets measured by the Vector Engine (any kind; the file itself is unchanged and still usable as an image)
+  vector: VectorMetaSchema.optional(),
 });
 
 export const VoiceSegmentSchema = z.object({

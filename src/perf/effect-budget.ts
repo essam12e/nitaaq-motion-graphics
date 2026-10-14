@@ -10,6 +10,8 @@ import { SceneRegistry } from '../scenes';
 import { costOf, type PerformanceCost } from '../scenes/registry';
 import { STYLE_PRESETS, findStyleId } from '../styles/presets';
 import { sceneLotties, sceneVideos } from '../engine/seek';
+import { vectorPrograms } from '../vector/scene-program';
+import type { VectorGraph } from '../vector/graph';
 
 const WEIGHT: Record<PerformanceCost, number> = { LOW: 1, MEDIUM: 2, HIGH: 3 };
 /** Upper bound of the per-second score for each budget level. */
@@ -34,6 +36,7 @@ export function estimateEffectCost(spec: VideoSpec): EffectCost {
   let camera = 0;
   let video = 0;
   let lottie = 0;
+  let vector = 0;
   for (const s of spec.scenes) {
     // simultaneous video decodes: 0.25 per clip on screen (×2 for sources above 1080p), duration-weighted
     for (const v of sceneVideos(spec, s.content, 0)) {
@@ -45,6 +48,15 @@ export function estimateEffectCost(spec: VideoSpec): EffectCost {
       const c = spec.assets[l.asset]?.lottie?.complexity ?? 0;
       lottie += (Math.min(0.6, 0.1 + c / 800) * s.duration) / total;
     }
+    // vector scenes rebuild their paths every frame while a program runs (trims, morph interpolation): 0.1 + complexity
+    // (both documents for a morph), capped, duration-weighted; graphs count their nodes; a still costs nothing extra
+    if (s.type === 'vector-draw') {
+      const c = s.content as { svg?: string; morphTo?: string; graph?: VectorGraph };
+      const cx = (ref?: string) => (ref ? (spec.assets[ref] ?? Object.values(spec.assets).find((a) => a.src === ref))?.vector?.complexity ?? 200 : 0);
+      const progs = vectorPrograms(s.variant, c, s.duration);
+      const live = c.graph && (s.variant === 'graph' || !c.svg) ? c.graph.nodes.length * 15 : progs.some((x) => x.mode !== 'static') ? cx(c.svg) + (progs.some((x) => x.mode === 'morph') ? cx(c.morphTo) : 0) : 0;
+      if (live) vector += (Math.min(0.6, 0.1 + live / 1500) * s.duration) / total;
+    }
     const m = SceneRegistry.get(s.type)?.manifest;
     const w = m ? WEIGHT[costOf(m)] : 2;
     scenes += (w * s.duration) / total;
@@ -54,6 +66,7 @@ export function estimateEffectCost(spec: VideoSpec): EffectCost {
   if (camera) contributors.push({ source: 'camera moves', add: round(camera) });
   if (video) contributors.push({ source: 'video clips (simultaneous decodes)', add: round(video) });
   if (lottie) contributors.push({ source: 'Lottie animations (vector redraw)', add: round(lottie) });
+  if (vector) contributors.push({ source: 'vector art (path rebuild per frame)', add: round(vector) });
   const t = STYLE_PRESETS[findStyleId(spec.style.preset) ?? ''];
   if (t) {
     if (t.surface.blur > 0) contributors.push({ source: `style ${t.id}: backdrop blur`, add: 0.6 });

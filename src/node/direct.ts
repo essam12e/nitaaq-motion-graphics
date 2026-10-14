@@ -121,6 +121,20 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
   const isVideoFile = (a: { path: string }) => detectMediaKind(a.path) === 'video';
   for (const [i, a] of byKind('image').filter((a) => !isVideoFile(a) && !isLottie(a.path)).entries()) images.push(await add(a.path, 'image', `image-${i + 1}`));
   // Lottie animations: kind "lottie", an icon given as a Lottie file, or a Lottie listed as an image
+  // SVG artwork (kind "svg"): parsed and inspected by the lazy Vector Engine pipeline (refused if there is nothing to draw)
+  const vectors: string[] = [];
+  const svgArt = byKind('svg').filter((a) => !a.path.startsWith('lib:') && /\.svg$/i.test(a.path));
+  if (svgArt.length) {
+    const vecMod = await import('./vector-assets');
+    for (const [i, a] of svgArt.entries()) {
+      const id = `svg-${i + 1}`;
+      const v = await perf.stage('vector', () => vecMod.prepareVectorAsset(projectDir, abs(a.path), { id, kind: 'svg' }));
+      assets[id] = v.asset;
+      log.stage('ASSETS', `SVG ${a.path}: ${v.inspection.shapes} shapes, ${v.inspection.groups} groups, ${v.inspection.segments} segments, complexity ${v.inspection.complexity}${v.cached ? ' (cached)' : ''}`);
+      for (const w of v.inspection.warnings) assumptions.push(`${a.path}: ${w}`);
+      vectors.push(id);
+    }
+  }
   const lotties: string[] = [];
   const lottieIcons: string[] = [];
   for (const [i, a] of [...byKind('lottie'), ...byKind('icon').filter((a) => isLottie(a.path)), ...byKind('image').filter((a) => isLottie(a.path))].entries()) {
@@ -343,7 +357,7 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
 
   // ── plan → storyboard → creative direction → video.json
   const tDir = Date.now();
-  const recipeAssets = { logo: logoId, product: productId, screenshot: shotId, images, ...(videos.length ? { videos } : {}), ...(lotties.length || logoLottie ? { lotties, lottieIcons, lottieLogo: Boolean(logoLottie) } : {}) };
+  const recipeAssets = { logo: logoId, product: productId, screenshot: shotId, images, ...(videos.length ? { videos } : {}), ...(lotties.length || logoLottie ? { lotties, lottieIcons, lottieLogo: Boolean(logoLottie) } : {}), ...(vectors.length ? { vectors } : {}) };
   const planExtras = { genre: genre.genre, modules: moduleIds, logo: logoCtx, map: mapPre };
   const plan = buildPlan({ brief, brand, assets: recipeAssets, voiceDuration: voiceTiming ? voiceTiming.end : undefined, voiceSegments: voiceTiming?.segments.length, ...planExtras });
   log.stage('DIRECTOR', `${plan.visualStyle} (${plan.styleReason}), ${plan.pace}, ${plan.duration}s, arc: ${plan.narrativeArc.map((a) => a.beat).join(' → ')}`);

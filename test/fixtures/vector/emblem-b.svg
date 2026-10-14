@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">
+  <defs>
+    <linearGradient id="shieldG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E76F51"/>
+      <stop offset="1" stop-color="#9B2C2C"/>
+    </linearGradient>
+  </defs>
+  <g id="shield">
+    <path fill="#2A1A3A" d="M150 18 L262 58 C 262 160, 220 236, 150 282 C 80 236, 38 160, 38 58 Z"/>
+    <path fill="none" stroke="#F2CC8F" stroke-width="5" stroke-linejoin="round" d="M150 32 L248 67 C 248 158, 212 226, 150 266 C 88 226, 52 158, 52 67 Z"/>
+    <path fill="url(#shieldG)" d="M150 46 L234 76 C 234 155, 204 216, 150 250 C 96 216, 66 155, 66 76 Z"/>
+  </g>
+  <g id="mark">
+    <polygon fill="#F2CC8F" points="150,80 165,122 210,123 174,150 187,194 150,168 113,194 126,150 90,123 135,122"/>
+    <circle fill="#2A1A3A" cx="150" cy="140" r="14"/>
+  </g>
+  <rect fill="#F2CC8F" x="95" y="212" width="110" height="14" rx="7"/>
+</svg>

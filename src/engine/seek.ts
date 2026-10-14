@@ -13,12 +13,14 @@ import { cameraAt, type CameraPlan } from '../camera/moves';
 import type { CameraState } from '../camera/rig';
 import { musicVolumeAt } from '../audio/mix';
 import { mergeClips, resolveClip, videoTimeAt, type ClipPhase, type VideoClip } from '../media/video';
+import { vectorPrograms, vectorStateAt, GRAPH_START, type VectorSceneState } from '../vector/scene-program';
+import { graphDuration, type VectorGraph } from '../vector/graph';
 
 export interface FrameState {
   t: number;
   frame: number;
   totalFrames: number;
-  scenes: { id: string; type: string; variant?: string; localSec: number; progress: number; phase: 'entering' | 'holding' | 'leaving'; transitionIn?: { type: string; progress: number }; transitionOut?: { type: string; progress: number }; camera?: { move: string; state: CameraState }; videos?: { asset: string; time: number; phase: ClipPhase; loopIndex: number }[]; lotties?: { asset: string; frame: number; phase: ClipPhase; loopIndex: number }[] }[];
+  scenes: { id: string; type: string; variant?: string; localSec: number; progress: number; phase: 'entering' | 'holding' | 'leaving'; transitionIn?: { type: string; progress: number }; transitionOut?: { type: string; progress: number }; camera?: { move: string; state: CameraState }; videos?: { asset: string; time: number; phase: ClipPhase; loopIndex: number }[]; lotties?: { asset: string; frame: number; phase: ClipPhase; loopIndex: number }[]; vectors?: SceneVector[] }[];
   audio: { musicGain: number; sfx: { sound: string; at: number; scene: string }[] };
 }
 
@@ -40,7 +42,8 @@ export function seek(spec: VideoSpec, t: number): FrameState {
     const cam = plan ? { move: plan.move, state: cameraAt(plan, local / fps, { W: spec.canvas.width, H: spec.canvas.height, durationSec: e.durationInFrames / fps }) } : undefined;
     const videos = sceneVideos(spec, s.content, local / fps);
     const lotties = sceneLotties(spec, s.content, local / fps, s.type);
-    scenes.push({ id: s.id, type: s.type, variant: s.variant, localSec: Math.round((local / fps) * 1000) / 1000, progress: Math.round((local / e.durationInFrames) * 1000) / 1000, phase: tin ? 'entering' : tout ? 'leaving' : 'holding', ...(tin ? { transitionIn: tin } : {}), ...(tout ? { transitionOut: tout } : {}), ...(cam ? { camera: cam } : {}), ...(videos.length ? { videos } : {}), ...(lotties.length ? { lotties } : {}) });
+    const vectors = sceneVectors(s.type, s.variant, s.content, local / fps, e.durationInFrames / fps);
+    scenes.push({ id: s.id, type: s.type, variant: s.variant, localSec: Math.round((local / fps) * 1000) / 1000, progress: Math.round((local / e.durationInFrames) * 1000) / 1000, phase: tin ? 'entering' : tout ? 'leaving' : 'holding', ...(tin ? { transitionIn: tin } : {}), ...(tout ? { transitionOut: tout } : {}), ...(cam ? { camera: cam } : {}), ...(videos.length ? { videos } : {}), ...(lotties.length ? { lotties } : {}), ...(vectors.length ? { vectors } : {}) });
   });
   const sec = frame / fps;
   const sfx = (spec.audio.sfx.cues ?? []).filter((c) => sec >= c.atSec && sec <= c.atSec + c.duration).map((c) => ({ sound: c.sound, at: c.atSec, scene: c.sceneId }));
@@ -90,4 +93,29 @@ export function sceneLotties(spec: VideoSpec, content: Record<string, unknown>, 
     [v].flat().forEach((x) => push(x, undefined, assetOf(x)?.a.kind === 'logo' && !lottieLogoPlays(sceneType)));
   }
   return out;
+}
+
+export interface SceneVector extends Omit<VectorSceneState, 'mode'> {
+  asset: string;
+  mode: VectorSceneState['mode'] | 'graph';
+  morphTo?: string;
+}
+
+/**
+ * Where a vector scene's program is at scene-local second `localSec` (same numbers as <VectorArt>):
+ * which program (draw / build / morph / graph), its progress and phase.
+ */
+export function sceneVectors(type: string, variant: string | undefined, content: Record<string, unknown>, localSec: number, sceneSec: number): SceneVector[] {
+  if (type !== 'vector-draw') return [];
+  const graph = content.graph as VectorGraph | undefined;
+  if (graph && (variant === 'graph' || !content.svg)) {
+    const dur = graphDuration(graph);
+    const t = localSec - GRAPH_START;
+    const progress = dur > 0 ? Math.round(Math.min(1, Math.max(0, t / dur)) * 1e4) / 1e4 : 1;
+    return [{ asset: 'graph', mode: 'graph', progress, phase: t <= 0 ? 'before' : progress >= 1 ? 'done' : 'running', step: 0, steps: 1 }];
+  }
+  if (typeof content.svg !== 'string') return [];
+  const programs = vectorPrograms(variant, content as { morphTo?: string }, sceneSec);
+  const st = vectorStateAt(programs, localSec);
+  return [{ asset: content.svg, ...(typeof content.morphTo === 'string' ? { morphTo: content.morphTo } : {}), ...st }];
 }

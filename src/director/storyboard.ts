@@ -148,6 +148,8 @@ export function buildStoryboard(plan: CreativePlan, ctx: RecipeCtx, opts: { seed
     if (family === 'video-showcase') return 'video';
     // each user Lottie is its own material (a Lottie logo and a Lottie icon are both shown)
     if (family === 'lottie-moment') return `lottie:${String(content?.lottie ?? '')}`;
+    // the user's SVG drawn by the Vector Engine is their own material too
+    if (family === 'vector-draw') return `vector:${String(content?.svg ?? '')}`;
     if (family === 'integration-hub') return 'integrations';
     if (family === 'form-fill') return 'form';
     if (family === 'state-flow') return 'flow';
@@ -211,7 +213,7 @@ export function buildStoryboard(plan: CreativePlan, ctx: RecipeCtx, opts: { seed
         if (HERO_SHOTS.includes(r.family) && picked.some((p) => HERO_SHOTS.includes(p.r.family))) w *= 0.12;
         const pay = payloadOf(r.family, r.build(ctx));
         // the user's real footage and screenshot come first
-        if (pay) w *= shown.has(pay) ? 0.12 : pay === 'video' ? 2.6 : pay.startsWith('lottie:') ? 2.2 : pay === 'screenshot' ? 1.8 : 1.5;
+        if (pay) w *= shown.has(pay) ? 0.12 : pay === 'video' ? 2.6 : pay.startsWith('lottie:') || pay.startsWith('vector:') ? 2.2 : pay === 'screenshot' ? 1.8 : 1.5;
         // match the beat's energy
         w *= 1 - Math.abs(m.energy - BEAT_ENERGY[beat]) * 0.5;
         // copy longer than every variant of the family can hold → strongly prefer roomier families

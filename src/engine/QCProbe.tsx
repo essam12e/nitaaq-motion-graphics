@@ -59,6 +59,10 @@ export interface ProbeMedia {
   kind?: string;
   /** LottieMedia player state: loading | loaded | missing (lottie-web not installed) | error. */
   lottieState?: string;
+  /** VectorArt state: loading | loaded | warning (graph) | error, and its program. */
+  vectorState?: string;
+  vectorMode?: string;
+  vectorProgress?: number;
   fit: string;
   identity: boolean;
   loaded: boolean;
@@ -195,6 +199,31 @@ export function collectProbe(frame: number, width: number, height: number): Prob
     };
   });
   const media: ProbeMedia[] = Array.from(document.querySelectorAll('[data-qc="media"]')).map((el) => {
+    if (el.getAttribute('data-qc-kind') === 'vector') {
+      // Vector Engine art: loaded = the document parsed and its <svg> is in the page; vector, so no pixel size
+      const svg = el.querySelector('svg');
+      const st = el.getAttribute('data-qc-vector') ?? '';
+      return {
+        scene: sceneOf(el),
+        role: el.getAttribute('data-qc-role') ?? '',
+        src: el.getAttribute('data-qc-src') ?? '',
+        kind: 'vector',
+        vectorState: st,
+        vectorMode: el.getAttribute('data-qc-vector-mode') ?? '',
+        vectorProgress: Number(el.getAttribute('data-qc-vector-progress') ?? 0),
+        fit: el.getAttribute('data-qc-fit') ?? '',
+        identity: el.getAttribute('data-qc-identity') === '1',
+        loaded: (st === 'loaded' || st === 'warning') && Boolean(svg),
+        naturalWidth: 0,
+        naturalHeight: 0,
+        rect: rectOf(el),
+        objectFit: el.getAttribute('data-qc-fit') ?? 'contain',
+        opacity: effOpacity(el),
+        colorFilter: colorFilters(el),
+        layoutW: (el as HTMLElement).offsetWidth,
+        layoutH: (el as HTMLElement).offsetHeight,
+      };
+    }
     if (el.getAttribute('data-qc-kind') === 'lottie') {
       // vector animation: loaded = the player drew its SVG; contain/cover is its preserveAspectRatio; no pixel size
       const svg = el.querySelector('svg');
@@ -299,7 +328,7 @@ export function QCProbe() {
             Array.from(document.querySelectorAll('[data-qc-kind="video"]')).some((el) => {
               const img = el.querySelector('img');
               return !img || !img.complete || img.naturalWidth === 0;
-            }) || document.querySelector('[data-qc-lottie="loading"]') !== null;
+            }) || document.querySelector('[data-qc-lottie="loading"], [data-qc-vector="loading"]') !== null;
           if (!pending || performance.now() - t0 > 6000) r();
           else setTimeout(tick, 40);
         };

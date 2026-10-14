@@ -344,7 +344,9 @@ export async function structuralQc(opts: { spec: VideoSpec; projectDir: string; 
           severity: 'critical',
           code: 'MEDIA_BROKEN',
           message:
-            m.kind === 'lottie'
+            m.kind === 'vector'
+              ? `vector art not drawn (${m.vectorState === 'error' ? 'the SVG could not be read or has nothing to draw' : 'still loading'}): ${m.src}`
+              : m.kind === 'lottie'
               ? m.lottieState === 'missing'
                 ? `Lottie animation not drawn: the optional lottie-web package is not installed (${m.src}) — run npm run setup`
                 : `Lottie animation failed to load: ${m.src}`

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "width": 400,
+  "height": 400,
+  "output": "out",
+  "nodes": [
+    { "id": "plate", "type": "shape", "shape": "rect", "x": 60, "y": 60, "width": 280, "height": 280, "radius": { "k": [{ "t": 0, "v": 20 }, { "t": 1.6, "v": 140 }] } },
+    { "id": "hole", "type": "shape", "shape": "ellipse", "x": 150, "y": 150, "width": { "k": [{ "t": 0.4, "v": 0 }, { "t": 1.4, "v": 100 }] } },
+    { "id": "hole-at", "type": "transform", "input": "hole", "x": { "k": [{ "t": 0.4, "v": 50 }, { "t": 1.4, "v": 0 }] } },
+    { "id": "cut", "type": "boolean", "a": "plate", "b": "hole-at", "op": "subtract", "mode": "exact" },
+    { "id": "cut-fill", "type": "fill", "input": "cut", "gradient": { "type": "linear", "angle": { "k": [{ "t": 0, "v": 90 }, { "t": 3, "v": 200 }] }, "stops": [{ "offset": 0, "color": "#2B7A78" }, { "offset": 1, "color": { "k": [{ "t": 0.5, "v": "#0E3B43" }, { "t": 2, "v": "#E76F51" }] } }] } },
+    { "id": "cut-shadow", "type": "effect", "input": "cut-fill", "effect": "shadow", "amount": 10 },
+    { "id": "ring", "type": "shape", "shape": "ellipse", "x": 30, "y": 30, "width": 340 },
+    { "id": "ring-line", "type": "stroke", "input": "ring", "color": "#E9B44C", "width": 6, "end": { "k": [{ "t": 0.2, "v": 0 }, { "t": 1.8, "v": 1, "ease": "ease-in-out-cubic" }] }, "keepFill": false },
+    { "id": "star", "type": "shape", "shape": "star", "sides": 5, "x": 165, "y": 165, "width": 70, "radius": 0.45 },
+    { "id": "star-spin", "type": "transform", "input": "star", "rotate": { "k": [{ "t": 1.2, "v": -90 }, { "t": 2.4, "v": 0, "ease": "back-out" }] }, "scale": { "k": [{ "t": 1.2, "v": 0 }, { "t": 2.4, "v": 1, "ease": "back-out" }] } },
+    { "id": "star-fill", "type": "fill", "input": "star-spin", "color": "#F4E9D8" },
+    { "id": "star-glow", "type": "effect", "input": "star-fill", "effect": "glow", "amount": 6, "color": "#E9B44C" },
+    { "id": "out", "type": "group", "inputs": ["cut-shadow", "ring-line", "star-glow"] }
+  ]
+}

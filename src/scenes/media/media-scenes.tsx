@@ -1,4 +1,4 @@
-/** Media families: image-reveal, image-collage, image-parallax, before-after, video-showcase, lottie-moment. User images, videos and Lottie animations are framed and moved, never altered. */
+/** Media families: image-reveal, image-collage, image-parallax, before-after, video-showcase, lottie-moment, vector-draw. User images, videos and Lottie animations are framed and moved, never altered. */
 import React from 'react';
 import { z } from 'zod';
 import { defineScene, ALL_ASPECTS } from '../registry';
@@ -12,6 +12,9 @@ import { gridShape } from '../../layout/stage';
 import { useLabel } from '../i18n';
 import { Surface } from '../../components/Surface';
 import { LottieMedia } from '../../components/LottieMedia';
+import { VectorArt, VectorGraphArt } from '../../vector/VectorArt';
+import { vectorPrograms, VECTOR_VARIANTS, GRAPH_START } from '../../vector/scene-program';
+import { VectorGraphSchema } from '../../vector/graph';
 
 const Heading = z.object({ eyebrow: HeadingFields.eyebrow, title: z.string().max(160).optional(), highlight: HeadingFields.highlight, subtitle: HeadingFields.subtitle });
 const heading = (c: { eyebrow?: string; title?: string; highlight?: string[]; subtitle?: string }) => (c.title ? { eyebrow: c.eyebrow, title: c.title, highlight: c.highlight, subtitle: c.subtitle } : undefined);
@@ -573,6 +576,86 @@ export const lottieMoment = defineScene<LmC>(
             </div>
           );
         }}
+      />
+    );
+  },
+);
+
+// ───────────────────────── vector-draw
+// The user's own SVG as a living drawing (Vector Engine 2.0, src/vector): traced by its real outlines and
+// then filled (draw), assembled group by group from each group's own centre (build), turned into a second
+// SVG shape by shape with colours and gradients blending (morph), or all of it in turn (sequence). The art
+// is parsed, never rasterised: gradients, clips and masks are kept, and the last frame is the file as drawn.
+const VectorDrawC = Heading.extend({
+  /** The SVG (asset id or path); not needed when the scene draws a `graph`. */
+  svg: z.string().min(1).optional(),
+  /** graph: procedural vector art as a Non-Destructive Vector Graph (src/vector/graph.ts). */
+  graph: VectorGraphSchema.optional(),
+  /** morph / sequence: the SVG the art becomes. */
+  morphTo: z.string().min(1).optional(),
+  order: z.enum(['document', 'rtl', 'ltr', 'ttb', 'center-out']).optional(),
+  drawSeconds: z.number().min(0.4).max(8).optional(),
+  morphSeconds: z.number().min(0.3).max(4).optional(),
+  /** Bend of the morph's point paths (radians at the midpoint); 0 = straight. */
+  arc: z.number().min(-3.2).max(3.2).optional(),
+  role: z.enum(['illustration', 'logo', 'icon']).default('illustration'),
+  caption: z.string().max(80).optional(),
+}).refine((c) => Boolean(c.svg || c.graph), { message: 'vector-draw needs `svg` (or `graph`)' });
+type VdC = z.infer<typeof VectorDrawC>;
+
+export const vectorDraw = defineScene<VdC>(
+  {
+    id: 'vector-draw',
+    version: '1.0.0',
+    category: 'media',
+    title: 'Vector draw',
+    description: 'The user’s own SVG brought to life from its real geometry: outlines traced then filled, groups assembled from their own centres, or morphed shape by shape into a second SVG with colours and gradients blending; variants draw / build / morph / sequence (draw, then morph) / graph (procedural art from a non-destructive vector graph: shapes, transforms, booleans, masks, fills, trimmed strokes, effects, all keyframable).',
+    variants: [...VECTOR_VARIANTS],
+    defaultVariant: 'draw',
+    content: VectorDrawC,
+    defaultDuration: 4,
+    minDuration: 2,
+    maxDuration: 10,
+    aspectRatios: ALL_ASPECTS,
+    preferredTransitions: ['crossfade', 'zoom-in', 'mask-wipe'],
+    sfx: [{ at: 0.15, category: 'whoosh', weight: 0.3 }],
+    safeArea: 'normal',
+    beats: ['hook', 'reveal', 'brand', 'feature', 'solution', 'proof'],
+    energy: 0.45,
+    requiresAssets: ['svg'],
+    example: { svg: 'lib:demo/emblem.svg', role: 'illustration', title: 'رسم من ملفك نفسه' },
+    editable: ['eyebrow', 'title', 'subtitle', 'caption'],
+  },
+  ({ content: c, variant }) => {
+    const v = useVideo();
+    const { durSec } = useSceneTime();
+    const u = v.canvas.u;
+    const ar = useAspect(c.svg, c.graph ? c.graph.width / c.graph.height : 1);
+    const programs = vectorPrograms(variant, c, durSec);
+    const art = (w: number, h: number) => {
+      const box = fitBox(c.graph && (variant === 'graph' || !c.svg) ? c.graph.width / c.graph.height : ar, w, h);
+      if (c.graph && (variant === 'graph' || !c.svg)) return <VectorGraphArt graph={c.graph} start={GRAPH_START} width={box.width} height={box.height} role={c.role} />;
+      if (!c.svg) return null;
+      return <VectorArt src={c.svg} morphTo={c.morphTo} programs={programs} arc={c.arc} width={box.width} height={box.height} role={c.role} ink={v.tokens.palette.textPrimary} />;
+    };
+    if (!c.title) {
+      const { safe } = v.canvas;
+      return (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: u * 2 }}>
+          {art(safe.width * 0.86, safe.height * (c.caption ? 0.7 : 0.8))}
+          {c.caption ? <Text text={c.caption} role="caption" delay={Math.max(0.6, durSec * 0.5)} maxLines={2} maxWidth={safe.width * 0.8} /> : null}
+        </div>
+      );
+    }
+    return (
+      <HeroSplit
+        heading={heading(c)}
+        visual={(w, h) => (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: u * 2 }}>
+            {art(w * 0.96, h * (c.caption ? 0.84 : 0.96))}
+            {c.caption ? <Text text={c.caption} role="caption" delay={0.8} maxLines={2} maxWidth={w * 0.9} /> : null}
+          </div>
+        )}
       />
     );
   },

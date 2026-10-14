@@ -100,7 +100,11 @@ export function referencedFiles(spec: VideoSpec): string[] {
     } else if (Array.isArray(v)) v.forEach(add);
     else if (v && typeof v === 'object') Object.values(v).forEach(add);
   };
-  for (const a of Object.values(spec.assets)) add(a.src);
+  for (const a of Object.values(spec.assets)) {
+    add(a.src);
+    // the prepared vector document is what <VectorArt> reads
+    if (a.vector?.doc) add(a.vector.doc);
+  }
   for (const s of spec.scenes) {
     add(s.content);
     add(s.background?.image);

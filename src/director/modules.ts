@@ -13,6 +13,7 @@
  *   logo       → logo structure analysis (sharp), only when a logo exists
  *   variants   → strategy re-planner, only when variants are requested
  *   lottie     → Lottie ingest (node) + lottie-web chunk, only when a Lottie file is supplied
+ *   advanced-vector → Vector Engine 2.0 ingest (node), only when an asset of kind "svg" is supplied
  *
  * Pure and deterministic.
  */
@@ -129,6 +130,14 @@ const MODULES: ModuleDef[] = [
     scenes: ['lottie-moment'],
     needs: (c) => (c.brief.assets.some((a) => a.kind === 'lottie' || /\.(json|lottie)$/i.test(a.path)) || lottieLogo(c.brief) ? 'Lottie animation supplied' : null),
     load: () => import('../node/lottie-assets'),
+  },
+  {
+    // only assets given as kind "svg": an SVG logo or image keeps its existing treatment
+    id: 'advanced-vector',
+    title: 'Vector Engine 2.0 (SVG drawn, assembled, morphed)',
+    scenes: ['vector-draw'],
+    needs: (c) => (c.brief.assets.some((a) => a.kind === 'svg' && /\.svg$/i.test(a.path)) ? 'SVG artwork supplied' : null),
+    load: () => import('../node/vector-assets'),
   },
   { id: 'reference', title: 'Reference analysis', needs: (c) => (c.brief.reference ? 'style reference supplied' : null) },
 ];

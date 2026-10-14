@@ -21,6 +21,7 @@
  *   nitaaq video    probe <file> | prepare <file> --project <dir> [--id] [--segment <sec>] [--proxy auto|always|never] [--loop] [--rate <x>]
  *                   → Video Asset Pipeline: probe, normalise (CFR H.264), preview proxy, best segment (cached)
  *   nitaaq lottie   inspect <file.json|.lottie> | prepare <file> --project <dir> [--id] [--kind lottie|logo|icon] [--marker <name>] [--loop] [--rate <x>]
+ *   nitaaq vector   inspect <file.svg> | prepare <file.svg> --project <dir> [--id] [--kind svg|logo|icon|image] | frame <graph.json> <t> (SVG of a vector graph at t)
  *                   → Lottie: inspect (timing, markers, refusals), ingest unchanged + self-contained copy (cached)
  *   nitaaq audio    index | search <query> [--kind sfx|music] [--online] | fetch <query> [--provider ogsi|atomcut]
  *                   → local audio registry (CC0 library + generated + yours); online CC0 fallback only with NITAAQ_AUDIO_ONLINE=1
@@ -287,6 +288,28 @@ async function main(): Promise<number> {
       const clip = { ...(flag('marker') ? { marker: flag('marker') } : {}), ...(flag('loop') ? { loop: true } : {}), ...(flag('rate') ? { playbackRate: Number(flag('rate')) } : {}) };
       const r = l.prepareLottieAsset(resolve(flag('project') ?? '.'), resolve(file), { id: flag('id'), kind: (flag('kind') as 'lottie' | 'logo' | 'icon' | undefined) ?? 'lottie', clip });
       out({ id: r.id, asset: r.asset, rewritten: r.rewritten, cached: r.cached });
+      return 0;
+    }
+    case 'vector': {
+      // Vector Engine: inspect an SVG (what it is made of, what was removed or is unsupported), prepare it into a project,
+      // or print a Non-Destructive Vector Graph as SVG at second t
+      const sub = pos[0];
+      const file = pos[1];
+      if (!file || !['inspect', 'prepare', 'frame'].includes(sub ?? '')) throw new Error('Usage: nitaaq vector inspect <file.svg> | nitaaq vector prepare <file.svg> --project <dir> [--id svg-1] [--kind svg|logo|icon|image] | nitaaq vector frame <graph.json> <t>');
+      if (sub === 'frame') {
+        const g = await import('../src/vector/graph');
+        const graph = g.VectorGraphSchema.parse(JSON.parse(readFileSync(resolve(file), 'utf8')));
+        process.stdout.write(`${g.graphToSvg(graph, Number(pos[2] ?? 0))}\n`);
+        return 0;
+      }
+      const v = await import('../src/node/vector-assets');
+      if (sub === 'inspect') {
+        const { doc: _doc, ...r } = v.inspectVectorFile(resolve(file));
+        out(r);
+        return r.errors.length ? 1 : 0;
+      }
+      const r = v.prepareVectorAsset(resolve(flag('project') ?? '.'), resolve(file), { id: flag('id'), kind: (flag('kind') as 'svg' | 'logo' | 'icon' | 'image' | undefined) ?? 'svg' });
+      out({ id: r.id, asset: r.asset, cached: r.cached });
       return 0;
     }
     case 'audio': {

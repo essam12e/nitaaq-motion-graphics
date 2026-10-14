@@ -539,6 +539,71 @@
                   "complexity"
                 ],
                 "additionalProperties": false
+              },
+              "vector": {
+                "type": "object",
+                "properties": {
+                  "shapes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "groups": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "segments": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "clips": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 0
+                  },
+                  "masks": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 0
+                  },
+                  "gradients": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 0
+                  },
+                  "raw": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 0
+                  },
+                  "complexity": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "colors": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  },
+                  "doc": {
+                    "type": "string"
+                  },
+                  "warnings": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  }
+                },
+                "required": [
+                  "shapes",
+                  "groups",
+                  "segments",
+                  "complexity"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
