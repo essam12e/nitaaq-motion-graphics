@@ -15,12 +15,15 @@ import { musicVolumeAt } from '../audio/mix';
 import { mergeClips, resolveClip, videoTimeAt, type ClipPhase, type VideoClip } from '../media/video';
 import { vectorPrograms, vectorStateAt, GRAPH_START, type VectorSceneState } from '../vector/scene-program';
 import { graphDuration, type VectorGraph } from '../vector/graph';
+import { activeAt, cameraFromChoreo, focusAt, hasCamera, passedAt } from '../motion/choreography';
+import { interactionOf, cursorAt, elementAt } from '../motion/interaction';
+import { interactionChoreo, type InteractionContent } from '../scenes/interaction/program';
 
 export interface FrameState {
   t: number;
   frame: number;
   totalFrames: number;
-  scenes: { id: string; type: string; variant?: string; localSec: number; progress: number; phase: 'entering' | 'holding' | 'leaving'; transitionIn?: { type: string; progress: number }; transitionOut?: { type: string; progress: number }; camera?: { move: string; state: CameraState }; videos?: { asset: string; time: number; phase: ClipPhase; loopIndex: number }[]; lotties?: { asset: string; frame: number; phase: ClipPhase; loopIndex: number }[]; vectors?: SceneVector[] }[];
+  scenes: { id: string; type: string; variant?: string; localSec: number; progress: number; phase: 'entering' | 'holding' | 'leaving'; transitionIn?: { type: string; progress: number }; transitionOut?: { type: string; progress: number }; camera?: { move: string; state: CameraState }; videos?: { asset: string; time: number; phase: ClipPhase; loopIndex: number }[]; lotties?: { asset: string; frame: number; phase: ClipPhase; loopIndex: number }[]; vectors?: SceneVector[]; choreography?: SceneChoreography }[];
   audio: { musicGain: number; sfx: { sound: string; at: number; scene: string }[] };
 }
 
@@ -43,7 +46,8 @@ export function seek(spec: VideoSpec, t: number): FrameState {
     const videos = sceneVideos(spec, s.content, local / fps);
     const lotties = sceneLotties(spec, s.content, local / fps, s.type);
     const vectors = sceneVectors(s.type, s.variant, s.content, local / fps, e.durationInFrames / fps);
-    scenes.push({ id: s.id, type: s.type, variant: s.variant, localSec: Math.round((local / fps) * 1000) / 1000, progress: Math.round((local / e.durationInFrames) * 1000) / 1000, phase: tin ? 'entering' : tout ? 'leaving' : 'holding', ...(tin ? { transitionIn: tin } : {}), ...(tout ? { transitionOut: tout } : {}), ...(cam ? { camera: cam } : {}), ...(videos.length ? { videos } : {}), ...(lotties.length ? { lotties } : {}), ...(vectors.length ? { vectors } : {}) });
+    const choreo = sceneChoreography(s.type, s.variant, s.content, (local / fps) * (s.motion?.speed ?? 1), e.durationInFrames / fps, spec.canvas.width, spec.canvas.height, Boolean(plan));
+    scenes.push({ id: s.id, type: s.type, variant: s.variant, localSec: Math.round((local / fps) * 1000) / 1000, progress: Math.round((local / e.durationInFrames) * 1000) / 1000, phase: tin ? 'entering' : tout ? 'leaving' : 'holding', ...(tin ? { transitionIn: tin } : {}), ...(tout ? { transitionOut: tout } : {}), ...(cam ? { camera: cam } : {}), ...(videos.length ? { videos } : {}), ...(lotties.length ? { lotties } : {}), ...(vectors.length ? { vectors } : {}), ...(choreo ? { choreography: choreo } : {}) });
   });
   const sec = frame / fps;
   const sfx = (spec.audio.sfx.cues ?? []).filter((c) => sec >= c.atSec && sec <= c.atSec + c.duration).map((c) => ({ sound: c.sound, at: c.atSec, scene: c.sceneId }));
@@ -118,4 +122,48 @@ export function sceneVectors(type: string, variant: string | undefined, content:
   const programs = vectorPrograms(variant, content as { morphTo?: string }, sceneSec);
   const st = vectorStateAt(programs, localSec);
   return [{ asset: content.svg, ...(typeof content.morphTo === 'string' ? { morphTo: content.morphTo } : {}), ...st }];
+}
+
+export interface SceneChoreography {
+  /** Seconds on the scene's choreography (scene time × motion speed). */
+  t: number;
+  duration: number;
+  /** Named actions running now. */
+  active: string[];
+  /** Markers and cues already passed (latest last). */
+  passed: string[];
+  cursor?: { action: string; visible: number; press: number; hover: number };
+  /** Element responses to the pointer (hover / press / click / released). */
+  elements?: Record<string, { hover: number; press: number; click: number; released: number }>;
+  focus?: Record<string, number>;
+  camera?: CameraState;
+}
+
+/**
+ * Where a choreographed scene is at scene-local second `localSec` (same numbers the scene draws):
+ * running actions, passed cues, the pointer, element responses, focus and the timeline's camera.
+ */
+export function sceneChoreography(type: string, variant: string | undefined, content: Record<string, unknown>, localSec: number, sceneSec: number, W: number, H: number, shellCamera = false): SceneChoreography | undefined {
+  if (type !== 'interaction-flow') return undefined;
+  const c = interactionChoreo(variant ?? 'folder', content as InteractionContent, sceneSec);
+  const t = localSec;
+  const r = (x: number) => Math.round(x * 1000) / 1000;
+  const ix = interactionOf(c);
+  const out: SceneChoreography = { t: r(t), duration: c.duration, active: activeAt(c, t), passed: passedAt(c, t) };
+  if (ix.moves.length || ix.presses.length) {
+    const cur = cursorAt(ix, t, () => ({ x: 0, y: 0 }));
+    const span = [...c.spans].reverse().find((s) => s.target === 'cursor' && s.start <= t);
+    out.cursor = { action: span?.kind ?? 'idle', visible: r(cur.visible), press: r(cur.press), hover: r(cur.hover) };
+    out.elements = Object.fromEntries(ix.targets.map((n) => {
+      const e = elementAt(ix, n, t);
+      return [n, { hover: r(e.hover), press: r(e.press), click: r(e.click), released: r(e.released) }];
+    }));
+  }
+  const f = focusAt(c, t);
+  if (Object.keys(f).length) out.focus = f;
+  if (hasCamera(c) && !shellCamera) {
+    const cam = cameraFromChoreo(c, t, W, H);
+    out.camera = Object.fromEntries(Object.entries(cam).map(([k, v]) => [k, r(v)])) as unknown as CameraState;
+  }
+  return out;
 }

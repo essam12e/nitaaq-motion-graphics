@@ -26,7 +26,11 @@ export interface CameraCtxValue {
 export const CameraCtx = createContext<CameraCtxValue>({ cam: REST, D: 2000, active: false });
 export const useCamera = () => useContext(CameraCtx);
 
-export function CameraRig({ plan, children, style }: { plan?: CameraPlan; children: React.ReactNode; style?: CSSProperties }) {
+/**
+ * `state` (optional) drives the rig directly — the Choreography Engine computes the camera on the
+ * scene's own timeline (src/motion/choreography.ts cameraFromChoreo). Without it the plan is used, as before.
+ */
+export function CameraRig({ plan, children, style, state }: { plan?: CameraPlan; children: React.ReactNode; style?: CSSProperties; state?: CameraState }) {
   const v = useVideo();
   const sc = useScene();
   const frame = useCurrentFrame();
@@ -34,8 +38,8 @@ export function CameraRig({ plan, children, style }: { plan?: CameraPlan; childr
   const W = v.canvas.width;
   const H = v.canvas.height;
   const D = perspectiveOf(W, H);
-  const cam = cameraAt(plan, frame / fps, { W, H, durationSec: sc.entry.durationInFrames / fps });
-  const moving = Boolean(plan && plan.move !== 'static' && plan.amplitude > 0);
+  const cam = state ?? cameraAt(plan, frame / fps, { W, H, durationSec: sc.entry.durationInFrames / fps });
+  const moving = Boolean(state) || Boolean(plan && plan.move !== 'static' && plan.amplitude > 0);
   if (!moving) {
     return (
       <CameraCtx.Provider value={{ cam: REST, D, active: false }}>
@@ -45,7 +49,7 @@ export function CameraRig({ plan, children, style }: { plan?: CameraPlan; childr
   }
   return (
     <CameraCtx.Provider value={{ cam, D, active: true }}>
-      <AbsoluteFill data-qc="camera" data-qc-camera={plan!.move} style={{ perspective: D, perspectiveOrigin: '50% 50%', transform: lensTransform(cam), ...style }}>
+      <AbsoluteFill data-qc="camera" data-qc-camera={state ? 'choreography' : plan!.move} style={{ perspective: D, perspectiveOrigin: '50% 50%', transform: lensTransform(cam), ...style }}>
         <AbsoluteFill style={{ transformStyle: 'preserve-3d', transform: worldTransform(cam, D) }}>{children}</AbsoluteFill>
       </AbsoluteFill>
     </CameraCtx.Provider>

@@ -8155,5 +8155,992 @@
       "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
+  },
+  "interaction-flow": {
+    "variants": [
+      "folder",
+      "button",
+      "drag"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "eyebrow": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 220
+        },
+        "folder": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "subtitle": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "media": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "title"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 6
+        },
+        "button": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "success": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "from": {
+          "type": "string",
+          "enum": [
+            "bottom-right",
+            "bottom-left",
+            "right",
+            "left"
+          ]
+        },
+        "choreography": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "number",
+              "const": 1,
+              "default": 1
+            },
+            "initial": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "number"
+              }
+            },
+            "timeline": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "action"
+                      },
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                      },
+                      "target": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                      },
+                      "dur": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 60
+                      },
+                      "ease": {
+                        "type": "string"
+                      },
+                      "spring": {
+                        "type": "object",
+                        "properties": {
+                          "bounce": {
+                            "type": "number",
+                            "minimum": -1,
+                            "maximum": 0.95
+                          },
+                          "visualDuration": {
+                            "type": "number",
+                            "minimum": 0.05,
+                            "maximum": 4
+                          },
+                          "stiffness": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          },
+                          "damping": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "mass": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "props": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "number"
+                        }
+                      },
+                      "from": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "number"
+                        }
+                      },
+                      "shape": {
+                        "type": "string",
+                        "enum": [
+                          "to",
+                          "pulse",
+                          "kick"
+                        ]
+                      },
+                      "kind": {
+                        "type": "string",
+                        "maxLength": 24
+                      },
+                      "data": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      "event": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "scene_start",
+                                  "headline_reveal",
+                                  "word_impact",
+                                  "text_reveal",
+                                  "product_entry",
+                                  "product_peak_velocity",
+                                  "product_land",
+                                  "button_press",
+                                  "success_state",
+                                  "error_state",
+                                  "warning_state",
+                                  "notification",
+                                  "ui_appear",
+                                  "card_entry",
+                                  "swipe",
+                                  "typing",
+                                  "chart_grow",
+                                  "chart_peak",
+                                  "counter_tick",
+                                  "counter_final",
+                                  "price_reveal",
+                                  "logo_reveal",
+                                  "cta_reveal",
+                                  "scene_transition",
+                                  "draw_stroke",
+                                  "map_route",
+                                  "map_pin",
+                                  "camera_move",
+                                  "hero_reveal",
+                                  "tease",
+                                  "character_enter",
+                                  "head_turn",
+                                  "phone_pickup",
+                                  "phone_tap",
+                                  "gesture_peak",
+                                  "point",
+                                  "reaction",
+                                  "object_land",
+                                  "character_exit"
+                                ]
+                              },
+                              "importance": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              },
+                              "element": {
+                                "type": "string",
+                                "enum": [
+                                  "button",
+                                  "icon",
+                                  "card",
+                                  "panel",
+                                  "dashboard",
+                                  "device",
+                                  "hero-title",
+                                  "text",
+                                  "body",
+                                  "logo",
+                                  "product",
+                                  "chart",
+                                  "number",
+                                  "camera",
+                                  "background",
+                                  "cursor",
+                                  "notification",
+                                  "transition"
+                                ]
+                              },
+                              "area": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              },
+                              "direction": {
+                                "type": "string",
+                                "enum": [
+                                  "left",
+                                  "right",
+                                  "up",
+                                  "down",
+                                  "in",
+                                  "out",
+                                  "none"
+                                ]
+                              },
+                              "anchor": {
+                                "type": "string",
+                                "enum": [
+                                  "start",
+                                  "peak",
+                                  "contact",
+                                  "settle",
+                                  "completion"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "type"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "boolean",
+                            "const": false
+                          }
+                        ]
+                      },
+                      "at": {
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        ]
+                      },
+                      "trigger": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                      },
+                      "follow": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                          },
+                          "on": {
+                            "type": "string",
+                            "enum": [
+                              "start",
+                              "end",
+                              "peak",
+                              "contact",
+                              "settle"
+                            ],
+                            "default": "start"
+                          },
+                          "lag": {
+                            "type": "number",
+                            "minimum": -2,
+                            "maximum": 5,
+                            "default": 0.08
+                          }
+                        },
+                        "required": [
+                          "id"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "handoff": {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                          },
+                          "at": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.7
+                          }
+                        },
+                        "required": [
+                          "from"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "offset": {
+                        "type": "number",
+                        "minimum": -10,
+                        "maximum": 10
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "wait"
+                      },
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                      },
+                      "dur": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 60
+                      },
+                      "at": {
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        ]
+                      },
+                      "trigger": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                      },
+                      "follow": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                          },
+                          "on": {
+                            "type": "string",
+                            "enum": [
+                              "start",
+                              "end",
+                              "peak",
+                              "contact",
+                              "settle"
+                            ],
+                            "default": "start"
+                          },
+                          "lag": {
+                            "type": "number",
+                            "minimum": -2,
+                            "maximum": 5,
+                            "default": 0.08
+                          }
+                        },
+                        "required": [
+                          "id"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "handoff": {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                          },
+                          "at": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.7
+                          }
+                        },
+                        "required": [
+                          "from"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "offset": {
+                        "type": "number",
+                        "minimum": -10,
+                        "maximum": 10
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "dur"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "marker"
+                      },
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                      },
+                      "at": {
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        ]
+                      },
+                      "trigger": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                      },
+                      "follow": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                          },
+                          "on": {
+                            "type": "string",
+                            "enum": [
+                              "start",
+                              "end",
+                              "peak",
+                              "contact",
+                              "settle"
+                            ],
+                            "default": "start"
+                          },
+                          "lag": {
+                            "type": "number",
+                            "minimum": -2,
+                            "maximum": 5,
+                            "default": 0.08
+                          }
+                        },
+                        "required": [
+                          "id"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "handoff": {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                          },
+                          "at": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.7
+                          }
+                        },
+                        "required": [
+                          "from"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "offset": {
+                        "type": "number",
+                        "minimum": -10,
+                        "maximum": 10
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "id"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "cue"
+                      },
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                      },
+                      "event": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "scene_start",
+                              "headline_reveal",
+                              "word_impact",
+                              "text_reveal",
+                              "product_entry",
+                              "product_peak_velocity",
+                              "product_land",
+                              "button_press",
+                              "success_state",
+                              "error_state",
+                              "warning_state",
+                              "notification",
+                              "ui_appear",
+                              "card_entry",
+                              "swipe",
+                              "typing",
+                              "chart_grow",
+                              "chart_peak",
+                              "counter_tick",
+                              "counter_final",
+                              "price_reveal",
+                              "logo_reveal",
+                              "cta_reveal",
+                              "scene_transition",
+                              "draw_stroke",
+                              "map_route",
+                              "map_pin",
+                              "camera_move",
+                              "hero_reveal",
+                              "tease",
+                              "character_enter",
+                              "head_turn",
+                              "phone_pickup",
+                              "phone_tap",
+                              "gesture_peak",
+                              "point",
+                              "reaction",
+                              "object_land",
+                              "character_exit"
+                            ]
+                          },
+                          "importance": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "element": {
+                            "type": "string",
+                            "enum": [
+                              "button",
+                              "icon",
+                              "card",
+                              "panel",
+                              "dashboard",
+                              "device",
+                              "hero-title",
+                              "text",
+                              "body",
+                              "logo",
+                              "product",
+                              "chart",
+                              "number",
+                              "camera",
+                              "background",
+                              "cursor",
+                              "notification",
+                              "transition"
+                            ]
+                          },
+                          "area": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "direction": {
+                            "type": "string",
+                            "enum": [
+                              "left",
+                              "right",
+                              "up",
+                              "down",
+                              "in",
+                              "out",
+                              "none"
+                            ]
+                          },
+                          "anchor": {
+                            "type": "string",
+                            "enum": [
+                              "start",
+                              "peak",
+                              "contact",
+                              "settle",
+                              "completion"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "type"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "at": {
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        ]
+                      },
+                      "trigger": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                      },
+                      "follow": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                          },
+                          "on": {
+                            "type": "string",
+                            "enum": [
+                              "start",
+                              "end",
+                              "peak",
+                              "contact",
+                              "settle"
+                            ],
+                            "default": "start"
+                          },
+                          "lag": {
+                            "type": "number",
+                            "minimum": -2,
+                            "maximum": 5,
+                            "default": 0.08
+                          }
+                        },
+                        "required": [
+                          "id"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "handoff": {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                          },
+                          "at": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.7
+                          }
+                        },
+                        "required": [
+                          "from"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "offset": {
+                        "type": "number",
+                        "minimum": -10,
+                        "maximum": 10
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "id"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "seq",
+                          "par"
+                        ]
+                      },
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                      },
+                      "target": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                      },
+                      "children": {
+                        "type": "array",
+                        "items": {},
+                        "maxItems": 200
+                      },
+                      "at": {
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        ]
+                      },
+                      "trigger": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                      },
+                      "follow": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                          },
+                          "on": {
+                            "type": "string",
+                            "enum": [
+                              "start",
+                              "end",
+                              "peak",
+                              "contact",
+                              "settle"
+                            ],
+                            "default": "start"
+                          },
+                          "lag": {
+                            "type": "number",
+                            "minimum": -2,
+                            "maximum": 5,
+                            "default": 0.08
+                          }
+                        },
+                        "required": [
+                          "id"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "handoff": {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                          },
+                          "at": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.7
+                          }
+                        },
+                        "required": [
+                          "from"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "offset": {
+                        "type": "number",
+                        "minimum": -10,
+                        "maximum": 10
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "children"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "stagger"
+                      },
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                      },
+                      "target": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                      },
+                      "each": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 5
+                      },
+                      "from": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "first",
+                              "last",
+                              "center",
+                              "edges",
+                              "reading"
+                            ]
+                          },
+                          {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        ]
+                      },
+                      "ease": {
+                        "type": "string"
+                      },
+                      "maxTotal": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "children": {
+                        "type": "array",
+                        "items": {},
+                        "maxItems": 200
+                      },
+                      "at": {
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        ]
+                      },
+                      "trigger": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                      },
+                      "follow": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                          },
+                          "on": {
+                            "type": "string",
+                            "enum": [
+                              "start",
+                              "end",
+                              "peak",
+                              "contact",
+                              "settle"
+                            ],
+                            "default": "start"
+                          },
+                          "lag": {
+                            "type": "number",
+                            "minimum": -2,
+                            "maximum": 5,
+                            "default": 0.08
+                          }
+                        },
+                        "required": [
+                          "id"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "handoff": {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z_][A-Za-z0-9_:]*$"
+                          },
+                          "at": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.7
+                          }
+                        },
+                        "required": [
+                          "from"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "offset": {
+                        "type": "number",
+                        "minimum": -10,
+                        "maximum": 10
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "each",
+                      "children"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "maxItems": 400
+            }
+          },
+          "required": [
+            "timeline"
+          ],
+          "additionalProperties": false
+        },
+        "caption": {
+          "type": "string",
+          "maxLength": 80
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
   }
 }

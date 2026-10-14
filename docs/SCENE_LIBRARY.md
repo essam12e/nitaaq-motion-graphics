@@ -2,7 +2,7 @@
 
 _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit by hand._
 
-**99 families · 288 variants · 14 categories.** Every family works in 9:16, 16:9, 1:1 and 4:5 unless noted, validates its `content` with Zod, and ships an example used by the Studio and the visual-regression gallery. **Cost** is the render-cost class used by the effect budget (LOW/MEDIUM/HIGH, see PERFORMANCE.md); **Motion** is the recommended physics and camera use.
+**100 families · 291 variants · 14 categories.** Every family works in 9:16, 16:9, 1:1 and 4:5 unless noted, validates its `content` with Zod, and ships an example used by the Studio and the visual-regression gallery. **Cost** is the render-cost class used by the effect budget (LOW/MEDIUM/HIGH, see PERFORMANCE.md); **Motion** is the recommended physics and camera use.
 
 ## Friendly aliases
 
@@ -39,7 +39,7 @@ _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit b
 | **logo-spotlight**<br>Logo emerges under a moving spotlight or with orbiting rings; variants spotlight / orbit. | **spotlight**, orbit | brand, cta | 2–6 (default 3) | LOW | elements: logo/hero-title; jobs: brand-recall | logo, tagline |
 | **logo-animation**<br>Reveals the user's logo with a reveal chosen from its measured structure (symbol/wordmark split, symmetry, direction). The logo is never distorted: every layer is the same image, ending at identity. | **mask**, stroke, shape-assembly, scale, spotlight, light-sweep, split-assembly, typography-reveal, icon-wordmark, depth, minimal-premium, liquid-morph, energetic | brand, hook, cta, reveal | 1.2–6 (default 3) | LOW | elements: logo/hero-title; jobs: brand-recall | logo, tagline, structure, revealReason |
 
-## ui (10)
+## ui (11)
 
 | Family | Variants | Beats | Duration (s) | Cost | Motion | Content (required*) |
 |---|---|---|---|---|---|---|
@@ -53,6 +53,7 @@ _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit b
 | **landing-page**<br>A landing page from the user's words (or their real screenshot) in a browser: hero, then a smooth scroll to features, then the CTA is pressed. | **scroll**, hero | demo, product, solution | 3–10 (default 5) | MEDIUM | elements: dashboard/cursor/button; jobs: show-how-it-works | eyebrow, title, highlight, subtitle, url, screenshot, pageTitle*, pageSubtitle, pageCta, features |
 | **state-flow**<br>One shared element morphs through product states (logo → search → result → product → cart → checkout → success). Continuity instead of cuts: the eye never loses the subject. | **morph**, morph-trail | demo, solution, process, product | 3.5–16 (default 7) | MEDIUM | elements: card/button/icon/text; jobs: connect-states/show-how-it-works | eyebrow, title, highlight, subtitle, states* |
 | **gsap-sequence**<br>Complex staggered UI timeline driven by GSAP, seeked by the Remotion frame (deterministic). gsap is lazy-loaded and optional: stagger-grid / cascade. | **stagger-grid**, cascade | feature, demo, proof | 2.2–8 (default 3.6) | MEDIUM | elements: dashboard/panel/cursor/card; jobs: show-how-it-works | title, items*, emphasis |
+| **interaction-flow**<br>A user interaction performed on one choreographed timeline: the cursor approaches, hovers, presses and releases, and the target responds (hover lift, press compression, click pulse, state change). Variants: folder (the folder opens and video cards emerge, the camera pushes in, focus hands off to the cards) / button (press → success state) / drag (a card is dragged into a folder). The choreography is editable JSON. | **folder**, button, drag | demo, feature, solution, proof, reveal | 3.5–10 (default 5.5) | MEDIUM | elements: cursor/button/card/panel/camera; jobs: show-how-it-works/direct-action | eyebrow, title, highlight, subtitle, folder, items, button, success, from, choreography, caption |
 
 ## commerce (12)
 
