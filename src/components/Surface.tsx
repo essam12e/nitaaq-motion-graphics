@@ -1,8 +1,15 @@
-/** Style-driven card/panel surface. The same scene looks glassy, neon, paper or comic per style. */
+/**
+ * Style-driven card/panel surface. The same scene looks glassy, neon, paper or comic per style.
+ * `glass` (optional) opts into Glass 2.0 (src/components/glass.ts): frost, thickness, edge light,
+ * specular sweep, simulated refraction, chromatic edge, camera-driven reflections. Without it every
+ * kind renders exactly as before.
+ */
 import React, { type CSSProperties } from 'react';
 import { useVideo } from '../engine/context';
 import { alpha, mix } from '../brand/color';
 import type { SurfaceKind } from '../styles/tokens';
+import { useCamera } from '../camera/CameraRig';
+import { glassLook, type GlassOptions } from './glass';
 
 export interface SurfaceProps {
   children?: React.ReactNode;
@@ -14,9 +21,16 @@ export interface SurfaceProps {
   glow?: number;
   className?: string;
   qc?: string;
+  /** Glass 2.0 options. Given, the surface is a Glass 2.0 pane whatever the style's kind. */
+  glass?: GlassOptions;
 }
 
-export function Surface({ children, style, kind, tone = 'surface', radius, padding, glow, qc }: SurfaceProps) {
+export function Surface(props: SurfaceProps) {
+  if (props.glass) return <GlassSurface {...props} glass={props.glass} />;
+  return <ClassicSurface {...props} />;
+}
+
+function ClassicSurface({ children, style, kind, tone = 'surface', radius, padding, glow, qc }: SurfaceProps) {
   const { tokens: t, canvas, effects } = useVideo();
   const u = canvas.u;
   const k = kind ?? t.surface.kind;
@@ -79,6 +93,32 @@ export function Surface({ children, style, kind, tone = 'surface', radius, paddi
   return (
     <div data-qc="box" data-qc-surface={qc} style={{ ...base, ...look, ...style }}>
       {children}
+    </div>
+  );
+}
+
+function GlassSurface({ children, style, tone = 'surface', radius, padding, glow, qc, glass }: SurfaceProps & { glass: GlassOptions }) {
+  const { tokens: t, canvas, effects } = useVideo();
+  const cam = useCamera();
+  const u = canvas.u;
+  const p = t.palette;
+  const toneBg = tone === 'primary' ? p.primary : tone === 'accent' ? p.accent : tone === 'alt' ? p.surfaceAlt : tone === 'inverse' ? p.textPrimary : p.surface;
+  const look = glassLook(
+    { ...glass, tint: glass.tint ?? toneBg },
+    { u, mode: t.mode, surface: toneBg, surfaceOpacity: t.surface.opacity, shadowColor: t.shadow.color, shadowStrength: t.shadow.strength, full: effects === 'full', inCamera: cam.active },
+  );
+  const g = glow ?? 0;
+  const body = g > 0 ? { ...look.body, boxShadow: `${look.body.boxShadow}, 0 0 ${4 * u * g}px ${alpha(p.glow, 0.22 * g)}` } : look.body;
+  return (
+    <div
+      data-qc="box"
+      data-qc-surface={qc}
+      data-qc-glass={look.live ? 'live' : 'simulated'}
+      style={{ position: 'relative', borderRadius: (radius ?? t.surface.radius) * u, padding: padding !== undefined ? padding * u : undefined, boxSizing: 'border-box', ...body, ...style }}
+    >
+      {look.layers.filter((l) => !l.over).map((l) => <div key={l.key} data-glass-layer={l.key} style={l.style} />)}
+      {children}
+      {look.layers.filter((l) => l.over).map((l) => <div key={l.key} data-glass-layer={l.key} style={l.style} />)}
     </div>
   );
 }

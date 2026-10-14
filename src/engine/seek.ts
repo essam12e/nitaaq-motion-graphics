@@ -15,9 +15,12 @@ import { musicVolumeAt } from '../audio/mix';
 import { mergeClips, resolveClip, videoTimeAt, type ClipPhase, type VideoClip } from '../media/video';
 import { vectorPrograms, vectorStateAt, GRAPH_START, type VectorSceneState } from '../vector/scene-program';
 import { graphDuration, type VectorGraph } from '../vector/graph';
-import { activeAt, cameraFromChoreo, focusAt, hasCamera, passedAt } from '../motion/choreography';
+import { activeAt, cameraFromChoreo, focusAt, hasCamera, passedAt, valueAt } from '../motion/choreography';
 import { interactionOf, cursorAt, elementAt } from '../motion/interaction';
 import { interactionChoreo, type InteractionContent } from '../scenes/interaction/program';
+import { spatialChoreo, type SpatialContent } from '../scenes/spatial/program';
+import { folderState, type FolderState } from '../components/glass-folder-state';
+import { galleryFocus } from '../camera/spatial';
 
 export interface FrameState {
   t: number;
@@ -69,6 +72,8 @@ export function sceneVideos(spec: VideoSpec, content: Record<string, unknown>, l
     out.push({ asset: hit.id, ...t });
   };
   push(content.video, content.clip as VideoClip | undefined);
+  // cards of the spatial families: items[i].media with items[i].clip
+  if (Array.isArray(content.items)) for (const it of content.items) if (it && typeof it === 'object') push((it as { media?: unknown }).media, (it as { clip?: VideoClip }).clip);
   if (Array.isArray(content.videos)) content.videos.forEach((v, i) => push(v, (content.clips as VideoClip[] | undefined)?.[i]));
   for (const [k, v] of Object.entries(content)) if (k !== 'video' && k !== 'videos' && (typeof v === 'string' || Array.isArray(v))) [v].flat().forEach((x) => push(x));
   return out;
@@ -137,6 +142,10 @@ export interface SceneChoreography {
   elements?: Record<string, { hover: number; press: number; click: number; released: number }>;
   focus?: Record<string, number>;
   camera?: CameraState;
+  /** glass-folder: the GlassPortfolioFolder state (closed / hover / pressed / opening / open / exploded). */
+  folder?: { state: FolderState; open: number; explode: number };
+  /** spatial-gallery: the tour (−1 overview, i = card i), the blend back to the overview, the card in focus (−1 none). */
+  gallery?: { travel: number; back: number; focused: number };
 }
 
 /**
@@ -144,8 +153,11 @@ export interface SceneChoreography {
  * running actions, passed cues, the pointer, element responses, focus and the timeline's camera.
  */
 export function sceneChoreography(type: string, variant: string | undefined, content: Record<string, unknown>, localSec: number, sceneSec: number, W: number, H: number, shellCamera = false): SceneChoreography | undefined {
-  if (type !== 'interaction-flow') return undefined;
-  const c = interactionChoreo(variant ?? 'folder', content as InteractionContent, sceneSec);
+  if (type !== 'interaction-flow' && type !== 'glass-folder' && type !== 'spatial-gallery') return undefined;
+  const c =
+    type === 'interaction-flow'
+      ? interactionChoreo(variant ?? 'folder', content as InteractionContent, sceneSec)
+      : spatialChoreo(type, variant ?? (type === 'glass-folder' ? 'open' : 'corridor'), content as SpatialContent, sceneSec);
   const t = localSec;
   const r = (x: number) => Math.round(x * 1000) / 1000;
   const ix = interactionOf(c);
@@ -164,6 +176,19 @@ export function sceneChoreography(type: string, variant: string | undefined, con
   if (hasCamera(c) && !shellCamera) {
     const cam = cameraFromChoreo(c, t, W, H);
     out.camera = Object.fromEntries(Object.entries(cam).map(([k, v]) => [k, r(v)])) as unknown as CameraState;
+  }
+  if (type === 'glass-folder') {
+    const e = elementAt(ix, 'folder', t);
+    const open = valueAt(c, 'folder.open', t);
+    const explode = valueAt(c, 'folder.explode', t);
+    out.folder = { state: folderState({ reveal: valueAt(c, 'folder.reveal', t, 1), hover: e.hover, press: e.press, open, explode, glow: 0, dim: 0 }), open: r(open), explode: r(explode) };
+  }
+  if (type === 'spatial-gallery') {
+    // the gallery's camera is solved from the scene's layout (src/camera/spatial.ts); seek reports the tour itself
+    const n = Math.max(2, Math.min(6, Array.isArray(content.items) ? content.items.length : 4));
+    const travel = shellCamera ? -1 : valueAt(c, 'gallery.travel', t, -1);
+    const back = shellCamera ? 0 : valueAt(c, 'gallery.back', t);
+    out.gallery = { travel: r(travel), back: r(back), focused: galleryFocus(n, travel, back).findIndex((f) => f > 0.5) };
   }
   return out;
 }

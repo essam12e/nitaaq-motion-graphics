@@ -319,7 +319,11 @@ export function QCProbe() {
     };
     // Wait for images to decode + two frames for layout to settle.
     const imgs = Array.from(document.images).filter((i) => !i.complete);
-    // Videos (OffthreadVideo) mount their frame <img> asynchronously, Lottie players draw after loading: wait (max 6 s).
+    // Videos (OffthreadVideo) mount their frame <img> asynchronously, Lottie players draw after loading: wait
+    // (6 s, plus 3 s per video, at most 24 s, inside the 30 s render timeout: a probe that jumps into a long-GOP source decodes from the last
+    // keyframe, and several videos in one frame queue behind each other on the frame server)
+    const videoCount = document.querySelectorAll('[data-qc-kind="video"]').length;
+    const waitMs = Math.min(24000, 6000 + 3000 * videoCount);
     const videosReady = () =>
       new Promise<void>((r) => {
         const t0 = performance.now();
@@ -329,7 +333,7 @@ export function QCProbe() {
               const img = el.querySelector('img');
               return !img || !img.complete || img.naturalWidth === 0;
             }) || document.querySelector('[data-qc-lottie="loading"], [data-qc-vector="loading"]') !== null;
-          if (!pending || performance.now() - t0 > 6000) r();
+          if (!pending || performance.now() - t0 > waitMs) r();
           else setTimeout(tick, 40);
         };
         tick();

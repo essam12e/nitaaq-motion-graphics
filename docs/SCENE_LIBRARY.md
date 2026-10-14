@@ -2,7 +2,7 @@
 
 _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit by hand._
 
-**100 families · 291 variants · 14 categories.** Every family works in 9:16, 16:9, 1:1 and 4:5 unless noted, validates its `content` with Zod, and ships an example used by the Studio and the visual-regression gallery. **Cost** is the render-cost class used by the effect budget (LOW/MEDIUM/HIGH, see PERFORMANCE.md); **Motion** is the recommended physics and camera use.
+**102 families · 295 variants · 14 categories.** Every family works in 9:16, 16:9, 1:1 and 4:5 unless noted, validates its `content` with Zod, and ships an example used by the Studio and the visual-regression gallery. **Cost** is the render-cost class used by the effect budget (LOW/MEDIUM/HIGH, see PERFORMANCE.md); **Motion** is the recommended physics and camera use.
 
 ## Friendly aliases
 
@@ -39,7 +39,7 @@ _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit b
 | **logo-spotlight**<br>Logo emerges under a moving spotlight or with orbiting rings; variants spotlight / orbit. | **spotlight**, orbit | brand, cta | 2–6 (default 3) | LOW | elements: logo/hero-title; jobs: brand-recall | logo, tagline |
 | **logo-animation**<br>Reveals the user's logo with a reveal chosen from its measured structure (symbol/wordmark split, symmetry, direction). The logo is never distorted: every layer is the same image, ending at identity. | **mask**, stroke, shape-assembly, scale, spotlight, light-sweep, split-assembly, typography-reveal, icon-wordmark, depth, minimal-premium, liquid-morph, energetic | brand, hook, cta, reveal | 1.2–6 (default 3) | LOW | elements: logo/hero-title; jobs: brand-recall | logo, tagline, structure, revealReason |
 
-## ui (11)
+## ui (12)
 
 | Family | Variants | Beats | Duration (s) | Cost | Motion | Content (required*) |
 |---|---|---|---|---|---|---|
@@ -54,6 +54,7 @@ _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit b
 | **state-flow**<br>One shared element morphs through product states (logo → search → result → product → cart → checkout → success). Continuity instead of cuts: the eye never loses the subject. | **morph**, morph-trail | demo, solution, process, product | 3.5–16 (default 7) | MEDIUM | elements: card/button/icon/text; jobs: connect-states/show-how-it-works | eyebrow, title, highlight, subtitle, states* |
 | **gsap-sequence**<br>Complex staggered UI timeline driven by GSAP, seeked by the Remotion frame (deterministic). gsap is lazy-loaded and optional: stagger-grid / cascade. | **stagger-grid**, cascade | feature, demo, proof | 2.2–8 (default 3.6) | MEDIUM | elements: dashboard/panel/cursor/card; jobs: show-how-it-works | title, items*, emphasis |
 | **interaction-flow**<br>A user interaction performed on one choreographed timeline: the cursor approaches, hovers, presses and releases, and the target responds (hover lift, press compression, click pulse, state change). Variants: folder (the folder opens and video cards emerge, the camera pushes in, focus hands off to the cards) / button (press → success state) / drag (a card is dragged into a folder). The choreography is editable JSON. | **folder**, button, drag | demo, feature, solution, proof, reveal | 3.5–10 (default 5.5) | MEDIUM | elements: cursor/button/card/panel/camera; jobs: show-how-it-works/direct-action | eyebrow, title, highlight, subtitle, folder, items, button, success, from, choreography, caption |
+| **glass-folder**<br>A portfolio folder made of Glass 2.0 layers (frosted back and front panes, inner sheets, lit rim, specular sweep, simulated refraction, chromatic edge) taken through its six states on one choreographed timeline: closed → hover → pressed → opening → open → exploded. The cursor presses it, the click sounds, it opens and video cards rise out; the camera pushes in and focus hands off to the cards. explode: then the glass layers separate and the cards fan out. | **open**, explode | demo, feature, solution, proof, reveal | 3.5–10 (default 5.5) | MEDIUM | elements: cursor/card/panel/camera; jobs: show-how-it-works/direct-action | eyebrow, title, highlight, subtitle, folder, items, from, choreography, caption |
 
 ## commerce (12)
 
@@ -72,7 +73,7 @@ _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit b
 | **product-hero**<br>Hero shot of the user's real product (pixels never altered); variants drop-land / rim-light / dark-reveal. | drop-land, **rim-light**, dark-reveal | product, reveal, hook | 2–8 (default 3.4) | MEDIUM | elements: product/card/button; jobs: show-the-product | image*, name, title, highlight, price |
 | **product-depth**<br>The product lands with a physical spring on the hero plane, a light form sits on the background plane and a streak on the foreground plane: a camera move produces real parallax. The product is never recoloured or distorted. | **center**, side | product, reveal, solution | 2.4–7 (default 4) | MEDIUM | elements: product/hero-title/camera; jobs: hero-reveal/show-the-product | image*, name, title*, highlight, price |
 
-## media (8)
+## media (9)
 
 | Family | Variants | Beats | Duration (s) | Cost | Motion | Content (required*) |
 |---|---|---|---|---|---|---|
@@ -84,6 +85,7 @@ _Generated from the SceneRegistry by `npx tsx cli/gen-docs.ts` — do not edit b
 | **lottie-moment**<br>The user’s own Lottie animation, frame-accurate (trim by seconds or marker, loop, speed): a logo that plays its own reveal before the name lands, an animated icon on a tile beside the message, or a large illustration with its headline; variants logo / icon / hero. | logo, icon, **hero** | brand, reveal, hook, feature, solution, cta | 1.6–10 (default 3.2) | HIGH | elements: panel/camera; jobs: show-the-product | eyebrow, title, highlight, subtitle, lottie*, clip, caption |
 | **vector-draw**<br>The user’s own SVG brought to life from its real geometry: outlines traced then filled, groups assembled from their own centres, or morphed shape by shape into a second SVG with colours and gradients blending; variants draw / build / morph / sequence (draw, then morph) / graph (procedural art from a non-destructive vector graph: shapes, transforms, booleans, masks, fills, trimmed strokes, effects, all keyframable). | **draw**, build, morph, sequence, graph | hook, reveal, brand, feature, solution, proof | 2–10 (default 4) | HIGH | elements: panel/camera; jobs: show-the-product | eyebrow, title, highlight, subtitle, svg, graph, morphTo, order, drawSeconds, morphSeconds, arc, role, caption |
 | **video-showcase**<br>The user’s own video clips inside the film (frame-accurate trim / loop / speed): a card on a surface, up to four clips playing together, a clip inside a shape mask, or one full-bleed clip under the title; variants card / split / mask / full. | **card**, split, mask, full | hook, demo, product, feature, social | 2–12 (default 4) | HIGH | elements: panel/camera; jobs: show-the-product | eyebrow, title, highlight, subtitle, video*, videos, role, mask, clip, clips, caption |
+| **spatial-gallery**<br>Several videos playing at once on Glass 2.0 cards placed in depth; the camera tours them. corridor: the cards alternate sides down a corridor and the camera flies from one to the next, passing the ones it leaves behind. wall: the camera starts on the whole wall, visits each card (pulling back between them) and returns. Focus, depth of field and the glass reflections follow the camera; the focused card’s title shows below. | **corridor**, wall | demo, feature, proof, reveal, montage, product | 4.5–14 (default 7.5) | HIGH | elements: card/camera/panel; jobs: show-the-product/hero-moment | eyebrow, title, highlight, subtitle, items, cardAspect, choreography |
 
 ## mobile (4)
 
