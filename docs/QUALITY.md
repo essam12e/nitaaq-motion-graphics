@@ -22,6 +22,7 @@ Probes and pattern scans are cached per frame, so a repair pass re-checks only w
 | design | banned patterns (`design/banned-patterns.json`, spec level), `PATTERN_IN_FRAME` (pixel detector on stills: dot lattice, particle field, line grid, with text/media/card areas masked), contrast on real pixels, `TEXT_TOO_SMALL`, `PHONE_UNREADABLE` (text measured at phone size: 390 px wide portrait / 640 px landscape; minimum px per role), `LAYOUT_UNDERFILLED` |
 | motion | `HOLD_TOO_SHORT`, `VOICE_DRIFT`, `MOTION_NO_PURPOSE`, `CAMERA_OVERUSE`, `TRANSITION_MONOTONY` (> 50 % of ≥ 4 cuts one type), `TRANSITION_REPEAT` (back-to-back), `TEXT_MOTION_REPEAT`, `TEXT_MOTION_OVERUSED`, `PERSONALITY_MISMATCH` |
 | audio | `SFX_REPEAT_CONSECUTIVE` (error: same file back-to-back), `SFX_REPEAT_OVERUSED` (one file > max(2, ⌈n/5⌉) times), `SFX_DENSITY` (> round(6 + 10 × intensity) cues per 10 s), `SFX_SYNC` (> 80 ms from its anchor; builds excluded), `SFX_VOICE_CLASH`, `SFX_KEY_SILENT` (logo / hero / price / CTA / final counter with no sound), `SFX_DOUBLES_MUSIC` (info), `AUDIO_EMPTY` — see `SOUND_DIRECTOR.md` |
+| spatial (in structure / design / motion) | `DEPTH_TOO_CLOSE` (hero plane inside the near band without pass-through; repair = largest safe amplitude), `DEPTH_OCCLUSION` (a card / layer in front of the hero plane over critical text, product or logo), `HERO_NOT_VISIBLE` / `HERO_TOO_SMALL`, `LOGO_OUTSIDE_SAFE` / `HERO_OUTSIDE_SAFE`, `TRANSITION_CORRIDOR` (the next subject lands against the transition's travel), `TRANSITION_TEXT_CLASH`, `CONTINUITY_BREAK`, `PERF_BUDGET` / `PERF_LAYERS`, `FX_BUDGET` — see below |
 | technical (final) | MP4 container, H.264/yuv420p, size, fps, duration, encoder signatures stripped, audio present / not clipping / loudness, blank frames, pattern + contrast re-checked on decoded frames (all sampled frames extracted in one decode), `LOOP_SEAM` for loops |
 
 ## Scores and critique
@@ -65,3 +66,15 @@ Beyond the fixed sample grid, QA now samples the **moments that matter**: the mi
 ## Quality scoring as a gate
 
 `quality_report.json → categories`: composition, motion, typography, camera, brand, audio, technical and overall (weighted). Delivery needs **every category ≥ 50 and overall ≥ 70**, in addition to zero critical issues — a single bad category blocks even when the average is high. New acceptance rules: product protection, camera framing, the quality gate.
+
+## Spatial QC (Premium Phase 9)
+
+`src/qc/spatial-qc.ts` runs inside the structural pass on the same cached probes (no extra browser work) and works in fractions of the canvas, so 9:16 and 16:9 share the rules (safe areas come from the canvas profile of each format). The probe now also reports depth layers / spatial cards (`layers`: depth, pass-through opacity, true rect), live micro FX and motion-blur layers.
+
+- **Depth**: the hero plane's clearance is sampled over every camera move; occlusion is measured on settled frames (full-frame decorative layers are ignored, a layer already fading through counts only above 50 %).
+- **Hero**: the declared hero scene (else the first reveal / product / brand beat) must show its identity media (else its critical text) fully on screen, ≥ 85 % opaque, at least once while it holds.
+- **Transition corridor**: for transitions that travel (push, slide, foreground-card-wipe, glass-wipe, directional-blur) the focal point of B must not land more than 35 % of the frame back against the travel.
+- **Motion Continuity Score**: per cut, from the transition's vector, the cameras' measured motion over the last / first 40 % of each scene, or the family's edge; film score = mean. Below 0.45 → `CONTINUITY_BREAK`.
+- **Budgets**: the effect cost (performance budget), live videos / motion-blur layers on one frame, and the FX budget (film cap + concurrent cost, hand-placed accents included).
+
+`quality-report.json → spatial` holds the metrics (continuity per cut, hero coverage, corridors, minimum clearance, occlusions, perf, fx, score). Acceptance adds: *hero visible, never hidden behind a depth layer or pushed past the lens*.

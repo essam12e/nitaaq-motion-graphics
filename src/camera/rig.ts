@@ -193,3 +193,22 @@ export function unprojectRect(r: RectPx, d: number, c: CameraState, W: number, H
   const y0 = Math.min(...ys);
   return { x: x0, y: y0, width: Math.max(...xs) - x0, height: Math.max(...ys) - y0 };
 }
+
+/**
+ * Pass-through (opt-in): a plane the camera flies past fades out over this clearance band instead of
+ * colliding with the lens, so a camera may travel through a layer. Spatial scenes and plans with
+ * `passThrough: true` use it; everything else keeps the collision rule.
+ */
+export const PASS_BAND: [number, number] = [NEAR + 0.07, NEAR + 0.4];
+
+/** Opacity of a plane at a given clearance under pass-through (1 far away, 0 before it reaches NEAR). */
+export function passOpacity(clear: number): number {
+  const t = Math.min(1, Math.max(0, (clear - PASS_BAND[0]) / (PASS_BAND[1] - PASS_BAND[0])));
+  return t * t * (3 - 2 * t);
+}
+
+/** Linear blend of two camera states (focus / aperture included). */
+export function mixCamera(a: CameraState, b: CameraState, t: number): CameraState {
+  const l = (x: number, y: number) => x + (y - x) * t;
+  return { x: l(a.x, b.x), y: l(a.y, b.y), dolly: l(a.dolly, b.dolly), zoom: l(a.zoom, b.zoom), tilt: l(a.tilt, b.tilt), yaw: l(a.yaw, b.yaw), roll: l(a.roll, b.roll), focus: l(a.focus, b.focus), aperture: l(a.aperture, b.aperture) };
+}

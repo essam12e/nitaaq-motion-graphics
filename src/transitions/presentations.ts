@@ -9,12 +9,14 @@ import { CapabilityRegistry } from '../core/registry';
 import { ADVANCED, type TransitionCtx } from './advanced';
 export type { TransitionCtx };
 
-export type OverlayKind = 'light-sweep' | 'color-sweep' | 'color-dip' | 'object-sweep' | 'text-sweep' | 'color-flood';
+export type OverlayKind = 'light-sweep' | 'color-sweep' | 'color-dip' | 'object-sweep' | 'text-sweep' | 'color-flood' | 'card-wipe' | 'glass-wipe';
 
 export interface TransitionFrame {
   exit: CSSProperties;
   enter: CSSProperties;
   overlay?: { kind: OverlayKind; p: number };
+  /** Directional blur (px along x, y) for the exiting / entering scene — drawn with an SVG filter. */
+  blur?: { exit?: [number, number]; enter?: [number, number] };
 }
 
 /** What a transition says about the relationship between two scenes. */

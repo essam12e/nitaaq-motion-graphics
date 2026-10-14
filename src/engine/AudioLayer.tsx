@@ -2,7 +2,7 @@
 import React, { useMemo } from 'react';
 import { Audio, Sequence, staticFile } from 'remotion';
 import { useVideo, resolveAssetUrl } from './context';
-import { musicVolumeAt, planSfx } from '../audio/mix';
+import { musicNextVolumeAt, musicVolumeAt, planSfx } from '../audio/mix';
 import { SceneRegistry } from '../scenes/registry';
 
 export function sfxUrl(file: string, assetBase: string): string {
@@ -16,6 +16,7 @@ export function AudioLayer({ fps }: { fps: number }) {
   const sfx = useMemo(() => planSfx(spec, timeline, (s) => SceneRegistry.get(s.type)?.manifest.sfx ?? []), [spec, timeline]);
   const voice = spec.audio.mode !== 'none' ? spec.audio.voice : undefined;
   const music = spec.audio.music;
+  const next = music ? spec.audio.musicNext : undefined;
   const total = timeline.totalSec;
   // audio sources may be asset ids or project-relative paths
   const url = (src: string) => resolveAssetUrl(spec.assets[src]?.src ?? src, v.assetBase);
@@ -35,6 +36,17 @@ export function AudioLayer({ fps }: { fps: number }) {
           volume={(f) => musicVolumeAt(f / fps, spec, total)}
           name="music"
         />
+      ) : null}
+      {next ? (
+        // crossfaded second cue: starts at the crossfade, equal-power against the first
+        <Sequence from={Math.round(next.at * fps)} name="music next">
+          <Audio
+            src={url(next.src)}
+            loop={next.loop}
+            trimBefore={next.trimStart > 0 ? Math.round(next.trimStart * fps) : undefined}
+            volume={(f) => musicNextVolumeAt(next.at + f / fps, spec, total)}
+          />
+        </Sequence>
       ) : null}
       {sfx.map((c, i) => (
         <Sequence key={i} from={Math.max(0, Math.round(c.atSec * fps))} durationInFrames={Math.max(1, Math.ceil((c.duration + 0.1) * fps))} name={`sfx ${c.sound}`}>

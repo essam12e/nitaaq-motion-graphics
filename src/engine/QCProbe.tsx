@@ -101,6 +101,11 @@ export interface ProbeResult {
   boxes: { scene: string; rect: { x: number; y: number; width: number; height: number }; opacity: number }[];
   /** Characters on screen (Character Motion Engine): art + head boxes after every transform. */
   characters?: ProbeCharacter[];
+  /** Spatial QC (Phase 9): depth layers / spatial cards (plane depth, pass-through opacity, true rect). */
+  layers?: { scene: string; depth: number; pass: number; card: boolean; video: boolean; rect: { x: number; y: number; width: number; height: number }; opacity: number }[];
+  /** Micro FX live on this frame, per scene, and camera layers with a velocity motion blur. */
+  fx?: { scene: string; kinds: string[] }[];
+  motionBlur?: number;
   errors: { scene: string; error: string }[];
   fonts: unknown;
   debugOverlay: boolean;
@@ -283,6 +288,17 @@ export function collectProbe(frame: number, width: number, height: number): Prob
       opacity: effOpacity(art),
     };
   });
+  const layers = Array.from(document.querySelectorAll('[data-qc-depth]')).map((el) => ({
+    scene: sceneOf(el),
+    depth: Number(el.getAttribute('data-qc-depth') ?? 0),
+    pass: Number(el.getAttribute('data-qc-pass') ?? 1),
+    card: el.hasAttribute('data-qc-spatial-card'),
+    video: Boolean(el.querySelector('video, [data-qc-kind="video"]')),
+    rect: rectOf(el),
+    opacity: effOpacity(el),
+  }));
+  const fx = Array.from(document.querySelectorAll('[data-qc="micro-fx"]')).map((el) => ({ scene: sceneOf(el), kinds: (el.getAttribute('data-qc-fx') ?? '').split(',').filter(Boolean) }));
+  const motionBlur = document.querySelectorAll('[data-qc-motion-blur]').length;
   const errors = Array.from(document.querySelectorAll('[data-qc="scene-error"]')).map((el) => ({
     scene: el.getAttribute('data-qc-scene') ?? '',
     error: el.getAttribute('data-qc-error') ?? 'unknown',
@@ -294,6 +310,9 @@ export function collectProbe(frame: number, width: number, height: number): Prob
     media,
     boxes,
     characters,
+    layers,
+    fx,
+    motionBlur,
     errors,
     fonts: (window as unknown as { __AMD_FONTS?: unknown }).__AMD_FONTS ?? null,
     debugOverlay: Boolean(document.querySelector('[data-qc="debug-overlay"]')),

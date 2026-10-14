@@ -87,6 +87,8 @@ export interface MotionEventDecl {
    * instead of the element's physics profile (character gestures, phone taps).
    */
   exact?: { start: number; peak: number; contact: number; settle: number; completion: number };
+  /** Where on screen the moment happens (fraction of the canvas) — Micro FX place their accent here. */
+  pos?: { x: number; y: number };
 }
 
 /** A resolved event on the film timeline. */
@@ -111,6 +113,8 @@ export interface MotionEvent extends Required<Pick<MotionEventDecl, 'type' | 'at
   sceneEnergy: number;
   /** Filled for scene_transition events. */
   transition?: string;
+  /** Screen position of the moment when the scene declared one. */
+  pos?: { x: number; y: number };
 }
 
 /** Default anchor per semantic event: where a professional would put the sound. */
@@ -328,6 +332,7 @@ export function detectEvents(scenes: SceneEventSource[], personality: MotionPers
           direction: d.direction ?? 'none',
           impact: Math.round(Math.min(1, massK * 0.6 + Math.min(1, speed / 8) * 0.4) * 100) / 100,
           sceneEnergy: s.energy,
+          ...(d.pos ? { pos: d.pos } : {}),
         });
       }
     }

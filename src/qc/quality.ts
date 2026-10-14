@@ -32,6 +32,9 @@ import { bundleKey } from '../node/bundle';
 import { visualQa, categoryScores, gateOk, GATE, type Category } from './vqa';
 import { detectPatterns, type Rect } from './pattern-detect';
 import { characterStructuralQc, characterPixelQc } from './character-qc';
+import { spatialQc, type SpatialMetrics } from './spatial-qc';
+import { cameraAt, resolvePlan, type CameraPlan } from '../camera/moves';
+import { clearance } from '../camera/rig';
 import { checkBannedPatterns } from '../design/banned';
 import { cached, fileHash, hashOf } from '../cache/store';
 import { resolveStyle } from '../styles/resolve';
@@ -78,6 +81,8 @@ export interface QualityReport {
   determinism?: { frames: [number, number]; meanDiff: number; maxDiff: number; ok: boolean };
   media?: { duration: number; width?: number; height?: number; fps?: number; codec?: string; pixFmt?: string; hasAudio: boolean; bytes?: number };
   audio?: { integratedLufs: number | null; truePeak: number | null; meanVolume: number | null; maxVolume: number | null };
+  /** Spatial QC (depth, hero, safe areas, transition corridors, motion continuity, performance and FX budgets). */
+  spatial?: SpatialMetrics;
   contactSheet?: string;
   phoneSheet?: string;
   repairPass?: number;
@@ -190,6 +195,7 @@ function acceptanceOf(issues: QcIssue[], stage: 'structure' | 'final', checks: Q
     { rule: 'no debug overlay in output', ok: none((i) => i.code === 'DEBUG_OVERLAY') },
     { rule: 'product and logo shown exactly as supplied (no recolour / stretch)', ok: none((i) => (i.code === 'PRODUCT_ALTERED' || i.code === 'PRODUCT_DISTORTED') && severityRank(i.severity) >= 2) },
     { rule: 'camera never breaks framing of text / product / logo', ok: none((i) => i.code === 'CAMERA_FRAMING' && severityRank(i.severity) >= 2) },
+    { rule: 'hero visible, never hidden behind a depth layer or pushed past the lens', ok: none((i) => ['HERO_NOT_VISIBLE', 'DEPTH_OCCLUSION', 'DEPTH_TOO_CLOSE'].includes(i.code) && severityRank(i.severity) >= 2) },
   ];
   if (stage === 'final') {
     rules.push({ rule: 'valid H.264/yuv420p MP4 at the right size, fps and duration', ok: none((i) => i.code.startsWith('MP4_') && severityRank(i.severity) >= 2 && i.code !== 'MP4_SIGNATURE') });
@@ -455,7 +461,29 @@ export async function structuralQc(opts: { spec: VideoSpec; projectDir: string; 
       i.repair = { action: 'camera-solve', data: { plan: sol.plan } };
     }
   }
+  // a pass-through camera (flythrough) grows the hero plane past the frame on purpose while it closes in:
+  // text leaving the frame then is the move, not a layout fault (the layout is never shrunk for it)
+  for (const i of issues) {
+    if (!(i.code === 'TEXT_OFF_CANVAS' || i.code === 'TEXT_OUTSIDE_SAFE') || i.sceneIndex === undefined || i.frame === undefined) continue;
+    const sc = spec.scenes[i.sceneIndex];
+    const plan = resolvePlan(sc?.motion?.cameraPlan as CameraPlan | undefined);
+    if (!plan?.passThrough) continue;
+    const e = tl.entries[i.sceneIndex];
+    const cam = cameraAt(plan, (i.frame - e.from) / spec.canvas.fps, { W: spec.canvas.width, H: spec.canvas.height, durationSec: e.durationInFrames / spec.canvas.fps });
+    const clear = clearance(0, cam);
+    if (clear < 0.8) {
+      i.severity = 'info';
+      i.code = 'PASS_THROUGH_TEXT';
+      i.message = `${i.message} — the camera is flying through this plane (clearance ${clear.toFixed(2)}), expected`;
+      i.repair = undefined;
+    }
+  }
   checks.camera = vqa.cameraScenes.size ? 'fail' : 'pass';
+  // ── Spatial QC: depth, hero, safe areas, corridors, continuity, budgets (same probes) ──
+  const spatial = spatialQc({ spec, tl, samples, probes, canvas });
+  for (const i of spatial.issues) add(/^(DEPTH_|HERO_|LOGO_)/.test(i.code) ? 'structure' : /^(TRANSITION_|CONTINUITY_)/.test(i.code) ? 'motion' : 'design', i);
+  checks.spatial = spatial.issues.some((i) => severityRank(i.severity) >= 2) ? 'fail' : 'pass';
+  timings.spatialMs = Date.now() - tv;
   // deterministic seek (first pass only): render A, seek away to B, render A again
   let determinism: QualityReport['determinism'];
   if ((opts.pass ?? 1) <= 1 && process.env.NITAAQ_SKIP_DETERMINISM !== '1') {
@@ -496,7 +524,7 @@ export async function structuralQc(opts: { spec: VideoSpec; projectDir: string; 
   timings.sheetMs = Date.now() - ts;
   timings.totalMs = Date.now() - t0;
 
-  const report = finalize(spec, issues, checks, { video: null, stage: 'structure', samples: samples.map((s) => ({ frame: s.frame, time: Math.round(s.time * 100) / 100, scene: s.scene, kind: s.kind })), determinism, contactSheet, phoneSheet, repairPass: opts.pass, timings, probeCache: { rendered: run.rendered, cached: run.cached } }, ['structure', 'design', 'motion']);
+  const report = finalize(spec, issues, checks, { video: null, stage: 'structure', samples: samples.map((s) => ({ frame: s.frame, time: Math.round(s.time * 100) / 100, scene: s.scene, kind: s.kind })), determinism, spatial: spatial.metrics, contactSheet, phoneSheet, repairPass: opts.pass, timings, probeCache: { rendered: run.rendered, cached: run.cached } }, ['structure', 'design', 'motion']);
   writeFileSync(join(opts.outDir, 'quality-report.json'), JSON.stringify(report, null, 2));
   log.stage('QUALITY', `structure ${report.passed ? 'PASSED' : 'FAILED'} — critical ${report.summary.critical}, error ${report.summary.error}, warning ${report.summary.warning}; probes ${run.rendered} rendered / ${run.cached} cached (${(timings.totalMs / 1000).toFixed(1)}s)`);
   return { report, samples, probes, stills: run.stills };
@@ -677,7 +705,7 @@ export async function finalQc(opts: { spec: VideoSpec; projectDir: string; video
 
   // sound-design / motion-variety findings from produce's sound stage
   if (opts.extraIssues?.length) issues.push(...opts.extraIssues);
-  const report = finalize(spec, issues, checks, { video, stage: 'final', profile: opts.profile, samples: structural.report.samples, media, audio, contactSheet: structural.report.contactSheet, phoneSheet: structural.report.phoneSheet, repairPass: opts.pass, timings, probeCache: structural.report.probeCache, determinism: structural.report.determinism }, opts.extraIssues ? ['structure', 'design', 'motion', 'audio', 'technical'] : ['structure', 'design', 'motion', 'technical']);
+  const report = finalize(spec, issues, checks, { video, stage: 'final', profile: opts.profile, samples: structural.report.samples, media, audio, contactSheet: structural.report.contactSheet, phoneSheet: structural.report.phoneSheet, repairPass: opts.pass, timings, probeCache: structural.report.probeCache, determinism: structural.report.determinism, spatial: structural.report.spatial }, opts.extraIssues ? ['structure', 'design', 'motion', 'audio', 'technical'] : ['structure', 'design', 'motion', 'technical']);
   writeFileSync(join(opts.outDir, 'quality-report.json'), JSON.stringify(report, null, 2));
   log.stage('QUALITY', `final ${report.passed ? 'PASSED' : 'FAILED'} — critical ${report.summary.critical}, error ${report.summary.error}, warning ${report.summary.warning}; score ${report.scores.overall} (${(timings.finalMs / 1000).toFixed(1)}s)`);
   return report;

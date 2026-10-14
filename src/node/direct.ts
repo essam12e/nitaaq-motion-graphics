@@ -16,7 +16,7 @@ import { buildPlan, recipeCtx } from '../director/plan';
 import { buildStoryboard, type PlannedStoryboard } from '../director/storyboard';
 import type { RecipeAssets } from '../director/recipes';
 import { compileSpec, slug, type AudioPlan } from '../director/compile';
-import { ensureSoundtrack, planSound } from './sound';
+import { automateMusic, ensureSoundtrack, planSound } from './sound';
 import { generatedBrand, pickStyle } from '../director/direction';
 import { STYLE_PRESETS } from '../styles/presets';
 import { brandFromLogo } from '../brand/logo-analyzer';
@@ -472,7 +472,8 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
       sfx: spec.audio.sfx.enabled,
     });
     if (spec.audio.music || musicPlan.source === 'procedural') spec.audio.sidechainDb = musicPlan.hierarchy.sidechainDb;
-    writeFileSync(join(projectDir, 'music_plan.json'), JSON.stringify(musicPlan, null, 2));
+    const automation = await automateMusic(spec, { heroSceneId: film.motion.heroScene ?? undefined });
+    writeFileSync(join(projectDir, 'music_plan.json'), JSON.stringify({ ...musicPlan, automation: spec.audio.automation ? { ...spec.audio.automation, reasons: automation } : undefined }, null, 2));
     const { report } = await planSound(spec, projectDir, { beats, write: !opts.dryRun });
     log.stage('SOUND', `${st.reason}; ${spec.audio.sfx.cues?.length ?? 0} cue(s), personality ${spec.audio.sfx.personality ?? '—'}${report ? `, ${report.uniqueVariants} variants, sync ≤${report.syncErrorMaxMs} ms` : ''}`);
   });

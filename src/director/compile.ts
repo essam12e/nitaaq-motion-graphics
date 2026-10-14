@@ -74,7 +74,7 @@ export function compileSpec(input: {
     transition:
       s.transition === 'none'
         ? undefined
-        : { type: s.transition, duration: s.transitionDuration, ...(input.motion?.scenes[i]?.transitionReason ? { reason: input.motion.scenes[i].transitionReason } : {}), ...(s.transitionHint ? { focus: s.transitionHint.focus, shape: s.transitionHint.shape, color: s.transitionHint.color, direction: s.transitionHint.direction } : {}) },
+        : { type: s.transition, duration: s.transitionDuration, ...(input.motion?.scenes[i]?.transitionReason ? { reason: input.motion.scenes[i].transitionReason } : {}), ...(s.transitionHint ? { focus: s.transitionHint.focus, shape: s.transitionHint.shape, color: s.transitionHint.color, direction: s.transitionHint.direction, ...(s.transitionHint.rect ? { rect: s.transitionHint.rect } : {}), ...(s.transitionHint.toRect ? { toRect: s.transitionHint.toRect } : {}), ...(s.transitionHint.vector ? { vector: s.transitionHint.vector } : {}) } : {}) },
     sfx: 'auto' as const,
     purpose: s.purpose,
     beat: s.beat,

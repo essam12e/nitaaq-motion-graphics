@@ -184,3 +184,31 @@ export async function ensureSoundtrack(spec: VideoSpec, projectDir: string, opts
   attach(res);
   return { composed: true, reason: `${res.style} ${res.bpm} BPM ${res.key}; drop on the hero at ${want.heroSec}s; ${res.cutsOnBeat}/${cuts.length} cuts on beat` };
 }
+
+/**
+ * Audio automation (Sound Director): writes `audio.automation` for a film with music — ducking curve,
+ * pre-entry, VO → music handoff, gain points and the ending. Hand-written automation is left as it is;
+ * the Director's own (`auto: true`, or `{ auto: true }` asking for it) is re-planned on the current timeline.
+ */
+export async function automateMusic(spec: VideoSpec, opts: { heroSceneId?: string } = {}): Promise<string[]> {
+  if (!spec.audio.music || (spec.audio.automation && !spec.audio.automation.auto)) return [];
+  const { planAutomation } = await import('../audio/music-director');
+  const tl = buildTimeline(spec.scenes, spec.canvas.fps);
+  const fps = spec.canvas.fps;
+  const heroIdx = spec.scenes.findIndex((s) => s.id === opts.heroSceneId || s.beat === 'reveal' || s.beat === 'product' || s.beat === 'brand' || s.beat === 'solution');
+  const ctaIdx = spec.scenes.findIndex((s) => s.beat === 'cta');
+  const cut = (i: number) => tl.entries[i].startSec + (tl.entries[i].transitionIn / fps) * 0.5;
+  const first = spec.scenes[0];
+  const calmOpening = Boolean(first) && ((first.motion?.intensity ?? 0.6) <= 0.55 || /hook|intro|title|brand/.test(first.beat ?? ''));
+  const { automation, reasons } = planAutomation({
+    personality: spec.motion.personality,
+    totalSec: tl.totalSec,
+    voice: voiceIntervals(spec),
+    firstCut: tl.entries.length > 1 ? cut(1) : undefined,
+    calmOpening,
+    heroSec: heroIdx > 0 ? cut(heroIdx) : undefined,
+    ctaSec: ctaIdx > 0 ? cut(ctaIdx) : undefined,
+  });
+  spec.audio.automation = automation;
+  return reasons;
+}

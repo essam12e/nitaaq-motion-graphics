@@ -16,8 +16,8 @@
  * (0.75 → 0.5 → 0.3 → 0.15 → static). The camera never wins over the message.
  * Pure and deterministic.
  */
-import { cameraAt, type CameraPlan, type MoveCtx } from './moves';
-import { clearance, NEAR, projectRect, type RectPx } from './rig';
+import { cameraAt, planMoves, resolvePlan, type CameraPlan, type MoveCtx } from './moves';
+import { clearance, NEAR, PASS_BAND, projectRect, type RectPx } from './rig';
 
 export type ProtectKind = 'text' | 'product' | 'logo' | 'cta' | 'ui' | 'other';
 
@@ -75,7 +75,10 @@ const overlap = (a: RectPx, b: RectPx) => {
 export function auditFraming(plan: CameraPlan | undefined, els: ProtectedElement[], ctx: FramingContext, samples = 30): { violations: FramingViolation[]; minClearance: number } {
   const out: FramingViolation[] = [];
   let minClear = Infinity;
-  if (!plan || plan.move === 'static' || plan.amplitude <= 0) return { violations: out, minClearance: Infinity };
+  if (!planMoves(plan)) return { violations: out, minClearance: Infinity };
+  plan = resolvePlan(plan)!;
+  // pass-through plans: a plane that fades before the lens is not a collision (it is gone by then)
+  const pass = Boolean(plan.passThrough);
   const { W, H, D } = ctx;
   const frame = { x: 0, y: 0, width: W, height: H };
   const depths = new Set<number>([0, ...els.map((e) => e.depth ?? 0), ...(ctx.occluders ?? []).map((o) => o.depth)]);
@@ -88,10 +91,15 @@ export function auditFraming(plan: CameraPlan | undefined, els: ProtectedElement
     for (const d of depths) {
       const c = clearance(d, cam);
       minClear = Math.min(minClear, c);
-      if (c <= NEAR + 0.04) out.push({ t, kind: 'camera', problem: 'collision', amount: NEAR + 0.04 - c, label: `plane ${d}` });
+      if (c <= NEAR + 0.04 && !pass) out.push({ t, kind: 'camera', problem: 'collision', amount: NEAR + 0.04 - c, label: `plane ${d}` });
     }
     const now = new Map<number, RectPx | null>();
     els.forEach((e, k) => {
+      // under pass-through an element whose plane is fading out has left the shot on purpose
+      if (pass && clearance(e.depth ?? 0, cam) < PASS_BAND[1]) {
+        now.set(k, null);
+        return;
+      }
       const r = projectRect(e.rect, e.depth ?? 0, cam, W, H, D);
       now.set(k, r);
       if (!r) {
@@ -124,7 +132,7 @@ export function auditFraming(plan: CameraPlan | undefined, els: ProtectedElement
 
 /** Make a plan safe for its elements: re-aim, then shrink, then (last resort) hold still. */
 export function solveFraming(plan: CameraPlan | undefined, els: ProtectedElement[], ctx: FramingContext): FramingResult {
-  if (!plan || plan.move === 'static') return { plan: plan ?? { move: 'static', amplitude: 0 }, ok: true, scaled: 1, refocused: false, violations: [], minClearance: Infinity, note: 'static camera' };
+  if (!plan || !planMoves(plan)) return { plan: plan ?? { move: 'static', amplitude: 0 }, ok: true, scaled: 1, refocused: false, violations: [], minClearance: Infinity, note: 'static camera' };
   const first = auditFraming(plan, els, ctx);
   if (!first.violations.length) return { plan, ok: true, scaled: 1, refocused: false, violations: [], minClearance: first.minClearance, note: 'framing safe' };
   // 1. re-aim at the weighted centre of what matters

@@ -8430,6 +8430,22 @@
                                   "settle",
                                   "completion"
                                 ]
+                              },
+                              "pos": {
+                                "type": "object",
+                                "properties": {
+                                  "x": {
+                                    "type": "number"
+                                  },
+                                  "y": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "x",
+                                  "y"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -8812,6 +8828,22 @@
                               "settle",
                               "completion"
                             ]
+                          },
+                          "pos": {
+                            "type": "object",
+                            "properties": {
+                              "x": {
+                                "type": "number"
+                              },
+                              "y": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "x",
+                              "y"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -9439,6 +9471,22 @@
                                   "settle",
                                   "completion"
                                 ]
+                              },
+                              "pos": {
+                                "type": "object",
+                                "properties": {
+                                  "x": {
+                                    "type": "number"
+                                  },
+                                  "y": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "x",
+                                  "y"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -9821,6 +9869,22 @@
                               "settle",
                               "completion"
                             ]
+                          },
+                          "pos": {
+                            "type": "object",
+                            "properties": {
+                              "x": {
+                                "type": "number"
+                              },
+                              "y": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "x",
+                              "y"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -10440,6 +10504,22 @@
                                   "settle",
                                   "completion"
                                 ]
+                              },
+                              "pos": {
+                                "type": "object",
+                                "properties": {
+                                  "x": {
+                                    "type": "number"
+                                  },
+                                  "y": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "x",
+                                  "y"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -10822,6 +10902,22 @@
                               "settle",
                               "completion"
                             ]
+                          },
+                          "pos": {
+                            "type": "object",
+                            "properties": {
+                              "x": {
+                                "type": "number"
+                              },
+                              "y": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "x",
+                              "y"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [

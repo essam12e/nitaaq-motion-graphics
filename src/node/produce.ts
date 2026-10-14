@@ -27,7 +27,7 @@ import { estimateEffectCost } from '../perf/effect-budget';
 import { Perf } from '../perf/timer';
 import { renderConcurrency } from './render';
 import { writeAssetsManifest } from './manifest';
-import { ensureSoundtrack, planSound } from './sound';
+import { automateMusic, ensureSoundtrack, planSound } from './sound';
 import { resolveSharedRects } from './shared-rects';
 import { audioQc, motionVarietyQc } from '../qc/audio-qc';
 import type { QcIssue } from '../qc/quality';
@@ -219,6 +219,11 @@ async function soundStage(spec: VideoSpec, projectDir: string, perf: Perf, repai
     }
     const st = await ensureSoundtrack(spec, projectDir, { heroSceneId: spec.motion.heroScene });
     if (st.composed) log.stage('SOUND', `soundtrack ${st.reason}`);
+    // the Director's music automation follows the final timeline (hand-written automation is never touched)
+    if (spec.audio.automation?.auto) {
+      const why = await automateMusic(spec, { heroSceneId: spec.motion.heroScene });
+      if (why.length) log.stage('SOUND', `automation: ${why.join('; ')}`);
+    }
     let issues: QcIssue[] = [];
     for (let round = 0; round < 3; round++) {
       const plan = await planSound(spec, projectDir, { beats, salt: round });

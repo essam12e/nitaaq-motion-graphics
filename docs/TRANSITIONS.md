@@ -30,3 +30,20 @@ Supported kinds in the schema: logo, product, phone, browser, card, text, shape,
 ## Transition Intelligence 2.0 (`src/transitions/continuity.ts`)
 
 Reads how scene A ends and scene B begins and upgrades a plain cut to a continuity device when one exists: A's subject shape becomes B's frame (morph / shape-match), both scenes share a colour (color-match), A ends on a lateral camera move (camera-match), A's subject travels toward the next idea (motion-match), B is the hero reveal (zoom-through / liquid). It never overrides a shared-element transition, a beat cut, or the rhythm floor of energetic films, and rations itself to ≤ 40% of cuts. Each upgrade states its reason in `transition.reason` and carries its hints (focus, rect, shape, colour). Continuity transitions get silent or soft sound.
+
+## Spatial transitions (Premium Phase 6)
+
+Eight transitions extend the same engine (`src/transitions/advanced.ts`, same `TransitionFrame` contract, same overlay layer):
+
+| Id | What happens |
+|---|---|
+| `card-push-through` | the camera pushes into a card of the outgoing scene (`rect`); the card is a window onto the next scene that grows to the frame |
+| `video-match-cut` | a video frame of A becomes the video frame of B (rect → full frame) with a short exposure match |
+| `foreground-card-wipe` | a card passes in front of the lens; the cut happens behind it (complementary clips — no doubled frame) |
+| `glass-wipe` | a pane of frosted glass slides across; the next scene is already behind it |
+| `scale-match` | the matched element (`rect` → `toRect`) carries the scale change across the cut |
+| `z-depth-pass` | A flies past the lens toward `focus` while B arrives from depth |
+| `directional-blur` | a whip along the motion `vector` with a directional SVG blur on both scenes |
+| `focus-handoff` | a rack focus across the cut: A blurs out, B racks in, the two barely overlap |
+
+**Motion Continuity vectors.** A scene edge may carry a `MotionVector` (direction, speed, depth, energy). `continuityScore(out, into, transition)` scores a cut 0..1 (still → still = 0.75; continuity transitions bridge +0.15). `refineContinuity` picks the spatial transitions first (video → video = match cut, matched rects = scale match, forward depth = push-through / z-depth, fast lateral = directional blur, depth of field = focus handoff, glass = glass wipe) — only the spatial / video families declare these edges, so every other film is chosen exactly as before.

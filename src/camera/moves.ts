@@ -14,7 +14,8 @@
  */
 import { curve, RATE } from '../motion/easing';
 import { springAt } from '../motion/spring';
-import { REST, type CameraState } from './rig';
+import { perspectiveOf, REST, type CameraState } from './rig';
+import { clampBounds, fitTarget, lookAtTargets, type CameraBounds, type FracRect, type LookTarget } from './solver';
 
 export const CAMERA_MOVES = [
   'static',
@@ -39,6 +40,7 @@ export const CAMERA_MOVES = [
   'zoom-out',
   'rack-focus',
   'track',
+  'fly-through',
 ] as const;
 export type CameraMoveId = (typeof CAMERA_MOVES)[number];
 
@@ -70,6 +72,53 @@ export interface CameraPlan {
   dof?: boolean;
   /** Why this move (motion_spec / review). Not rendered. */
   reason?: string;
+  /** A named preset (CAMERA_PRESETS) — fills every field the plan leaves out. */
+  preset?: string;
+  /** Auto framing: the camera frames this element (or group) and the move plays around that framing. */
+  target?: { rect: FracRect | FracRect[]; depth?: number; fill?: number };
+  /** Smooth look-at: timed targets the camera follows with an eased lag. */
+  targets?: LookTarget[];
+  /** Look-at lag in seconds (default 0.8). */
+  lag?: number;
+  /** Camera bounds (dolly limits, world rect the view stays in). */
+  bounds?: CameraBounds;
+  /** Opt-in pass-through: planes the camera flies past fade out instead of colliding. */
+  passThrough?: boolean;
+  /** Opt-in velocity-aware motion blur (full-effects renders). */
+  motionBlur?: boolean;
+}
+
+/**
+ * Camera presets — named, editable camera intentions built from the moves above and the solver.
+ * A plan with `preset` takes every field it does not set itself from the preset.
+ */
+export const CAMERA_PRESETS: Record<string, Partial<CameraPlan> & { move: CameraMoveId; label: string }> = {
+  'hero-reveal': { label: 'Slow push into the hero with depth of field', move: 'push-in', amplitude: 0.9, ease: 'luxury-glide', dof: true },
+  'product-orbit': { label: 'Orbit around the product', move: 'orbit-left', amplitude: 0.8, ease: 'camera-dolly', dof: true },
+  'brand-crane': { label: 'Crane up into the brand mark', move: 'crane-up', amplitude: 0.8, ease: 'camera-dolly' },
+  'ui-tour': { label: 'Truck along the interface in the reading direction', move: 'truck-left', amplitude: 0.8, ease: 'ease-in-out-cubic' },
+  'impact-push': { label: 'Fast push that lands on a beat', move: 'dolly-in', amplitude: 1, ease: 'ease-out-expo', motionBlur: true },
+  'calm-drift': { label: 'Barely-there drift', move: 'drift', amplitude: 0.6, ease: 'ease-in-out-cubic' },
+  flythrough: { label: 'Fly through the layers (pass-through)', move: 'fly-through', amplitude: 1, ease: 'smooth', passThrough: true, motionBlur: true },
+  'focus-pull': { label: 'Rack focus from foreground to hero', move: 'rack-focus', amplitude: 1, ease: 'camera-dolly' },
+  'resolve-pull': { label: 'Pull out to give the call to action room', move: 'pull-out', amplitude: 0.8, ease: 'ease-in-out-cubic' },
+};
+
+/** The plan with its preset applied (fields the plan sets win; a plan whose move is 'static' takes the preset's move). */
+export function resolvePlan(plan: CameraPlan | undefined): CameraPlan | undefined {
+  if (!plan?.preset) return plan;
+  const p = CAMERA_PRESETS[plan.preset];
+  if (!p) return plan;
+  const { label: _label, ...base } = p;
+  const own = Object.fromEntries(Object.entries(plan).filter(([, v]) => v !== undefined)) as CameraPlan;
+  const move = plan.move && plan.move !== 'static' ? plan.move : base.move;
+  return { ...base, ...own, move, amplitude: plan.amplitude ?? base.amplitude ?? 1 } as CameraPlan;
+}
+
+/** True when the plan moves the camera at all (a static plan with targets still frames them). */
+export function planMoves(plan: CameraPlan | undefined): boolean {
+  const p = resolvePlan(plan);
+  return Boolean(p && ((p.move !== 'static' && p.amplitude > 0) || p.target || p.targets?.length));
 }
 
 export interface MoveCtx {
@@ -104,6 +153,11 @@ const SHAPES: Record<CameraMoveId, (u: number, a: number, c: MoveCtx, f: { x: nu
   'zoom-out': (u, a) => ({ zoom: 1 + 0.07 * a * (1 - u) }),
   'rack-focus': (u, a) => ({ focus: -0.32 + 0.32 * u, aperture: 0.6 * a, dolly: 0.02 * a * u }),
   track: () => ({}),
+  // travels through the hero plane into the depth behind it — only with pass-through (planes fade before the lens).
+  // Slow approach, fast pass: at amplitude 1 the hero plane enters the pass band at ~70 % of the scene and
+  // has faded out exactly on its last frame (clearance NEAR + 0.07) — the frame is never left empty mid-scene.
+  // Above amplitude 1 the camera really travels past the plane (pass-through required, see Spatial QC)
+  'fly-through': (u, a, c, f) => ({ dolly: a * (0.2 * u + 0.55 * u * u * u), x: (f.x - 0.5) * c.W * 0.2 * a * u, y: (f.y - 0.5) * c.H * 0.2 * a * u }),
 };
 
 const add = (base: CameraState, ch: Channel): CameraState => ({
@@ -139,17 +193,29 @@ function trackState(plan: CameraPlan, t: number, c: MoveCtx): Channel {
 }
 
 /** Camera state of a plan at scene-local time t (seconds). Pure. */
-export function cameraAt(plan: CameraPlan | undefined, t: number, c: MoveCtx): CameraState {
-  if (!plan || plan.move === 'static' || plan.amplitude <= 0) return { ...REST };
+export function cameraAt(planIn: CameraPlan | undefined, t: number, c: MoveCtx): CameraState {
+  const plan = resolvePlan(planIn);
+  if (!plan) return { ...REST };
+  // solver framing (auto framing / smooth look-at): the move then plays around it
+  const solved = plan.targets?.length
+    ? lookAtTargets(plan.targets, t, { W: c.W, H: c.H, lag: plan.lag, ease: plan.ease })
+    : plan.target
+    ? fitTarget(plan.target.rect, { W: c.W, H: c.H, depth: plan.target.depth, fill: plan.target.fill })
+    : undefined;
+  if (plan.move === 'static' || plan.amplitude <= 0) {
+    if (!solved) return { ...REST };
+    return plan.bounds ? clampBounds(solved, plan.bounds, c.W, c.H) : solved;
+  }
   const f = plan.focus ?? { x: 0.5, y: 0.5 };
+  const base = solved ?? REST;
   let state: CameraState;
-  if (plan.move === 'track') state = add(REST, trackState(plan, t, c));
+  if (plan.move === 'track') state = add(base, trackState(plan, t, c));
   else {
     const s0 = (plan.start ?? 0) * c.durationSec;
     const s1 = Math.max(s0 + 0.1, (plan.end ?? 1) * c.durationSec);
     const raw = Math.min(1, Math.max(0, (t - s0) / (s1 - s0)));
     const u = plan.ease ? curve(plan.ease)(raw) : RATE.smooth(raw);
-    state = add(REST, SHAPES[plan.move](u, plan.amplitude, c, f));
+    state = add(base, SHAPES[plan.move](u, plan.amplitude, c, f));
   }
   // beat accents: a short physical push that settles by itself (spring from rest with a kick)
   for (const a of plan.accents ?? []) {
@@ -157,12 +223,15 @@ export function cameraAt(plan: CameraPlan | undefined, t: number, c: MoveCtx): C
     const kick = springAt(t - a, 0, 0, { stiffness: 260, damping: 18, mass: 1, velocity: 0.22 * Math.min(1, plan.amplitude) });
     state = { ...state, dolly: state.dolly + kick.value };
   }
-  return state;
+  return plan.bounds ? clampBounds(state, plan.bounds, c.W, c.H) : state;
 }
+
+/** Perspective distance the plan's canvas uses (for blur hints and pass-through checks). */
+export const planD = (c: MoveCtx) => perspectiveOf(c.W, c.H);
 
 /** Peak camera speed over the plan (hero-plane px/s) — used for readability checks. */
 export function peakSpeed(plan: CameraPlan | undefined, c: MoveCtx, D: number, samples = 48): number {
-  if (!plan) return 0;
+  if (!planMoves(plan)) return 0;
   let peak = 0;
   let prev = cameraAt(plan, 0, c);
   const dt = c.durationSec / samples;

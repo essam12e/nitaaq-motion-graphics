@@ -24,7 +24,7 @@ import type { ElementKind } from '../motion/physics';
 import { createRng } from '../core/rng';
 import { buildTimeline } from '../core/timeline';
 import type { Brief } from '../schema/brief';
-import { refineContinuity, edgeShape, type SceneEdge } from '../transitions/continuity';
+import { refineContinuity, edgeShape, spatialEdge, type SceneEdge } from '../transitions/continuity';
 import { planSceneIntent } from '../motion/intent';
 import { planCamera, sceneAccents } from '../camera/director';
 import { LEGACY_MOVE } from '../camera/moves';
@@ -199,7 +199,7 @@ export function directFilm(input: {
   // ── Transition Intelligence 2.0: upgrade cuts to continuity devices where the two scenes share shape/colour/motion
   const edges: SceneEdge[] = scenes.map((s, i) => {
     const legacy = camOn.has(i) && s.camera !== 'none' ? s.camera : 'none';
-    return { id: s.id, beat: s.beat, category: cutScenes[i].category, shape: edgeShape(cutScenes[i].category, s.family), focus: { x: 0.5, y: 0.45 }, camera: LEGACY_MOVE[legacy], hero: i === hero };
+    return { id: s.id, beat: s.beat, category: cutScenes[i].category, shape: edgeShape(cutScenes[i].category, s.family), focus: { x: 0.5, y: 0.45 }, camera: LEGACY_MOVE[legacy], hero: i === hero, ...spatialEdge(s.family, s.variant) };
   });
   const refined = refineContinuity({ scenes: edges, choices: cutChoices, personality: pick.id, seed: input.seed, rhythmic: plan.pace === 'fast' || Boolean(onBeat?.some(Boolean)) });
   refined.forEach((c, i) => (cutChoices[i] = c));

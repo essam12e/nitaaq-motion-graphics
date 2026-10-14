@@ -13,6 +13,9 @@ import { FontGate } from '../typography/FontGate';
 import { SceneRegistry } from '../scenes/registry';
 import { Background, TextureOverlay } from '../components/Background';
 import { TRANSITIONS, type OverlayKind } from '../transitions/presentations';
+import { dirOf, wipeGeometry, type TransitionCtx } from '../transitions/advanced';
+import { useDirectionalBlur } from '../fx/directional-blur';
+import { MicroFxLayer } from '../fx/MicroFx';
 import { Img } from 'remotion';
 import { presetEasing, PHYSICS } from '../motion/physics';
 import { arcPoint } from '../motion/principles';
@@ -57,20 +60,26 @@ function SceneShell({ entry, prevTransition, dirSign }: { entry: TimelineEntry; 
   let overlay: { kind: OverlayKind; p: number } | undefined;
   const W = v.canvas.width;
   const H = v.canvas.height;
-  const ctxOf = (t?: { focus?: { x: number; y: number }; rect?: { x: number; y: number; w: number; h: number }; shape?: string; color?: string; direction?: 'left' | 'right' | 'up' | 'down' }, seed?: string) => ({ W, H, focus: t?.focus, rect: t?.rect, shape: t?.shape, color: t?.color, direction: t?.direction, seed });
+  const ctxOf = (t: VideoSpec['scenes'][number]['transition'] | undefined, seed?: string): TransitionCtx => ({ W, H, focus: t?.focus, rect: t?.rect, shape: t?.shape, color: t?.color, direction: t?.direction, seed, toRect: t?.toRect, vector: t?.vector });
+  let dblur: [number, number] = [0, 0];
   if (entry.transitionIn > 0 && frame < entry.transitionIn && prevTransition) {
     const tr = TRANSITIONS[prevTransition] ?? TRANSITIONS.crossfade;
     const prevSpec = entry.index > 0 ? v.spec.scenes[entry.index - 1].transition : undefined;
     const f = tr.frame(frame / entry.transitionIn, dirSign, ctxOf(prevSpec, v.spec.scenes[entry.index - 1]?.id));
     style = f.enter;
     overlay = f.overlay;
+    if (f.blur?.enter) dblur = f.blur.enter;
   }
   const outStart = entry.durationInFrames - entry.transitionOut;
   if (entry.transitionOut > 0 && frame >= outStart) {
     const tr = TRANSITIONS[scene.transition?.type ?? 'crossfade'] ?? TRANSITIONS.crossfade;
     const f = tr.frame((frame - outStart) / entry.transitionOut, dirSign, ctxOf(scene.transition, scene.id));
     style = { ...style, ...f.exit };
+    if (f.blur?.exit) dblur = f.blur.exit;
   }
+  // directional motion blur of a transition (SVG filter; nothing is emitted when there is none)
+  const mb = useDirectionalBlur(dblur[0] * v.canvas.u * 0.1, dblur[1] * v.canvas.u * 0.1);
+  if (mb.filter) style = { ...style, filter: style.filter ? `${style.filter} ${mb.filter}` : mb.filter };
   // Seamless loop: the last scene dissolves back to the (periodic) background, which is
   // exactly what frame 0 shows before the first scene's entrance begins.
   if (v.loopFrames && entry.index === v.timeline.entries.length - 1) {
@@ -103,6 +112,7 @@ function SceneShell({ entry, prevTransition, dirSign }: { entry: TimelineEntry; 
       : undefined;
   return (
     <SceneCtx.Provider value={ctx}>
+      {mb.node}
       <AbsoluteFill data-qc="scene" data-qc-scene={scene.id} data-qc-type={scene.type} data-qc-variant={variant} style={{ ...style, overflow: 'hidden' }}>
         {plan ? (
           // Camera Engine 2.0: the scene background sits on the background plane (true parallax), content on the hero plane
@@ -116,11 +126,22 @@ function SceneShell({ entry, prevTransition, dirSign }: { entry: TimelineEntry; 
                 </AbsoluteFill>
               </DepthLayer>
             ) : null}
-            <AbsoluteFill style={layoutTf}>
-              <SceneBoundary id={scene.id}>
-                <Cmp content={scene.content as never} variant={variant} />
-              </SceneBoundary>
-            </AbsoluteFill>
+            {plan.passThrough || plan.preset === 'flythrough' ? (
+              // pass-through: the scene's content is a hero-plane layer that fades before the lens
+              <DepthLayer plane="hero">
+                <AbsoluteFill style={layoutTf}>
+                  <SceneBoundary id={scene.id}>
+                    <Cmp content={scene.content as never} variant={variant} />
+                  </SceneBoundary>
+                </AbsoluteFill>
+              </DepthLayer>
+            ) : (
+              <AbsoluteFill style={layoutTf}>
+                <SceneBoundary id={scene.id}>
+                  <Cmp content={scene.content as never} variant={variant} />
+                </SceneBoundary>
+              </AbsoluteFill>
+            )}
           </CameraRig>
         ) : (
           <>
@@ -132,6 +153,7 @@ function SceneShell({ entry, prevTransition, dirSign }: { entry: TimelineEntry; 
             </AbsoluteFill>
           </>
         )}
+        {scene.fx?.length ? <MicroFxLayer fx={scene.fx} /> : null}
       </AbsoluteFill>
       {overlay ? <TransitionOverlay kind={overlay.kind} p={overlay.p} dirSign={dirSign} word={sweepWord(scene.content)} hint={entry.index > 0 ? v.spec.scenes[entry.index - 1].transition : undefined} /> : null}
     </SceneCtx.Provider>
@@ -160,9 +182,38 @@ function sweepWord(content: Record<string, unknown>): string | undefined {
   return w && w.length <= 14 ? w : undefined;
 }
 
-function TransitionOverlay({ kind, p, dirSign, word, hint }: { kind: OverlayKind; p: number; dirSign: 1 | -1; word?: string; hint?: { color?: string; focus?: { x: number; y: number } } }) {
+function TransitionOverlay({ kind, p, dirSign, word, hint }: { kind: OverlayKind; p: number; dirSign: 1 | -1; word?: string; hint?: VideoSpec['scenes'][number]['transition'] }) {
   const v = useVideo();
   const resolve = useAsset();
+  if (kind === 'card-wipe' || kind === 'glass-wipe') {
+    // a foreground card / a pane of frosted glass crosses the lens (same geometry as the transition's reveal edge)
+    const { sx } = dirOf({ W: v.canvas.width, H: v.canvas.height, direction: hint?.direction, vector: hint?.vector }, dirSign);
+    const card = kind === 'card-wipe';
+    const { lo, w } = wipeGeometry(kind, p);
+    const left = sx >= 0 ? lo : 1 - lo - w;
+    const t = v.tokens;
+    const u = v.canvas.u;
+    return (
+      <AbsoluteFill style={{ pointerEvents: 'none', overflow: 'hidden' }} data-qc="transition-overlay" data-qc-overlay={kind}>
+        <div
+          style={{
+            position: 'absolute',
+            left: `${(left * 100).toFixed(3)}%`,
+            width: `${(w * 100).toFixed(3)}%`,
+            top: card ? '-4%' : '-2%',
+            height: card ? '108%' : '104%',
+            borderRadius: card ? 4 * u : 0,
+            background: card
+              ? `linear-gradient(135deg, ${alpha(t.palette.surface, 1)}, ${alpha(t.palette.primary, 0.92)})`
+              : `linear-gradient(${sx >= 0 ? 90 : 270}deg, ${alpha('#FFFFFF', 0.18)}, ${alpha('#FFFFFF', 0.62)} 45%, ${alpha('#FFFFFF', 0.5)} 60%, ${alpha('#FFFFFF', 0.12)})`,
+            boxShadow: card
+              ? `0 ${3 * u}px ${12 * u}px ${alpha('#000000', 0.45)}, inset 0 0 0 ${Math.max(1, 0.25 * u)}px ${alpha('#FFFFFF', 0.2)}`
+              : `inset ${Math.max(1, 0.3 * u)}px 0 0 ${alpha('#FFFFFF', 0.7)}, inset ${-Math.max(1, 0.3 * u)}px 0 0 ${alpha('#FFFFFF', 0.35)}`,
+          }}
+        />
+      </AbsoluteFill>
+    );
+  }
   if (kind === 'color-flood') {
     // the colour both scenes share floods out of the subject, holds for a beat, then opens onto the next scene
     const f = hint?.focus ?? { x: 0.5, y: 0.5 };

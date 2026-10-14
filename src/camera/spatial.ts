@@ -18,7 +18,7 @@
  * lens (clearance below PASS_FADE), so the camera can travel through a
  * corridor of cards without colliding with one.
  */
-import { NEAR, REST, type CameraState } from './rig';
+import { NEAR, PASS_BAND, REST, type CameraState } from './rig';
 
 export interface SpatialCard {
   /** Physical offset of the card's centre from the canvas centre (px at clearance 1). */
@@ -55,7 +55,7 @@ export interface GalleryLayout {
 /** Dolly of the corridor's opening view (pulled back behind the hero plane). */
 export const CORRIDOR_VIEW_DOLLY = -0.4;
 
-export const PASS_FADE: [number, number] = [NEAR + 0.07, NEAR + 0.4];
+export const PASS_FADE: [number, number] = PASS_BAND;
 
 const smooth = (a: number, b: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));

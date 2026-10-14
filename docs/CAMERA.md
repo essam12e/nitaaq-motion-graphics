@@ -34,3 +34,18 @@ Corporate never orbits, arcs or cranes. Amplitude per personality: premium .8, c
 ## QA
 
 Visual QA 2.0 unprojects every measured element back to its rest position and audits the whole move (30 samples). A violation becomes `CAMERA_FRAMING` with the repair `camera-solve`: apply the solved plan (smaller amplitude / moved focus), else halve the amplitude.
+
+## Camera Solver, presets and pass-through (Premium Phase 6)
+
+The rig and the move library stay as they are; the solver (`src/camera/solver.ts`) adds targets on top of them. `cameraAt(plan, t)` resolves a preset, frames the target(s), plays the move around that framing, then applies the bounds. A plan without the new fields gives exactly the old numbers.
+
+| Field of `cameraPlan` | What it does |
+|---|---|
+| `preset` | `hero-reveal`, `product-orbit`, `brand-crane`, `ui-tour`, `impact-push`, `calm-drift`, `flythrough`, `focus-pull`, `resolve-pull` — fills only the fields the plan leaves unset (`move: "static"` takes the preset's move) |
+| `target: { rect, depth?, fill? }` | auto framing of one element or a group (`rect` may be a list → union): dolly first, then lens zoom where the dolly would come too close (protected planes keep NEAR + 0.12) |
+| `targets: [{ t, rect, depth?, fill? }]`, `lag` | smooth look-at: the camera follows each new target with an eased lag (velocity 0 at both ends, no jump) |
+| `bounds: { world?, depth?, minDolly?, maxDolly?, maxZoom? }` | the visible window never leaves the world rect, the dolly stays in its limits |
+| `passThrough` | the `fly-through` move may travel through the hero plane: each `DepthLayer` fades over the pass band (clearance NEAR+0.07 → NEAR+0.4) and is hidden before it reaches the lens |
+| `motionBlur` | velocity-aware directional blur from `blurHint` (shutter 180°, threshold 0.35 u per frame, cap 3 u) as an SVG `feGaussianBlur` — only while the camera is fast, full effects only |
+
+`focusHandoff(a, b, u)` blends two framings with a rack of the focus plane (depth of field peaks mid-way). Probes: `data-qc-camera` (preset or move), `data-qc-pass` (pass-through opacity), `data-qc-motion-blur`.

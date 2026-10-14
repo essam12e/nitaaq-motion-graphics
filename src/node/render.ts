@@ -13,6 +13,8 @@
  * browser costs ~1 s each time; QC used to open three per video).
  */
 import { renderMedia, selectComposition, renderStill, openBrowser } from '@remotion/renderer';
+import { planMicroFx } from '../fx/plan';
+import { filmEvents } from './sound';
 import { availableParallelism, cpus } from 'node:os';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -138,7 +140,9 @@ export async function prepare(spec: VideoSpec, projectDir: string, mode: 'render
   const serveUrl = await getBundle();
   const files = referencedFiles(spec);
   const assetBase = stageProjectAssets(serveUrl, spec.project.id, projectDir, files);
-  const clean: VideoSpec = mode === 'render' ? { ...spec, safeArea: { ...spec.safeArea, debug: false } } : spec;
+  // Micro FX auto planning (design.microFx = 'auto'): accents on the film's motion moments, rationed by the FX budget
+  const planned = spec.design?.microFx === 'auto' ? planMicroFx(spec, filmEvents(spec)).spec : spec;
+  const clean: VideoSpec = mode === 'render' ? { ...planned, safeArea: { ...planned.safeArea, debug: false } } : planned;
   return { serveUrl, inputProps: { spec: clean, assetBase, mode, effects, ...extra }, browserExecutable: findBrowser() };
 }
 

@@ -12,6 +12,7 @@ import { STYLE_PRESETS, findStyleId } from '../styles/presets';
 import { sceneLotties, sceneVideos } from '../engine/seek';
 import { vectorPrograms } from '../vector/scene-program';
 import type { VectorGraph } from '../vector/graph';
+import { microFxCost } from '../fx/plan';
 
 const WEIGHT: Record<PerformanceCost, number> = { LOW: 1, MEDIUM: 2, HIGH: 3 };
 /** Upper bound of the per-second score for each budget level. */
@@ -67,6 +68,8 @@ export function estimateEffectCost(spec: VideoSpec): EffectCost {
   if (video) contributors.push({ source: 'video clips (simultaneous decodes)', add: round(video) });
   if (lottie) contributors.push({ source: 'Lottie animations (vector redraw)', add: round(lottie) });
   if (vector) contributors.push({ source: 'vector art (path rebuild per frame)', add: round(vector) });
+  const fx = microFxCost(spec);
+  if (fx) contributors.push({ source: 'micro FX accents', add: round(fx) });
   const t = STYLE_PRESETS[findStyleId(spec.style.preset) ?? ''];
   if (t) {
     if (t.surface.blur > 0) contributors.push({ source: `style ${t.id}: backdrop blur`, add: 0.6 });

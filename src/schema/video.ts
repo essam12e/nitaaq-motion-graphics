@@ -228,6 +228,22 @@ export const SoundtrackSchema = z.object({
   sections: z.array(z.object({ name: z.string(), start: z.number(), end: z.number(), energy: Unit })).default([]),
 });
 
+export const AudioAutomationSchema = z.object({
+  /** Written by the Sound Director (re-planned on the final timeline at produce); `{ auto: true }` alone asks for it. */
+  auto: z.boolean().optional(),
+  /** Gain automation of the music: points (absolute seconds, gain multiplier 0..1.5) joined by the curve. */
+  music: z.array(z.object({ t: z.number().min(0), gain: z.number().min(0).max(1.5) })).optional(),
+  curve: z.enum(['smooth', 'linear', 'exponential']).default('smooth'),
+  /** Shape of the ducking under the voice: smooth (S-curve), exponential (even in dB), linear, or hold (fast in, late out). */
+  duckCurve: z.enum(['smooth', 'exponential', 'linear', 'hold']).default('smooth'),
+  /** Music pre-entry: the music starts `lead` s before `at` and swells into it (replaces the fade-in). */
+  preEntry: z.object({ at: z.number().min(0), lead: z.number().min(0.1).max(6).default(1.2), from: Unit.default(0) }).optional(),
+  /** VO → music handoff: when the voice ends the music rises from the duck to `lift` over `overlap` s. */
+  handoff: z.object({ at: z.number().min(0).optional(), overlap: z.number().min(0.1).max(4).default(0.8), lift: z.number().min(1).max(1.5).default(1.15) }).optional(),
+  /** Ending: fade (default), ring-out (long exponential tail), button (holds then a short cut-off), swell (lifts, then fades). */
+  ending: z.object({ kind: z.enum(['fade', 'ring-out', 'button', 'swell']).default('fade'), length: z.number().min(0.1).max(8).optional() }).optional(),
+});
+
 export const AudioSchema = z.object({
   mode: z.enum(['none', 'user-voice', 'tts']).default('none'),
   voice: VoiceSchema.optional(),
@@ -250,6 +266,12 @@ export const AudioSchema = z.object({
   master: z.object({ targetLufs: z.number().min(-30).max(-8).default(-14), truePeak: z.number().min(-6).max(0).default(-1) }).optional(),
   /** Music sidechain: the music dips under hero impacts (dB, 0 = off). */
   sidechainDb: z.number().min(0).max(12).optional(),
+  /** Audio automation (Sound Director, all optional — without it the music envelope is exactly the old one). */
+  automation: AudioAutomationSchema.optional(),
+  /** A second music cue the first one crossfades into (equal-power) at `at`. */
+  musicNext: z
+    .object({ src: z.string().min(1), at: z.number().min(0), crossfade: z.number().min(0.1).max(8).default(1.5), volume: Unit.optional(), trimStart: z.number().min(0).default(0), loop: z.boolean().default(true) })
+    .optional(),
 });
 
 export const TransitionSchema = z.object({
@@ -263,6 +285,10 @@ export const TransitionSchema = z.object({
   rect: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }).optional(),
   shape: z.string().optional(),
   color: HexColor.optional(),
+  /** Scale match: the matched element's rect in the incoming scene (fractions). */
+  toRect: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }).optional(),
+  /** Motion Continuity: the outgoing scene's exit vector (direction unit vector, speed 0..1, depth motion −1..1). */
+  vector: z.object({ dx: z.number(), dy: z.number(), speed: z.number(), depth: z.number().optional(), scale: z.number().optional(), energy: z.number().optional() }).optional(),
 });
 
 export const SfxEventSchema = z.object({
@@ -286,8 +312,11 @@ export const SceneLayoutSchema = z.object({
   maxLines: z.number().int().min(1).max(8).optional(),
 });
 
+const FracRectSchema = z.object({ x: z.number(), y: z.number(), w: z.number().min(0), h: z.number().min(0) });
+
 export const CameraPlanSchema = z.object({
-  move: z.string(),
+  /** A move name (moves.ts); 'static' with a `preset` takes the preset's move. */
+  move: z.string().default('static'),
   amplitude: z.number().min(0).max(1.5).default(1),
   start: z.number().min(0).max(1).optional(),
   end: z.number().min(0).max(1).optional(),
@@ -297,6 +326,14 @@ export const CameraPlanSchema = z.object({
   waypoints: z.array(z.object({ t: z.number(), focus: z.object({ x: z.number(), y: z.number() }), close: z.number().optional() })).optional(),
   dof: z.boolean().optional(),
   reason: z.string().optional(),
+  /** Camera solver (all optional): a named preset, auto framing of an element / group, timed look-at targets, bounds, pass-through, motion blur. */
+  preset: z.string().optional(),
+  target: z.object({ rect: z.union([FracRectSchema, z.array(FracRectSchema).min(1)]), depth: z.number().optional(), fill: z.number().min(0.05).max(1).optional() }).optional(),
+  targets: z.array(z.object({ t: z.number().min(0), rect: z.union([FracRectSchema, z.array(FracRectSchema).min(1)]), depth: z.number().optional(), fill: z.number().min(0.05).max(1).optional() })).optional(),
+  lag: z.number().min(0.1).max(4).optional(),
+  bounds: z.object({ world: FracRectSchema.optional(), depth: z.number().optional(), minDolly: z.number().optional(), maxDolly: z.number().optional(), maxZoom: z.number().optional() }).optional(),
+  passThrough: z.boolean().optional(),
+  motionBlur: z.boolean().optional(),
 });
 
 export const SceneMotionSchema = z.object({
@@ -323,6 +360,22 @@ export const SceneBackgroundSchema = z.object({
   accent: HexColor.optional(),
 });
 
+export const MicroFxSchema = z.object({
+  kind: z.enum(['burst', 'ripple', 'ring', 'sparks', 'trails', 'impact-lines', 'energy-pulse', 'glow-pulse', 'directional-streaks']),
+  at: z.number().min(0),
+  x: z.number(),
+  y: z.number(),
+  size: z.number().min(0.01).max(1).optional(),
+  color: z.string().optional(),
+  intensity: z.number().min(0).max(1).optional(),
+  direction: z.number().optional(),
+  duration: z.number().min(0.1).max(4).optional(),
+  seed: z.union([z.string(), z.number()]).optional(),
+  importance: z.number().min(0).max(1).optional(),
+  auto: z.boolean().optional(),
+  reason: z.string().optional(),
+});
+
 export const SceneSchema = z.object({
   id: z.string().min(1),
   type: z.string().min(1),
@@ -339,6 +392,8 @@ export const SceneSchema = z.object({
   /** Director notes (purpose, beat). Not rendered. */
   purpose: z.string().optional(),
   beat: z.string().optional(),
+  /** Micro FX accents (scene-local seconds, positions as canvas fractions). Optional; the auto planner adds `auto` ones. */
+  fx: z.array(MicroFxSchema).optional(),
 });
 
 export const CaptionsSchema = z.object({
@@ -374,6 +429,10 @@ export const DesignSchema = z.object({
   justification: z.string().max(300).optional(),
   /** Render-cost budget set by the Director from the task class (LOW/MEDIUM/HIGH). */
   effectBudget: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
+  /** Micro FX: 'auto' adds small accents on the film's motion moments (by intent and personality); 'off' (default) only draws scenes' own `fx`. */
+  microFx: z.enum(['off', 'auto']).default('off'),
+  /** Micro FX budget (density and concurrent cost). Default: the effect budget, else MEDIUM. */
+  fxBudget: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
 });
 
 export const MotionPersonalitySchema = z.enum(['premium', 'energetic', 'playful', 'corporate', 'cinematic', 'tech', 'sport']);

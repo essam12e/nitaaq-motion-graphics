@@ -67,3 +67,19 @@ Loudness-normalised per file (RMS), importance and impact strength scale the lev
 Audio QC (produce's sound stage, merged into the final report as the `audio` pass): `SFX_REPEAT_CONSECUTIVE` (error), `SFX_REPEAT_OVERUSED`, `SFX_DENSITY`, `SFX_SYNC`, `SFX_VOICE_CLASH`, `SFX_KEY_SILENT` (logo / hero / price / CTA / final counter with no sound), `SFX_DOUBLES_MUSIC`, `AUDIO_EMPTY`; final QC still measures clipping and loudness on the MP4. Safe repairs: re-plan with another variation, thin the density, lower SFX — up to 3 rounds.
 
 Explicit per-scene SFX arrays (`"sfx": [{ "sound", "at", "volume" }]`) are the user's choice and are kept verbatim; `"sfx": "none"` silences a scene.
+
+## 11. Audio automation (Premium Phase 8)
+
+The music bus gets automation — still the same Sound Director and the same `musicVolumeAt` (`src/audio/mix.ts`); without `audio.automation` the envelope is bit-for-bit the original one.
+
+| `audio.automation` | Effect |
+|---|---|
+| `music: [{ t, gain }]`, `curve` | gain automation (smooth / linear / exponential between points, flat outside) |
+| `duckCurve` | ducking under the voice: `smooth` (default), `exponential` (even in dB), `linear`, `hold` (fast in, holds through the first half of the release — no pumping between close phrases) |
+| `preEntry: { at, lead, from }` | the music swells in under the opening and lands on a moment instead of fading up in front of it |
+| `handoff: { at?, overlap, lift }` | VO → music: after the last line the music rises out of the duck to `lift` in one gesture (the duck release becomes the overlap) |
+| `ending: { kind, length? }` | `fade`, `ring-out` (−48 dB natural decay), `button` (holds, short clean release), `swell` (+1.6 dB lift then away) — every ending reaches silence on the last frame |
+
+`audio.musicNext: { src, at, crossfade, volume?, trimStart, loop }` crossfades a second cue into the first (equal power: out² + in² = 1). Volumes are clamped to 1.
+
+`planAutomation()` (music-director) decides it from the film: `hold` under phrases closer than 0.9 s, `exponential` under long takes; pre-entry for a calm opening (premium / cinematic / corporate); a handoff when the voice ends ≥ 1.5 s before the film; a −1.5 dB step back before the hero when there is no voice; the ending by personality (premium ring-out, cinematic swell, corporate fade, energetic / tech / sport / playful button). `direct` writes it (`auto: true`, recorded in `music_plan.json` with reasons); `produce` re-plans `auto` automation on the final timeline; hand-written automation is never touched; `{ "auto": true }` alone asks for it in a hand-written spec.

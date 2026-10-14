@@ -57,6 +57,8 @@ export const ChoreoEventSchema = z
     area: z.number().min(0).max(1).optional(),
     direction: z.enum(['left', 'right', 'up', 'down', 'in', 'out', 'none']).optional(),
     anchor: z.enum(['start', 'peak', 'contact', 'settle', 'completion']).optional(),
+    /** Screen position of the moment (canvas fractions) — Micro FX put their accent here. */
+    pos: z.object({ x: z.number(), y: z.number() }).optional(),
   })
   .strict();
 export type ChoreoEvent = z.infer<typeof ChoreoEventSchema>;
@@ -462,6 +464,7 @@ function eventDecl(e: ChoreoEvent, a: { start: number; peak: number; contact: nu
     ...(e.area !== undefined ? { area: e.area } : {}),
     ...(e.direction ? { direction: e.direction } : {}),
     ...(e.anchor ? { anchor: e.anchor } : {}),
+    ...(e.pos ? { pos: e.pos } : {}),
     exact: a,
   };
 }
