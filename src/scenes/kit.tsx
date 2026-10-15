@@ -1,13 +1,15 @@
 /** Shared building blocks for scene families (keeps every family on the same quality bar). */
 import React, { type CSSProperties } from 'react';
 import { z } from 'zod';
-import { useMotion, useScene, useVideo } from '../engine/context';
+import { useMotion, useScene, useVideo, LifeOwnerCtx } from '../engine/context';
 import { Text, type TextProps } from '../typography/Text';
 import { entranceStyle, progress, float, clamp } from '../motion/primitives';
 import type { EntranceFamily } from '../styles/tokens';
 import { alpha } from '../brand/color';
 import { Icon } from '../components/Icon';
 import { toNumerals } from '../typography/arabic';
+import { lifecycleStyle } from '../motion/lifecycle';
+import type { ElementKind } from '../motion/physics';
 
 export const HeadingFields = {
   eyebrow: z.string().max(60).optional(),
@@ -16,22 +18,44 @@ export const HeadingFields = {
   subtitle: z.string().max(220).optional(),
 };
 
-/** Entrance wrapper for arbitrary elements. */
+/** Exit order of an element from its entrance delay (first in, first out). */
+export const orderOf = (delay: number) => Math.max(0, Math.round(delay / 0.15));
+
+/**
+ * Entrance wrapper for arbitrary elements. Legacy model: entrance → hold. Principled model
+ * (spec.motion.model = 'principled'): the Principles Engine lifecycle — anticipation, entrance,
+ * settle, a living hold that suits the element `kind`, and an exit along the shot's handoff vector.
+ */
 export function Reveal({
   delay = 0,
   dur = 0.7,
   family,
   children,
   style,
+  kind,
+  order,
 }: {
   delay?: number;
   dur?: number;
   family?: EntranceFamily;
   children: React.ReactNode;
   style?: CSSProperties;
+  /** What the element is (principled model: mass, physics, sustain). Without it: card physics, no living hold (it may hold copy). */
+  kind?: ElementKind;
+  /** Place in the scene's sequence (exit stagger). Default: from the delay. */
+  order?: number;
 }) {
   const m = useMotion();
   const { tokens, canvas, dir } = useVideo();
+  const owned = React.useContext(LifeOwnerCtx);
+  if (m.principled && m.life) {
+    const ls = lifecycleStyle({ frame: m.frame, fps: m.fps, speed: m.speed, delay, kind: kind ?? 'card', personality: m.personality, family: family ?? tokens.motion.entrance, intensity: m.intensity, u: canvas.u, dir, life: m.life, order: order ?? orderOf(delay), phase: delay * 2.7, owned, ...(kind ? {} : { sustain: 'still' as const }) });
+    return (
+      <div style={{ ...ls, ...style }}>
+        <LifeOwnerCtx.Provider value={true}>{children}</LifeOwnerCtx.Provider>
+      </div>
+    );
+  }
   const p = progress(m, delay, dur);
   return <div style={{ ...entranceStyle(family ?? tokens.motion.entrance, p, m.intensity, canvas.u, dir), ...style }}>{children}</div>;
 }
@@ -47,7 +71,7 @@ export function Eyebrow({ text, delay = 0, align = 'center' }: { text: string; d
   const { tokens: t, canvas } = useVideo();
   const u = canvas.u;
   return (
-    <Reveal delay={delay} family="fade">
+    <Reveal delay={delay} family="fade" kind="text">
       <div
         style={{
           display: 'inline-flex',
@@ -105,8 +129,9 @@ export function HeadlineBlock(p: HeadlineBlockProps) {
         maxLines={p.maxLines}
         animate={p.animate}
         entrance={p.entrance}
+        exitOrder={p.eyebrow ? 1 : 0}
       />
-      {p.subtitle ? <Text text={p.subtitle} role="subtitle" align={p.align ?? 'center'} delay={d + 0.45} maxWidth={p.maxWidth} color={p.subColor} /> : null}
+      {p.subtitle ? <Text text={p.subtitle} role="subtitle" align={p.align ?? 'center'} delay={d + 0.45} maxWidth={p.maxWidth} color={p.subColor} exitOrder={p.eyebrow ? 2 : 1} /> : null}
     </div>
   );
 }
@@ -125,7 +150,7 @@ export function Button({ label, delay = 0, width, pressed = 0, icon }: { label: 
   const { tokens: t, canvas } = useVideo();
   const u = canvas.u;
   return (
-    <Reveal delay={delay} family="pop">
+    <Reveal delay={delay} family="pop" kind="button">
       <div
         data-qc-cta="1"
         style={{
@@ -309,6 +334,13 @@ export function HeroSplit({
     }
   }
   const hAlign = align ?? (landscape ? 'start' : 'center');
+  // principled model: the visual (media, mockup, product…) keeps its own entrance, lives during the hold
+  // (a slow drift) and leaves after the heading — one wrapper lifts every HeroSplit family
+  const m = useMotion();
+  const visualLife =
+    m.principled && m.life
+      ? lifecycleStyle({ frame: m.frame, fps: m.fps, speed: m.speed, delay: 0.35, kind: 'panel', personality: m.personality, family: 'fade', intensity: m.intensity, u, dir, life: m.life, order: 2, phase: 1.3, noEntrance: true })
+      : undefined;
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
       {heading ? (
@@ -316,8 +348,8 @@ export function HeroSplit({
           <HeadlineBlock {...heading} align={hAlign} maxWidth={hRect.width} role={heading.role ?? 'title'} maxLines={heading.maxLines ?? (landscape ? 4 : 3)} />
         </div>
       ) : null}
-      <div style={{ position: 'absolute', left: vRect.x, top: vRect.y, width: vRect.width, height: vRect.height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {visual(vRect.width, vRect.height)}
+      <div style={{ position: 'absolute', left: vRect.x, top: vRect.y, width: vRect.width, height: vRect.height, display: 'flex', alignItems: 'center', justifyContent: 'center', ...visualLife }}>
+        {m.principled && m.life ? <LifeOwnerCtx.Provider value={true}>{visual(vRect.width, vRect.height)}</LifeOwnerCtx.Provider> : visual(vRect.width, vRect.height)}
       </div>
     </div>
   );

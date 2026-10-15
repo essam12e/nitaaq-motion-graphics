@@ -69,6 +69,14 @@ npm run create -- path/to/brief.json [--out <folder>] [--name <file>] [--animati
 
 Step by step: `npm run direct -- brief.json` → (edit `video.json` or `npm run studio`) → `npx tsx cli/nitaaq.ts animatic <projectDir>` (fast low-res check) → `npm run render -- <projectDir>`.
 
+**Full Director Mode** (you direct shot by shot; the automatic director is Fast Mode):
+
+```bash
+npx tsx cli/nitaaq.ts create brief.json --shots shots.json   # compile → structural QC → animatic → motion metrics → final
+```
+
+Write `shots.json` yourself (`docs/SHOT_SCRIPT.md`): per shot the purpose, message, scene family + content, subject, shot size, camera (+ `cameraReason`), transition (+ `transitionReason`), typography, emphasis words, motion chain (sustain / exit / emphasis, each with a reason) and timing — voice-anchored when there is a voice-over (`voice_map.json`, local Whisper if installed, otherwise estimated from silences + transcript). A decision without a reason fails validation; anything the engine cannot do is mapped to the nearest capability and listed in `shot_compile_report.json`. Read `motion_review.json` / `motion_metrics.json` (`docs/MOTION_METRICS.md`) and the contact sheet before calling it done; a dead hold the script did not declare is a directing problem, fix it in the script, not by adding motion everywhere.
+
 **Ad variants** (one brief → strategies × formats, each recomposed, not cropped):
 
 ```bash
@@ -77,7 +85,7 @@ npx tsx cli/nitaaq.ts variants brief.json --strategies problem-first,product-fir
 
 Strategies that need material the brief lacks are skipped and listed in `<base>.variants-report.json → unsupported`.
 
-Other commands (`npx tsx cli/nitaaq.ts …`): `character prepare|inspect|bench <brief|art|package>` · `character sheet <projectDir>` · `classify <brief>` · `reference <file|url>` · `beats <audio>` · `capture <url> <out.png> [--mobile true]` · `recompose <projectDir> --aspects 16:9,1:1` · `cache summary|clear [ns]` · `preflight [--full]`.
+Other commands (`npx tsx cli/nitaaq.ts …`): `metrics <file.mp4> [--project dir] [--compare before.json]` · `voice-map <audio> [--transcript text|file] [--offset s]` · `character prepare|inspect|bench <brief|art|package>` · `character sheet <projectDir>` · `classify <brief>` · `reference <file|url>` · `beats <audio>` · `capture <url> <out.png> [--mobile true]` · `recompose <projectDir> --aspects 16:9,1:1` · `cache summary|clear [ns]` · `preflight [--full]`.
 
 Render profiles: `preview` (fast, low-res) · `animatic` (half-res, 15 fps, for timing) · `draft` · `production` (final).
 
@@ -87,8 +95,8 @@ Give the MP4 path, duration, format, style + motion personality and why (`projec
 
 ## Project memory (per project folder)
 
-`project_brief.md`, `brand.json`, `reference_style.json`, `assets_manifest.json`, `storyboard.json`, `shotlist.json`, `motion_spec.json`, `audio_cues.json`, `beats.json`, `sound-plan.json`, `audio-qc.json`, `brand-motion.json`, `video.json`, `quality_report.json`, `performance_report.json`, `review_log.md` (+ `ANIMATION_GUIDE.md` for long-form). Read them before editing an existing video instead of re-deriving decisions.
+`project_brief.md`, `brand.json`, `reference_style.json`, `assets_manifest.json`, `storyboard.json`, `shotlist.json`, `motion_spec.json`, `audio_cues.json`, `beats.json`, `sound-plan.json`, `audio-qc.json`, `brand-motion.json`, `video.json`, `quality_report.json`, `motion_metrics.json`, `performance_report.json`, `review_log.md` (Full Director Mode adds `shots.json`, `shot_compile_report.json`, `voice_map.json`, `camera_targets.json`, `motion_metrics.animatic.json`, `motion_review.json`) (+ `ANIMATION_GUIDE.md` for long-form). Read them before editing an existing video instead of re-deriving decisions.
 
 ## Reference
 
-Load only the doc the task needs. Scenes `docs/SCENE_LIBRARY.md` (102 families) · Styles `docs/STYLE_LIBRARY.md` (24) · Motion `docs/MOTION_SYSTEM.md` · Choreography / cursor interaction `docs/CHOREOGRAPHY.md` · Glass 2.0 / glass folder / spatial gallery `docs/SPATIAL.md` · Text `docs/TEXT_MOTION.md` · Transitions `docs/TRANSITIONS.md` · Camera / solver / presets `docs/CAMERA.md` · Micro FX `docs/MICRO_FX.md` · Morphing `docs/MORPHING.md` · Illustration `docs/ILLUSTRATION.md` · Whiteboard `docs/WHITEBOARD.md` · Brand motion / logo `docs/BRAND_MOTION.md` · Maps `docs/MAP_ANIMATION.md` · Data `docs/DATA_ANIMATION.md` · GSAP `docs/GSAP.md` · Characters `docs/CHARACTER_ENGINE.md` · Product `docs/PRODUCT_VIDEO.md` · User video clips `docs/VIDEO_MEDIA.md` · Lottie `docs/LOTTIE_MEDIA.md` · SVG / vector `docs/VECTOR_ENGINE.md` · Launch `docs/LAUNCH_FILM.md` · Ad variants `docs/AD_VARIANTS.md` · Audio `docs/AUDIO.md` · Sound `docs/SOUND_DIRECTOR.md` · Audio engine / registry `docs/AUDIO_ENGINE.md` · Brand `docs/BRAND_SYSTEM.md` · Reference `docs/REFERENCE_SYSTEM.md` · Performance `docs/PERFORMANCE.md` · Quality `docs/QUALITY.md` · Problems `docs/TROUBLESHOOTING.md` · Architecture `docs/ARCHITECTURE.md` · Licences `docs/THIRD_PARTY.md` · Codex `AGENTS.md`
+Load only the doc the task needs. Scenes `docs/SCENE_LIBRARY.md` (102 families) · Styles `docs/STYLE_LIBRARY.md` (24) · Motion `docs/MOTION_SYSTEM.md` · Choreography / cursor interaction `docs/CHOREOGRAPHY.md` · Glass 2.0 / glass folder / spatial gallery `docs/SPATIAL.md` · Text `docs/TEXT_MOTION.md` · Transitions `docs/TRANSITIONS.md` · Camera / solver / presets `docs/CAMERA.md` · Micro FX `docs/MICRO_FX.md` · Morphing `docs/MORPHING.md` · Illustration `docs/ILLUSTRATION.md` · Whiteboard `docs/WHITEBOARD.md` · Brand motion / logo `docs/BRAND_MOTION.md` · Maps `docs/MAP_ANIMATION.md` · Data `docs/DATA_ANIMATION.md` · GSAP `docs/GSAP.md` · Characters `docs/CHARACTER_ENGINE.md` · Product `docs/PRODUCT_VIDEO.md` · User video clips `docs/VIDEO_MEDIA.md` · Lottie `docs/LOTTIE_MEDIA.md` · SVG / vector `docs/VECTOR_ENGINE.md` · Launch `docs/LAUNCH_FILM.md` · Ad variants `docs/AD_VARIANTS.md` · Audio `docs/AUDIO.md` · Sound `docs/SOUND_DIRECTOR.md` · Audio engine / registry `docs/AUDIO_ENGINE.md` · Brand `docs/BRAND_SYSTEM.md` · Reference `docs/REFERENCE_SYSTEM.md` · Performance `docs/PERFORMANCE.md` · Quality `docs/QUALITY.md` · Shot script (Full Director Mode) `docs/SHOT_SCRIPT.md` · Motion metrics `docs/MOTION_METRICS.md` · Problems `docs/TROUBLESHOOTING.md` · Architecture `docs/ARCHITECTURE.md` · Licences `docs/THIRD_PARTY.md` · Codex `AGENTS.md`

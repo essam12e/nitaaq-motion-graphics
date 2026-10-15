@@ -285,7 +285,7 @@ export const priceOffer = defineScene<OC>(
           ) : null}
           <Text text={c.headline} role="headline" size={9} animate="words" />
           {c.image ? (
-            <Reveal delay={0.2} family="scale">
+            <Reveal delay={0.2} family="scale" kind="product">
               <ProductHero src={c.image} maxW={L.safe.width * 0.5} maxH={L.safe.height * 0.3} />
             </Reveal>
           ) : null}

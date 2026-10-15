@@ -268,7 +268,7 @@ export const brandOutro = defineScene<OC>(
     return (
       <Stage gap={u * 3}>
         {src ? (
-          <Reveal family="scale">
+          <Reveal family="scale" kind="logo">
             <Logo src={src} maxW={Math.min(L.safe.width * 0.5, u * 50)} maxH={u * 22} />
           </Reveal>
         ) : name ? (

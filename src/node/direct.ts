@@ -51,6 +51,9 @@ import { SceneRegistry } from '../scenes';
 import { diversify, fingerprint } from '../director/anti-template';
 import { rhythmPlan, motionLanguage } from '../director/rhythm';
 import { loadHistory, recordHistory } from './film-history';
+import { validateShotScript, type ShotScript } from '../director/shot-script';
+import { compileShots, plannedScenes, reapplyShotDecisions, applyShotSpec, type ResolvedShot, type CompileReport } from '../director/shot-compiler';
+import type { VoiceMap } from '../audio/voice-map';
 
 export interface DirectResult {
   status: 'ready' | 'needs-input';
@@ -63,9 +66,30 @@ export interface DirectResult {
   classification?: Classification;
   motion?: MotionSpec;
   reference?: ReferenceStyle | null;
+  /** Full Director Mode: the shot compiler's decisions, mappings and warnings. */
+  shotReport?: CompileReport;
+  voiceMap?: VoiceMap | null;
 }
 
-export async function direct(opts: { brief: unknown; baseDir: string; projectDir?: string; projectId?: string; assumeNoLogo?: boolean; cleanVoice?: boolean; perf?: Perf; dryRun?: boolean }): Promise<DirectResult> {
+export async function direct(opts: {
+  brief: unknown;
+  baseDir: string;
+  projectDir?: string;
+  projectId?: string;
+  assumeNoLogo?: boolean;
+  cleanVoice?: boolean;
+  perf?: Perf;
+  dryRun?: boolean;
+  /** Full Director Mode: a Claude-authored shot script (shots.json content). Without it the automatic director runs (Fast Mode). */
+  shots?: unknown;
+}): Promise<DirectResult> {
+  // Full Director Mode: validate the shot script before any work (a decision without a reason is an error)
+  let script: ShotScript | null = null;
+  if (opts.shots !== undefined) {
+    const v = validateShotScript(opts.shots);
+    if (!v.ok) throw new MotionError({ code: 'INPUT_INVALID', what: 'shots.json is not a valid shot script', why: v.errors.slice(0, 12).join('\n'), action: 'Fix the listed fields (camera moves and transitions need a reason) — see docs/SHOT_SCRIPT.md.' });
+    script = v.script;
+  }
   const perf = opts.perf ?? new Perf();
   const ttsAvailable = voiceProviders().some((p) => p.available);
   const { brief, questions, assumptions } = await perf.stage('intake', () => intake(opts.brief, { assumeNoLogo: opts.assumeNoLogo, ttsAvailable }));
@@ -302,6 +326,14 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
     const id = await add(brief.audio.music, 'audio', 'music');
     audio.music = { src: assets[id].src, duration: probe(join(projectDir, assets[id].src)).duration, license: brief.audio.musicLicense ?? 'user-supplied' };
   }
+  // Full Director Mode: word-level voice map (local Whisper → estimated words → segments), voice is the primary clock
+  let voiceMapData: VoiceMap | null = null;
+  if (script && audio.voice) {
+    const { voiceMap } = await import('./voice-map');
+    const transcript = (brief.audio.transcript ?? []).join(' ').trim() || undefined;
+    voiceMapData = await perf.stage('voice-map', () => voiceMap(join(projectDir, audio.voice!.src), { transcript, offset, language: brief.language === 'en' ? 'en' : 'ar', out: join(projectDir, 'voice_map.json') }).map);
+    log.stage('VOICE', `${voiceMapData.engine.name}${voiceMapData.engine.whisper.available ? '' : ` (Whisper: ${voiceMapData.engine.whisper.reason})`}: ${voiceMapData.words.length} words, ${voiceMapData.confidence.timing}, ${voiceMapData.pauses.length} pauses`);
+  }
   perf.mark('audio', Date.now() - tAudio);
 
   const beats = await beatsJob;
@@ -365,7 +397,14 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
   let chapters: { title: string; scenes: string[] }[] = [];
   let board: PlannedStoryboard;
   let charFilm: import('./character/film').CharacterFilm | undefined;
-  if (brief.chapters && brief.chapters.length > 1) {
+  let shotPlan: { resolved: ResolvedShot[]; report: CompileReport } | null = null;
+  if (script) {
+    // Full Director Mode: the shot script IS the storyboard
+    shotPlan = compileShots({ script, voice: voiceMapData, recipeCtx: ctx, rtl: brief.language !== 'en', orientation: plan.aspect === '16:9' ? 'landscape' : plan.aspect === '1:1' ? 'square' : 'portrait', voiceOffset: offset });
+    board = plannedScenes(shotPlan.resolved);
+    for (const w of shotPlan.report.warnings) log.stage('SHOTS', `${w.shot ? `[${w.shot}] ` : ''}${w.code}: ${w.message}`, 'warn');
+    log.stage('SHOTS', `${script.shots.length} shot(s) compiled: ${shotPlan.report.decisions.filter((d) => d.source === 'script').length} script decisions, ${shotPlan.report.mappings.length} mapped, ${shotPlan.report.warnings.length} warning(s)`);
+  } else if (brief.chapters && brief.chapters.length > 1) {
     const r = chapterBoards(brief, plan, brand, recipeAssets, seed);
     board = r.storyboard;
     chapters = r.chapters;
@@ -380,8 +419,15 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
     log.stage('CHARACTER', `${charFilm.spec.name}: ${charFilm.prepared.manifest.sourceType}, ${charFilm.prepared.manifest.poses.length} pose(s), ${charFilm.plan.complexity} (${charFilm.prepared.cache}); ${charFilm.plan.shots.map((s) => `${s.intent.state}/${s.poseId}`).join(' | ')}`);
   } else board = buildStoryboard(plan, ctx, { seed, voice: voiceTiming, prefer: brief.preferences.prefer, avoid: brief.preferences.avoid });
   if (board.scenes.length < 2 && !(genre.genre === 'logo' && board.scenes[0]?.family === 'logo-animation')) throw new MotionError({ code: 'INPUT_INVALID', what: 'Not enough content to direct a video', why: 'The brief only supports one scene.', action: 'Add at least a hook and a CTA (and ideally features, a product or a problem/solution).' });
-  const film = directFilm({ brief, plan, storyboard: board, seed, referenceEnergy: reference?.motion?.energy, beats: beats && beats.confidence > 0.15 ? beats : null, voiceLed: Boolean(voiceTiming), genre: genre.genre, sharedElements: isSelected(selected, 'shared-elements') });
+  const film = directFilm({ brief, plan, storyboard: board, seed, referenceEnergy: reference?.motion?.energy, beats: beats && beats.confidence > 0.15 ? beats : null, voiceLed: Boolean(voiceTiming), genre: genre.genre, sharedElements: isSelected(selected, 'shared-elements') && !script });
   const storyboard = film.storyboard;
+  if (shotPlan) {
+    // the script's decisions win over the Creative Director's seeded choices (camera, cuts, typography, timing)
+    reapplyShotDecisions(storyboard, shotPlan.resolved, film.motion);
+    film.motion.shared = [];
+    film.motion.beatSync = null;
+    storyboard.totalDuration = Math.round(storyboard.scenes.reduce((a, s, i) => a + s.duration - (i < storyboard.scenes.length - 1 ? s.transitionDuration : 0), 0) * 100) / 100;
+  }
   if (charFilm) {
     // the Character Director's pose cuts and camera win over the generic transition engine for character shots
     const { CUT_TRANSITION, attachCharacterEvents } = loaded.character as typeof import('./character/film');
@@ -432,10 +478,16 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
     writeFileSync(join(projectDir, 'brand-motion.json'), JSON.stringify(updated, null, 2));
   }
   if (charFilm) spec.character = charFilm.spec;
+  if (shotPlan) {
+    applyShotSpec(spec, shotPlan.resolved, { shotScript: 'shots.json', voiceMap: voiceMapData ? 'voice_map.json' : undefined });
+    writeFileSync(join(projectDir, 'shots.json'), JSON.stringify(opts.shots, null, 2));
+    writeFileSync(join(projectDir, 'shot_compile_report.json'), JSON.stringify(shotPlan.report, null, 2));
+  }
   if (chapters.length) spec.timeline.chapters = chapters.map((ch, i) => ({ id: `chapter-${i + 1}`, title: ch.title, startScene: ch.scenes[0] }));
 
   // ── Anti-Template: a film too close to a recent one varies its non-semantic choices (cuts, camera, variants)
-  if (process.env.NITAAQ_NO_ANTI_TEMPLATE !== '1') {
+  // (skipped in Full Director Mode: the script's choices are deliberate, not a template to vary)
+  if (process.env.NITAAQ_NO_ANTI_TEMPLATE !== '1' && !script) {
     const orientation = plan.aspect === '16:9' ? 'landscape' : plan.aspect === '1:1' ? 'square' : 'portrait';
     const anti = diversify(spec, loadHistory(projectId), {
       variants: (type) => {
@@ -487,7 +539,7 @@ export async function direct(opts: { brief: unknown; baseDir: string; projectDir
   writeProjectBrief(projectDir, { brief, plan, cls, motion: film.motion, assumptions, reference, spec });
   if (chapters.length) writeAnimationGuide(projectDir, spec, film.motion, chapters);
   if (!existsSync(join(projectDir, 'video.json'))) throw new MotionError({ code: 'INPUT_INVALID', what: 'Could not write video.json', where: projectDir });
-  return { status: 'ready', questions, assumptions, projectDir, plan, storyboard, spec, classification: cls, motion: film.motion, reference };
+  return { status: 'ready', questions, assumptions, projectDir, plan, storyboard, spec, classification: cls, motion: film.motion, reference, shotReport: shotPlan?.report, voiceMap: voiceMapData };
 }
 
 /**

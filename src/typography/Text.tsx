@@ -5,13 +5,14 @@
  * glyph, which would break Arabic joining), applies the style's highlight
  * treatment, and tags itself for automated QC.
  */
-import React, { useMemo, type CSSProperties } from 'react';
+import React, { useContext, useMemo, type CSSProperties } from 'react';
 import { useVideo, useContextScene } from './text-context';
 import { fitText } from './fit';
 import { canvasMeasure } from './measure-browser';
 import { baseDirection, hasArabic, joiningClusters, kashida, prepareText, safeLetterSpacing, type Token } from './arabic';
 import { entranceStyle, progress, clamp, type MotionCtx } from '../motion/primitives';
-import { useMotion } from '../engine/context';
+import { useMotion, LifeOwnerCtx } from '../engine/context';
+import { composeStyles, emphasisPulse, entranceP, exitP, exitStyle, principledEntranceStyle, profileFor } from '../motion/lifecycle';
 import type { EntranceFamily, StyleTokens } from '../styles/tokens';
 import { alpha } from '../brand/color';
 import { TextMotionRegistry, effectiveUnit, roleGroupOf, type TextMotionFamily, type UnitCtx } from '../text-motion/families';
@@ -58,6 +59,8 @@ export interface TextProps {
   shadow?: boolean;
   /** Text Motion Engine family id (overrides the scene's text-motion plan). */
   motion?: string;
+  /** Principled model: place in the scene's exit sequence (0 = leaves first). */
+  exitOrder?: number;
 }
 
 function groupRuns(line: Token[]): Token[][] {
@@ -75,8 +78,26 @@ export function Text(props: TextProps) {
   const v = useVideo();
   const scene = useContextScene();
   const m = useMotion();
+  const owned = useContext(LifeOwnerCtx);
   const role = props.role ?? 'body';
   const r = ROLE[role];
+  // principled motion model (P0): Principles Engine entrance, word-timed emphasis, lifecycle exit
+  const pr = Boolean(m.principled && m.life);
+  const prof = pr ? profileFor(m.personality, role === 'headline' || role === 'title' || role === 'cta' ? 'hero-title' : role === 'number' ? 'number' : 'text') : null;
+  const pp = (d: number, dur: number) => (prof ? entranceP(prof, m.frame, m.fps, d, m.speed) : progress(m, d, dur));
+  const entStyle = (fam: EntranceFamily, p: number) => (pr ? principledEntranceStyle(fam, p, m.intensity, v.canvas.u, v.dir) : entranceStyle(fam, p, m.intensity, v.canvas.u, v.dir));
+  /** Scene-local time a highlighted word is spoken (voice map / Shot Script), if the scene has one for it. */
+  const spokenAt = (word: string): number | undefined => {
+    if (!pr || !m.life?.emphasis.length) return undefined;
+    const n = (x: string) => x.replace(/[\u064B-\u0652\u0640]/g, '').replace(/[أإآ]/g, 'ا').replace(/[^\p{L}\p{N}]+/gu, '');
+    const w = n(word);
+    if (!w) return undefined;
+    const hit = m.life.emphasis.find((e) => {
+      const x = n(e.word);
+      return x && (x === w || w.includes(x) || x.includes(w));
+    });
+    return hit?.at;
+  };
   const t = v.tokens;
   const layout = scene?.scene.layout;
   // Tall canvases have more room per short-edge unit: type reads bigger there.
@@ -135,7 +156,7 @@ export function Text(props: TextProps) {
   const textAlign: CSSProperties['textAlign'] = align === 'center' ? 'center' : align === 'start' ? (dir === 'rtl' ? 'right' : 'left') : dir === 'rtl' ? 'left' : 'right';
   const letterSpacing = role === 'eyebrow' ? safeLetterSpacing(text, 0.14) : 0;
   const upper = role === 'eyebrow' && t.typography.eyebrowCase === 'upper' && !hasArabic(text);
-  const blockP = animate === 'block' ? progress(m, delay, dur) : 1;
+  const blockP = animate === 'block' ? pp(delay, dur) : 1;
   // Text Motion Engine: an explicit `motion`, or the scene's plan for this role when the scene left the entrance open
   const planned = props.entrance === undefined && animate !== 'none' ? scene?.scene.motion?.text?.[roleGroupOf(role)] : undefined;
   const fam: TextMotionFamily | undefined = TextMotionRegistry.get(props.motion ?? planned);
@@ -179,7 +200,13 @@ export function Text(props: TextProps) {
         const settledK = m.frame / m.fps - (d + famDur * 0.7);
         const stretch = fam!.kashida && run[0].highlight && runArabic && settledK > 0 ? Math.round(fam!.kashida * clamp(settledK / 0.35)) : 0;
         const settledFor = m.frame / m.fps - (d + famDur);
-        const pulse = fam!.highlight === 'pulse' && run[0].highlight && settledFor > 0 ? Math.sin(clamp(settledFor / 0.45) * Math.PI) * 0.09 : 0;
+        const spoken = run[0].highlight ? spokenAt(content) : undefined;
+        const pulse =
+          spoken !== undefined
+            ? emphasisPulse(m.frame / m.fps, Math.max(spoken, d + famDur * 0.5)) * 0.08
+            : fam!.highlight === 'pulse' && run[0].highlight && settledFor > 0
+              ? Math.sin(clamp(settledFor / 0.45) * Math.PI) * 0.09
+              : 0;
         const word = (
           <Word
             text={stretch ? kashida(content, stretch) : content}
@@ -191,7 +218,7 @@ export function Text(props: TextProps) {
             tokens={t}
             p={p}
             m={m}
-            hlDelay={d + famDur * 0.6}
+            hlDelay={spoken !== undefined ? Math.max(spoken, d + famDur * 0.3) : d + famDur * 0.6}
             count={numericCount ? clamp(p) : undefined}
             numerals={v.spec.project.numerals}
             chars={
@@ -265,19 +292,28 @@ export function Text(props: TextProps) {
         textShadow: shadow,
         fontFeatureSettings: '"kern" 1, "liga" 1, "calt" 1',
         ...(layout?.scrim && role !== 'number' && role !== 'eyebrow' ? { background: alpha(t.palette.background, 0.74), padding: '0.12em 0.42em', borderRadius: '0.28em', boxShadow: `0 0 ${2 * u}px ${alpha(t.palette.background, 0.5)}` } : {}),
-        ...(!fam && animate === 'block' ? entranceStyle(entrance, blockP, m.intensity, u, dir) : {}),
-        ...(fam && unit === 'block' ? fam.unit_(famP(delay), famCtx(0, 1, arabicText)) : {}),
+        ...(pr
+          ? composeStyles(
+              !fam && animate === 'block' ? entStyle(entrance, blockP) : undefined,
+              fam && unit === 'block' ? fam.unit_(famP(delay), famCtx(0, 1, arabicText)) : undefined,
+              // lifecycle exit: animated text that no wrapper already moves leaves along the handoff vector
+              !owned && animate !== 'none' && m.life ? exitStyle(m.life.exit, exitP(m.life, m.frame, m.fps, props.exitOrder ?? 0), u, prof && prof.anticipation > 0 ? 1 : 0) : undefined,
+            )
+          : {
+              ...(!fam && animate === 'block' ? entranceStyle(entrance, blockP, m.intensity, u, dir) : {}),
+              ...(fam && unit === 'block' ? fam.unit_(famP(delay), famCtx(0, 1, arabicText)) : {}),
+            }),
         ...props.style,
       }}
       data-qc-motion={fam?.id}
     >
       {fam ? renderFamilyLines() : fit.lines.map((line, li) => {
-        const lineP = animate === 'lines' ? progress(m, delay + li * gap * 1.6, dur) : 1;
+        const lineP = animate === 'lines' ? pp(delay + li * gap * 1.6, dur) : 1;
         return (
-          <div key={li} style={{ whiteSpace: 'nowrap', ...(animate === 'lines' ? entranceStyle(entrance, lineP, m.intensity, u, dir) : {}) }}>
+          <div key={li} style={{ whiteSpace: 'nowrap', ...(animate === 'lines' ? entStyle(entrance, lineP) : {}) }}>
             {groupRuns(line).map((run, ri) => {
               const wi = wordIndex++;
-              const p = animate === 'words' ? progress(m, delay + wi * gap, dur) : 1;
+              const p = animate === 'words' ? pp(delay + wi * gap, dur) : 1;
               const isLatin = run[0].script === 'latin' || run[0].script === 'neutral';
               const content = run.map((x) => x.text).join(' ');
               const token = run[0];
@@ -294,8 +330,13 @@ export function Text(props: TextProps) {
                     tokens={t}
                     p={p}
                     m={m}
-                    hlDelay={delay + wi * gap + dur * 0.5}
-                    style={animate === 'words' ? entranceStyle(entrance, p, m.intensity, u, dir) : undefined}
+                    hlDelay={token.highlight && spokenAt(content) !== undefined ? Math.max(spokenAt(content)!, delay + wi * gap + dur * 0.3) : delay + wi * gap + dur * 0.5}
+                    style={(() => {
+                      const ent = animate === 'words' ? entStyle(entrance, p) : undefined;
+                      const at = token.highlight ? spokenAt(content) : undefined;
+                      const pulse = at !== undefined ? emphasisPulse(m.frame / m.fps, Math.max(at, delay + wi * gap + dur * 0.3)) * 0.08 : 0;
+                      return pulse ? composeStyles(ent, { transform: `scale(${(1 + pulse).toFixed(4)})` }) : ent;
+                    })()}
                   />
                 </React.Fragment>
               );

@@ -1,13 +1,16 @@
 /**
  * nitaaq — NITAAQ | Motion Graphics CLI (shared by the Claude Code and Codex adapters).
  *
- *   nitaaq create   <brief.json> [--profile production] [--no-logo] [--out dir] [--name file] [--clean-voice]
- *   nitaaq direct   <brief.json> [--project dir] [--no-logo]          → plan.json, storyboard.json, video.json
+ *   nitaaq create   <brief.json> [--shots shots.json] [--profile production] [--no-logo] [--out dir] [--name file] [--clean-voice]
+ *   nitaaq direct   <brief.json> [--shots shots.json] [--project dir] [--no-logo]   → plan.json, storyboard.json, video.json
+ *                   --shots: Full Director Mode (Claude-authored shot script → voice map → animatic → motion metrics → final)
  *   nitaaq produce  <projectDir|video.json> [--profile …] [--animatic]  → staged QC + repair + render + final QC
  *   nitaaq animatic <projectDir|video.json>                            → structural QC + sheets + half-size 15 fps animatic
  *   nitaaq validate <video.json> [--fix]
  *   nitaaq render   <projectDir|video.json> [--profile preview|animatic|draft|production] [--out file.mp4] [--no-cache]
  *   nitaaq quality  <projectDir|video.json> [--video file.mp4]
+ *   nitaaq metrics  <file.mp4> [--project dir] [--compare before.json] [--out motion_metrics.json]  → motion metrics (still ratio, holds, energy, camera, …)
+ *   nitaaq voice-map <audio> [--transcript text|file] [--offset s] [--engine auto|whisper|silence] [--out voice_map.json]  → word-level voice timing (local)
  *   nitaaq brand    <logo> [--name …]
  *   nitaaq recompose <projectDir> [--aspects 9:16,16:9,1:1,4:5] [--render false]  → re-laid-out formats (not crops)
  *   nitaaq beats    <audio>                   → BPM, beats, downbeats, onsets, energy (cached by hash)
@@ -102,7 +105,8 @@ async function main(): Promise<number> {
       if (!file) throw new Error(`Usage: nitaaq ${cmd} <brief.json>`);
       const brief = JSON.parse(readFileSync(file, 'utf8'));
       const perf = new Perf();
-      const r = await direct({ brief, baseDir: dirname(resolve(file)), projectDir: flag('project') ? resolve(flag('project')!) : undefined, assumeNoLogo: flag('no-logo') === 'true', cleanVoice: flag('clean-voice') === 'true', perf });
+      const shots = flag('shots') ? JSON.parse(readFileSync(resolve(flag('shots')!), 'utf8')) : undefined;
+      const r = await direct({ brief, baseDir: dirname(resolve(file)), projectDir: flag('project') ? resolve(flag('project')!) : undefined, assumeNoLogo: flag('no-logo') === 'true', cleanVoice: flag('clean-voice') === 'true', perf, shots });
       if (r.status === 'needs-input') {
         out({ status: 'needs-input', questions: r.questions });
         return 2;
@@ -403,6 +407,28 @@ async function main(): Promise<number> {
       for (const i of r.issues.filter((x) => x.severity !== 'info')) log.info('QUALITY', `${i.severity.toUpperCase()} ${i.code}${i.scene ? ` [${i.scene}]` : ''}: ${i.message}`);
       log.info('QUALITY', `${r.passed ? 'PASSED' : 'FAILED'} → ${join(p.dir, 'qc', 'manual', 'quality-report.json')}`);
       return r.passed ? 0 : 1;
+    }
+    case 'metrics': {
+      if (!pos[0]) throw new Error('Usage: nitaaq metrics <file.mp4> [--project dir] [--compare before.json] [--out motion_metrics.json]');
+      const { analyzeMotion, specNear, emphasisWordsOf } = await import('../src/node/motion-analysis');
+      const { compareMetrics } = await import('../src/qc/motion-metrics');
+      const spec = flag('project') ? specNear(resolve(flag('project')!)) : null;
+      const words = spec ? emphasisWordsOf(spec) : [];
+      const r = analyzeMotion(resolve(pos[0]), { spec, stage: 'external', out: flag('out') ? resolve(flag('out')!) : undefined, words: words.length ? words : undefined });
+      const g = r.metrics.global;
+      log.info('QUALITY', `motion score ${g.score} · still ${Math.round(g.stillFrameRatio * 100)}% · longest hold ${g.longestStaticHold.sec}s (${g.longestStaticHold.class ?? '—'}) · dead holds ${g.deadHoldSec}s → ${r.file}`);
+      for (const w of r.metrics.warnings) log.info('QUALITY', `${w.code}${w.scene ? ` [${w.scene}]` : ''}: ${w.message}`);
+      if (flag('compare')) out(compareMetrics(JSON.parse(readFileSync(resolve(flag('compare')!), 'utf8')), r.metrics));
+      return 0;
+    }
+    case 'voice-map': {
+      if (!pos[0]) throw new Error('Usage: nitaaq voice-map <audio> [--transcript text|file] [--offset s] [--engine auto|whisper|silence] [--model small] [--out voice_map.json]');
+      const { voiceMap, readTranscript } = await import('../src/node/voice-map');
+      const r = voiceMap(resolve(pos[0]), { transcript: readTranscript(flag('transcript')), offset: Number(flag('offset') ?? 0), engine: flag('engine') as 'auto' | 'whisper' | 'silence' | undefined, model: flag('model'), language: flag('language'), out: flag('out') ? resolve(flag('out')!) : undefined });
+      const m = r.map;
+      log.info('VOICE', `${m.engine.name}${m.engine.whisper.available ? ` (${m.engine.model})` : ` — Whisper unavailable: ${m.engine.whisper.reason}`} · ${m.words.length} words (${m.confidence.timing}) · ${m.pauses.length} pauses · ${m.speechRate.wordsPerMin} wpm → ${r.file}`);
+      out({ engine: m.engine, confidence: m.confidence, words: m.words.length, emphasis: m.emphasisCandidates.map((e) => `${e.word}@${e.start}s (${e.reasons.join(', ')})`), keywords: m.keywords.map((k) => k.word) });
+      return 0;
     }
     case 'brand': {
       const logo = pos[0];

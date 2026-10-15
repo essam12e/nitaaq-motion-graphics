@@ -7,6 +7,7 @@ import type { Timeline, TimelineEntry } from '../core/timeline';
 import type { MotionCtx } from '../motion/primitives';
 import { highlightColor } from '../styles/resolve';
 import { PERSONALITIES } from '../motion/personality';
+import { resolveExit, type LifeCtx } from '../motion/lifecycle';
 
 export interface FontFamilies {
   display: string;
@@ -56,6 +57,9 @@ export interface SceneCtxValue {
 
 export const SceneCtx = createContext<SceneCtxValue | null>(null);
 
+/** True inside an element whose wrapper already runs the lifecycle exit (Reveal, cards): nested text does not exit twice. */
+export const LifeOwnerCtx = createContext(false);
+
 export function useScene(): SceneCtxValue {
   const s = useContext(SceneCtx);
   if (!s) throw new Error('useScene() must be used inside a scene');
@@ -68,6 +72,8 @@ export function useMotion(): MotionCtx {
   const { fps } = useVideoConfig();
   const v = useVideo();
   const s = useContext(SceneCtx);
+  const principled = v.spec.motion?.model === 'principled';
+  const life = useMemo(() => (principled && s ? sceneLife(s, v.spec, v.dir, v.timeline.entries.length) : undefined), [principled, s, v.spec, v.dir, v.timeline.entries.length]);
   return useMemo(
     () => ({
       frame,
@@ -77,9 +83,26 @@ export function useMotion(): MotionCtx {
       speed: s?.speed ?? 1,
       personality: v.tokens.motion.personality,
       floatK: PERSONALITIES[v.tokens.motion.personality]?.float ?? 1,
+      ...(principled ? { principled: true, life } : {}),
     }),
-    [frame, fps, s?.intensity, s?.speed, v.tokens.motion.intensity, v.tokens.motion.easing, v.tokens.motion.personality],
+    [frame, fps, s?.intensity, s?.speed, v.tokens.motion.intensity, v.tokens.motion.easing, v.tokens.motion.personality, principled, life],
   );
+}
+
+/** The scene's lifecycle context (principled motion model): hold/exit timing, sustain and word-timed emphasis. */
+export function sceneLife(s: SceneCtxValue, spec: VideoSpec, dir: 'rtl' | 'ltr', sceneCount: number): LifeCtx {
+  const lc = s.scene.motion?.lifecycle;
+  const last = s.index >= sceneCount - 1;
+  return {
+    holdFrames: s.holdFrames,
+    totalFrames: s.entry.durationInFrames,
+    outFrames: s.entry.transitionOut,
+    last,
+    exit: resolveExit({ exit: lc?.exit, transition: s.scene.transition, rtl: dir === 'rtl', energy: spec.direction.energy }),
+    sustain: lc?.sustain ?? 'auto',
+    intentionalHold: Boolean(lc?.hold?.intentional),
+    emphasis: (lc?.emphasis ?? []).map((e) => ({ word: e.word, at: e.at, end: e.end, source: e.source, accent: e.accent })),
+  };
 }
 
 const ABSOLUTE = /^(https?:|data:|blob:)/;

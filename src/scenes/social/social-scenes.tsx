@@ -150,7 +150,7 @@ export const testimonial = defineScene<TeC>(
     return (
       <div style={{ position: 'absolute', left: safe.x, top: safe.y, width: safe.width, height: safe.height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {variant === 'card' ? (
-          <Reveal delay={0} family="scale">
+          <Reveal delay={0} family="scale" kind="card">
             <Surface style={{ width: W, padding: u * 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: u * 2.4, transform: `translateY(${float(m.frame, m.fps, (m.floatK ?? 1) * u * 0.6, 5)}px)` }}>{body}</Surface>
           </Reveal>
         ) : (
@@ -213,7 +213,7 @@ export const chatMessage = defineScene<ChC>(
           const typing = nextIdx < n && c.messages[nextIdx].from === 'them' && s >= 0.25 + nextIdx * per - 0.45;
           const meBg = variant === 'dm' ? `linear-gradient(135deg, ${t.palette.primary}, ${t.palette.accent})` : t.palette.primary;
           return (
-            <Reveal delay={0} family="rise">
+            <Reveal delay={0} family="rise" kind="device">
               <div style={{ width: W, height: H, borderRadius: u * 3, background: ui.page, border: `1px solid ${ui.line}`, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: `0 ${u * 2}px ${u * 6}px ${alpha('#000', 0.3)}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: u * 1.6, padding: `${u * 2}px ${u * 2.4}px`, background: ui.panel, borderBottom: `1px solid ${ui.line}` }}>
                   {variant === 'support' ? <Icon name="Headset" size={u * 3.6} treatment="badge" /> : <Avatar name={c.contact ?? '•'} size={u * 6} />}

@@ -2,7 +2,10 @@
 import React from 'react';
 import { z } from 'zod';
 import { defineScene, ALL_ASPECTS } from '../registry';
-import { HeadingFields, HeroSplit, HeadlineBlock, useSceneTime, Reveal } from '../kit';
+import { HeadingFields, HeroSplit, HeadlineBlock, useSceneTime, Reveal, orderOf } from '../kit';
+import { LifeOwnerCtx } from '../../engine/context';
+import { useContext } from 'react';
+import { composeStyles, lifecycleStyle } from '../../motion/lifecycle';
 import { useVideo } from '../../engine/context';
 import { Text } from '../../typography/Text';
 import { Surface } from '../../components/Surface';
@@ -30,8 +33,15 @@ function FeatureCard({ f, w, h, delay, compact, active = 1, horizontal, tone = '
   const fg = tone === 'primary' ? t.palette.textOnPrimary : t.palette.textOnSurface;
   const pad = compact ? u * 1.8 : u * 2.4;
   const textW = horizontal ? w - pad * 2 - iconSize * 1.9 - u * 2 : w - pad * 2;
+  // principled model: Principles Engine lifecycle (anticipation/settle, a living hold, exit in sequence)
+  const owned = useContext(LifeOwnerCtx);
+  const outer =
+    m.principled && m.life
+      ? composeStyles(lifecycleStyle({ frame: m.frame, fps: m.fps, speed: m.speed, delay, kind: 'card', personality: m.personality, family: 'rise', intensity: m.intensity, u, dir: v.dir, life: m.life, order: orderOf(delay), phase: delay * 2.7, owned }), { opacity: 0.35 + 0.65 * active, transform: `scale(${0.96 + 0.04 * active})` })
+      : { opacity: clamp(p * 1.6) * (0.35 + 0.65 * active), transform: `translateY(${(1 - p) * u * 5}px) scale(${0.96 + 0.04 * active})` };
   return (
-    <div style={{ opacity: clamp(p * 1.6) * (0.35 + 0.65 * active), transform: `translateY(${(1 - p) * u * 5}px) scale(${0.96 + 0.04 * active})` }}>
+    <div style={outer}>
+      <LifeOwnerCtx.Provider value={true}>
       <Surface tone={tone} style={{ width: w, height: h, padding: pad, display: 'flex', flexDirection: horizontal ? 'row' : 'column', alignItems: horizontal ? 'center' : 'flex-start', gap: u * (horizontal ? 2 : 1.4), justifyContent: horizontal ? 'flex-start' : 'center' }}>
         <Icon name={f.icon} size={iconSize} color={tone === 'primary' ? t.palette.textOnPrimary : undefined} />
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: u * 0.6, minWidth: 0 }}>
@@ -39,6 +49,7 @@ function FeatureCard({ f, w, h, delay, compact, active = 1, horizontal, tone = '
           {f.text && !compact ? <Text text={f.text} role="body" size={big ? 3.8 : 3} minSize={2.4} animate="none" align="start" maxLines={3} maxWidth={textW} color={tone === 'primary' ? t.palette.textOnPrimary : t.palette.textSecondary} /> : null}
         </div>
       </Surface>
+      </LifeOwnerCtx.Provider>
     </div>
   );
 }
@@ -181,7 +192,7 @@ export const featureSet = defineScene<FSC>(
               const rowH = Math.min(u * 13, ((landscape ? h * 0.8 : h * 0.54) - u * 1.4 * (rest.length - 1)) / Math.max(1, rest.length));
               return (
                 <div style={{ display: 'flex', flexDirection: landscape ? 'row' : 'column', gap: u * 3, alignItems: 'center', direction: v.dir }}>
-                  <Reveal delay={0.1} family="scale">
+                  <Reveal delay={0.1} family="scale" kind="card">
                     <Surface tone="primary" style={{ width: bigW, height: bigH, padding: u * 3.6, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-start', gap: u * 2 }}>
                       <Icon name={first.icon} size={u * 7} color={t.palette.textOnPrimary} treatment="plain" />
                       <Text text={first.title} role="title" size={7} minSize={4} animate="none" align="start" maxLines={2} maxWidth={bigW - u * 7.2} color={t.palette.textOnPrimary} />

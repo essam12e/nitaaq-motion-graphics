@@ -1,0 +1,71 @@
+{
+ "text": "نطاق منصة ذكية تجمع فريقك. وفر عشرين ساعة كل أسبوع. ابدأ مجانا اليوم.",
+ "words": [
+  {
+   "word": "نطاق",
+   "start": 0.4,
+   "end": 1.009
+  },
+  {
+   "word": "منصة",
+   "start": 1.079,
+   "end": 1.869
+  },
+  {
+   "word": "ذكية",
+   "start": 1.939,
+   "end": 2.669
+  },
+  {
+   "word": "تجمع",
+   "start": 2.739,
+   "end": 3.461
+  },
+  {
+   "word": "فريقك",
+   "start": 3.531,
+   "end": 4.363
+  },
+  {
+   "word": "وفر",
+   "start": 4.963,
+   "end": 5.577
+  },
+  {
+   "word": "عشرين",
+   "start": 5.647,
+   "end": 6.49
+  },
+  {
+   "word": "ساعة",
+   "start": 6.56,
+   "end": 7.259
+  },
+  {
+   "word": "كل",
+   "start": 7.329,
+   "end": 7.789
+  },
+  {
+   "word": "أسبوع",
+   "start": 7.859,
+   "end": 8.533
+  },
+  {
+   "word": "ابدأ",
+   "start": 9.133,
+   "end": 9.476
+  },
+  {
+   "word": "مجانا",
+   "start": 9.546,
+   "end": 10.298
+  },
+  {
+   "word": "اليوم",
+   "start": 10.368,
+   "end": 10.961
+  }
+ ],
+ "note": "espeak-ng Arabic, each word synthesised separately and joined with 0.07 s word gaps and 0.6 s clause gaps: exact ground-truth word times"
+}

@@ -5,7 +5,9 @@
  *   → structural QC on cached DOM probes (structure / design / motion), auto-repair
  *     (max 2 passes; a 3rd only while critical issues remain and repairs still apply)
  *   → contact sheet + phone-view sheet
- *   → optional animatic (half size, 15 fps) for timing review
+ *   → optional animatic (half size, 15 fps) for timing review — mandatory in Full Director Mode,
+ *     where it is measured (motion_metrics.animatic.json) and reviewed (motion_review.json) before
+ *     the final render
  *   → production render (render cache: identical inputs are never re-rendered)
  *   → final technical QC (reuses the structural probes, one MP4 decode)
  *   → delivery only when every acceptance rule passes.
@@ -32,6 +34,8 @@ import { resolveSharedRects } from './shared-rects';
 import { audioQc, motionVarietyQc } from '../qc/audio-qc';
 import type { QcIssue } from '../qc/quality';
 import type { BeatAnalysis } from '../audio/beats';
+import { analyzeMotion, emphasisWordsOf } from './motion-analysis';
+import type { MotionMetrics } from '../qc/motion-metrics';
 
 export interface ProduceResult {
   ok: boolean;
@@ -45,6 +49,32 @@ export interface ProduceResult {
   passes: number;
   specFile: string;
   perf: ReturnType<Perf['report']>;
+  /** Motion metrics (P0-A): animatic (Full Director Mode) and final render. Informational, never blocking. */
+  motion?: { animatic?: MotionMetrics; final?: MotionMetrics; review?: MotionReview };
+}
+
+/** The Full Director Mode review of the animatic's motion (P0: measured and recorded, not a gate). */
+export interface MotionReview {
+  stage: 'animatic';
+  decision: 'proceed';
+  score: number;
+  stillFrameRatio: number;
+  longestDeadHold: number;
+  warnings: MotionMetrics['warnings'];
+  note: string;
+}
+
+/** Full Director Mode = a Claude-authored shot script drove this spec (metadata.director.mode). */
+export const isFullDirector = (spec: VideoSpec) => (spec.metadata as { director?: { mode?: string } } | undefined)?.director?.mode === 'full';
+
+function motionStage(video: string, spec: VideoSpec, stage: 'animatic' | 'final', out: string): MotionMetrics | undefined {
+  try {
+    const words = emphasisWordsOf(spec);
+    return analyzeMotion(video, { spec, stage, out, words: words.length ? words : undefined, wordSource: 'spec emphasis (voice-timed)' }).metrics;
+  } catch (e) {
+    log.stage('QUALITY', `motion metrics skipped (${stage}): ${(e as Error).message}`, 'warn');
+    return undefined;
+  }
 }
 
 export interface ProduceOptions {
@@ -143,23 +173,55 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
     if (sr.changed) save(specFile, spec);
   }
 
+  // 2a. Full Director Mode: camera targets measured (focus + framing of the element each shot names)
+  if (isFullDirector(spec) && spec.scenes.some((x) => (x as { shot?: { cameraTarget?: string } }).shot?.cameraTarget)) {
+    const { resolveCameraTargets } = await import('./camera-targets');
+    const ct = await perf.stage('camera-targets', () => resolveCameraTargets(spec, opts.projectDir));
+    log.stage('CAMERA', `camera targets: ${ct.measured.length} measured${ct.skipped.length ? `, ${ct.skipped.length} kept their own aim (${ct.skipped.map((x) => `${x.scene}: ${x.why}`).join('; ')})` : ''}`);
+    if (ct.changed) {
+      save(specFile, spec);
+      // the new framing is checked like everything else (only the re-framed scenes are re-probed)
+      st = await structural(passes + 1);
+    }
+  }
+
   // 2b. sound on the final timeline: soundtrack (no user music only) → Sound Director → audio QC + repair
   let soundIssues = await soundStage(spec, opts.projectDir, perf, allRepairs);
   save(specFile, spec);
 
   // 3. optional animatic (timing/story review at a fraction of the cost)
+  //    Full Director Mode: Compile → Structural Validation → Animatic → Motion Metrics → Review → Final Render
   let animatic: string | null = null;
-  if (opts.animatic ?? (opts.stopAfterAnimatic || budget.animatic)) {
+  const full = isFullDirector(spec);
+  const motion: NonNullable<ProduceResult['motion']> = {};
+  if (full || (opts.animatic ?? (opts.stopAfterAnimatic || budget.animatic))) {
     const out = join(renders, `${spec.project.id}-animatic.mp4`);
     const r = await perf.stage('animatic', () => renderVideo({ spec, projectDir: opts.projectDir, output: out, profile: 'animatic' }));
     animatic = r.output;
-    log.stage('RENDER', `animatic ${(r.bytes / 1e6).toFixed(2)} MB in ${(r.renderMs / 1000).toFixed(1)}s${r.cached ? ' (cached)' : ''} → ${out}`);
+    log.stage('RENDER', `animatic ${(r.bytes / 1e6).toFixed(2)} MB in ${(r.renderMs / 1000).toFixed(1)}s${r.cached ? ' (cached)' : ''}${full ? ' (Full Director Mode: mandatory)' : ''} → ${out}`);
+    if (full) {
+      const m = await perf.stage('motion-metrics', async () => motionStage(r.output, spec, 'animatic', join(opts.projectDir, 'motion_metrics.animatic.json')), 'animatic');
+      if (m) {
+        motion.animatic = m;
+        motion.review = {
+          stage: 'animatic',
+          decision: 'proceed',
+          score: m.global.score,
+          stillFrameRatio: m.global.stillFrameRatio,
+          longestDeadHold: m.global.longestDeadHold,
+          warnings: m.warnings,
+          note: 'P0 records the review and proceeds: motion numbers are a baseline, not yet a gate (measure → baseline → compare)',
+        };
+        writeFileSync(join(opts.projectDir, 'motion_review.json'), JSON.stringify(motion.review, null, 2));
+        log.stage('QUALITY', `animatic motion: score ${m.global.score} · still ${Math.round(m.global.stillFrameRatio * 100)}% · longest dead hold ${m.global.longestDeadHold}s · ${m.warnings.length} warning(s) → proceed`);
+      }
+    }
   }
   if (opts.stopAfterAnimatic) {
     writeAssetsManifest(opts.projectDir, spec);
     const report = st!.report;
     writeProjectMemory(opts.projectDir, spec, report, perf, allRepairs, passes, profile, null);
-    return { ok: report.passed, video: null, delivered: null, animatic, report, render: null, repairs: allRepairs, validation: rep.remaining, passes, specFile, perf: perf.report() };
+    return { ok: report.passed, video: null, delivered: null, animatic, report, render: null, repairs: allRepairs, validation: rep.remaining, passes, specFile, perf: perf.report(), motion };
   }
 
   // 4. production render + final technical QC (re-render only if a post-render repair applies)
@@ -185,6 +247,15 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
     save(specFile, spec);
   }
 
+  // 4b. motion metrics of the final render (informational: written next to quality_report.json)
+  if (render) {
+    const m = await perf.stage('motion-metrics', async () => motionStage(render!.output, spec, 'final', join(opts.projectDir, 'motion_metrics.json')), 'final');
+    if (m) {
+      motion.final = m;
+      log.stage('QUALITY', `motion: score ${m.global.score} · still ${Math.round(m.global.stillFrameRatio * 100)}% · longest hold ${m.global.longestStaticHold.sec}s (${m.global.longestStaticHold.class ?? '—'}) · ${m.warnings.length} warning(s)`);
+    }
+  }
+
   const ok = Boolean(report?.passed);
   let delivered: string | null = null;
   const name = opts.name ?? spec.project.id;
@@ -196,11 +267,12 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
     copyFileSync(join(qcDir, 'final', 'quality-report.json'), join(dest, `${name}.quality-report.json`));
     if (report?.contactSheet && existsSync(report.contactSheet)) copyFileSync(report.contactSheet, join(dest, `${name}.contact-sheet.png`));
     if (report?.phoneSheet && existsSync(report.phoneSheet)) copyFileSync(report.phoneSheet, join(dest, `${name}.phone-view.png`));
+    if (existsSync(join(opts.projectDir, 'motion_metrics.json'))) copyFileSync(join(opts.projectDir, 'motion_metrics.json'), join(dest, `${name}.motion_metrics.json`));
     log.stage('COMPLETE', `delivered ${delivered}`);
   } else log.stage('QUALITY', `NOT delivered — ${report?.acceptance.filter((a) => !a.ok).map((a) => a.rule).join('; ') || 'see report'}; ${join(qcDir, 'final', 'quality-report.json')}`, 'error');
   writeAssetsManifest(opts.projectDir, spec);
   writeProjectMemory(opts.projectDir, spec, report, perf, allRepairs, passes, profile, delivered);
-  return { ok, video: render?.output ?? null, delivered, animatic, report, render, repairs: allRepairs, validation: rep.remaining, passes, specFile, perf: perf.report() };
+  return { ok, video: render?.output ?? null, delivered, animatic, report, render, repairs: allRepairs, validation: rep.remaining, passes, specFile, perf: perf.report(), motion };
 }
 
 /**

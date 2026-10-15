@@ -37,7 +37,7 @@ function LogoMark({ src, maxW, maxH, delay = 0 }: { src: string; maxW: number; m
   const ar = useAspect(src, 1);
   const box = fitBox(ar, maxW, maxH);
   return (
-    <Reveal delay={delay} family="scale">
+    <Reveal delay={delay} family="scale" kind="logo">
       <Media src={src} role="logo" width={box.width} height={box.height} fit="contain" />
     </Reveal>
   );
@@ -269,7 +269,7 @@ export const ctaContact = defineScene<CoC>(
         <Text text={c.title} highlight={c.highlight} role="headline" size={8.4} maxLines={2} maxWidth={safe.width} delay={0.15} critical qcId="cta-title" />
         {c.subtitle ? <Text text={c.subtitle} role="subtitle" delay={0.3} maxWidth={safe.width} /> : null}
         {variant === 'card' ? (
-          <Reveal delay={0.35} family="rise">
+          <Reveal delay={0.35} family="rise" kind="card">
             <Surface style={{ padding: u * 3 }}>{rows}</Surface>
           </Reveal>
         ) : (

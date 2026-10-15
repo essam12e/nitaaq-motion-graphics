@@ -32,6 +32,13 @@ export interface MotionCtx {
   personality?: MotionPersonalityId;
   /** Ambient float multiplier from the personality (0 = settled elements rest). */
   floatK?: number;
+  /**
+   * Principled motion model (P0): shared components run the Principles Engine lifecycle
+   * (anticipation → entrance → settle → sustain → exit). Absent / false = legacy model.
+   */
+  principled?: boolean;
+  /** Scene lifecycle (principled model only): hold/exit timing, sustain, word-timed emphasis. */
+  life?: import('./lifecycle').LifeCtx;
 }
 
 /**

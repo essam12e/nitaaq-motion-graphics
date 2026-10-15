@@ -5,7 +5,8 @@
  * kind renders exactly as before.
  */
 import React, { type CSSProperties } from 'react';
-import { useVideo } from '../engine/context';
+import { useMotion, useVideo } from '../engine/context';
+import { exitWindow } from '../motion/lifecycle';
 import { alpha, mix } from '../brand/color';
 import type { SurfaceKind } from '../styles/tokens';
 import { useCamera } from '../camera/CameraRig';
@@ -90,11 +91,44 @@ function ClassicSurface({ children, style, kind, tone = 'surface', radius, paddi
     default:
       look = { background: toneBg };
   }
+  const sheen = useSheen(effects === 'full');
+  if (sheen !== null) {
+    // principled model: light movement during the hold — one soft pass of light across the surface, under its content
+    return (
+      <div data-qc="box" data-qc-surface={qc} style={{ ...base, ...look, isolation: 'isolate', ...style }}>
+        <div style={{ position: 'absolute', inset: 0, borderRadius: 'inherit', overflow: 'hidden', pointerEvents: 'none', zIndex: -1 }}>
+          <div style={{ position: 'absolute', top: '-10%', bottom: '-10%', width: '45%', left: `${(-50 + sheen * 160).toFixed(2)}%`, background: `linear-gradient(100deg, transparent, ${alpha('#FFFFFF', t.mode === 'dark' ? 0.07 : 0.22)}, transparent)` }} />
+        </div>
+        {children}
+      </div>
+    );
+  }
   return (
     <div data-qc="box" data-qc-surface={qc} style={{ ...base, ...look, ...style }}>
       {children}
     </div>
   );
+}
+
+/**
+ * Principled model only: progress (0..1) of one light pass across a surface during the scene's hold
+ * (after the entrances, before the exit). Null when there is no pass (legacy model, short hold,
+ * deliberate still hold, reduced effects).
+ */
+function useSheen(full: boolean): number | null {
+  const m = useMotion();
+  if (!full || !m.principled || !m.life || m.life.intentionalHold) return null;
+  const hold = m.life.holdFrames / m.fps;
+  if (hold < 2.6) return null;
+  const w = exitWindow(m.life, m.fps);
+  const end = (w ? w.start : m.life.holdFrames) / m.fps;
+  const start = Math.max(1.2, hold * 0.42);
+  const dur = Math.min(1.6, end - start - 0.1);
+  if (dur < 0.6) return null;
+  const t = m.frame / m.fps;
+  if (t <= start || t >= start + dur) return null;
+  const x = (t - start) / dur;
+  return x * x * (3 - 2 * x);
 }
 
 function GlassSurface({ children, style, tone = 'surface', radius, padding, glow, qc, glass }: SurfaceProps & { glass: GlassOptions }) {

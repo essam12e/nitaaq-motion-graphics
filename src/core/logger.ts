@@ -11,6 +11,7 @@ export type Stage =
   | 'STORYBOARD'
   | 'ASSETS'
   | 'AUDIO'
+  | 'VOICE'
   | 'MASTER'
   | 'CAMERA'
   | 'VQA'
@@ -32,6 +33,7 @@ export type Stage =
   | 'MAP'
   | 'SOUND'
   | 'VARIANTS'
+  | 'SHOTS'
   | 'COMPLETE';
 
 export type Level = 'debug' | 'info' | 'warn' | 'error';

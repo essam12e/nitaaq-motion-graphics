@@ -462,7 +462,7 @@ export const comparisonTable = defineScene<CoC>(
           if (variant === 'versus') {
             const colW = (W - u * 10) / 2;
             const side = (title: string, key: 'left' | 'right', good: boolean, delay: number) => (
-              <Reveal delay={delay} family={good ? 'scale' : 'fade'}>
+              <Reveal delay={delay} family={good ? 'scale' : 'fade'} kind="card">
                 <Surface tone={good ? 'primary' : 'surface'} style={{ width: colW, padding: u * 3, display: 'flex', flexDirection: 'column', gap: u * 1.8, opacity: good ? 1 : 0.8 }}>
                   <Text text={title} role="title" size={5} animate="none" maxLines={1} color={good ? t.palette.textOnPrimary : t.palette.textOnSurface} />
                   {c.rows.map((r, i) => (

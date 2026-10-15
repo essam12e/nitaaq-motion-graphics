@@ -336,6 +336,47 @@ export const CameraPlanSchema = z.object({
   motionBlur: z.boolean().optional(),
 });
 
+/**
+ * Element lifecycle (P0, principled motion model only): anticipation → entrance → settle →
+ * sustain (living hold) → exit / energy handoff. Ignored by the legacy motion model, so old
+ * video.json files render exactly as before.
+ */
+export const ExitStyleSchema = z.enum(['auto', 'none', 'handoff', 'lift', 'fade', 'scale-down']);
+export const LifecycleSchema = z.object({
+  /** How settled elements live during the hold. auto = by element kind (text stays still for reading). */
+  sustain: z.enum(['auto', 'still', 'drift', 'breathe', 'parallax']).optional(),
+  /** A deliberate hold (logo hero, a number that must be read). Motion metrics treat it as intentional up to maxSec. */
+  hold: z.object({ intentional: z.boolean(), reason: z.string().max(240).optional(), maxSec: z.number().min(0.3).max(10).optional() }).optional(),
+  /** How elements leave the shot. P1 (Stage) will hand the energy to `handoffTarget`; P0 only moves along the vector. */
+  exit: z
+    .object({
+      style: ExitStyleSchema.default('auto'),
+      direction: z.enum(['left', 'right', 'up', 'down', 'in', 'out']).optional(),
+      /** 0..1 how fast the elements leave (travel and acceleration). */
+      velocity: Unit.optional(),
+      /** Unit vector the energy leaves along (overrides direction). */
+      handoffVector: z.object({ dx: z.number().min(-1).max(1), dy: z.number().min(-1).max(1), depth: z.number().min(-1).max(1).optional() }).optional(),
+      /** Element id in the next shot that receives the energy (P1 Stage; recorded, not drawn in P0). */
+      handoffTarget: z.string().max(80).optional(),
+      /** Seconds of the exit before the cut / transition starts. */
+      lead: z.number().min(0.1).max(1.5).optional(),
+    })
+    .optional(),
+  /** Word-timed emphasis (scene-local seconds): the highlight draws and pulses when the word is spoken. */
+  emphasis: z
+    .array(
+      z.object({
+        word: z.string().min(1).max(60),
+        at: z.number().min(0),
+        end: z.number().min(0).optional(),
+        /** voice = measured word timing (Whisper), estimated = distributed over a phrase, script = authored time. */
+        source: z.enum(['voice', 'estimated', 'script']).default('script'),
+        accent: z.enum(['highlight', 'pulse', 'camera']).default('pulse'),
+      }),
+    )
+    .optional(),
+});
+
 export const SceneMotionSchema = z.object({
   intensity: Unit.optional(),
   entrance: z.string().optional(),
@@ -349,8 +390,10 @@ export const SceneMotionSchema = z.object({
   cameraPlan: CameraPlanSchema.optional(),
   /** Motion Intent System: the scene's elements, why they move and how (written by the Director). */
   intents: z.array(z.object({ role: z.string(), intent: z.string(), entrance: z.string().optional(), sound: z.string().optional(), importance: z.number().optional() })).optional(),
-  /** Beat accents (scene-local seconds) the scene's motion may punctuate (music-led films only). */
+  /** Beat accents (scene-local seconds) the scene's motion may punctuate (music-led films only; secondary rhythm under a voice in Full Director Mode). */
   accents: z.array(z.number()).optional(),
+  /** Element lifecycle (principled motion model). */
+  lifecycle: LifecycleSchema.optional(),
 });
 
 export const SceneBackgroundSchema = z.object({
@@ -394,6 +437,22 @@ export const SceneSchema = z.object({
   beat: z.string().optional(),
   /** Micro FX accents (scene-local seconds, positions as canvas fractions). Optional; the auto planner adds `auto` ones. */
   fx: z.array(MicroFxSchema).optional(),
+  /** Full Director Mode: the Shot Script shot this scene was compiled from (intent and reasons; not rendered). */
+  shot: z
+    .object({
+      id: z.string(),
+      purpose: z.string().optional(),
+      message: z.string().optional(),
+      shotSize: z.string().optional(),
+      subject: z.string().optional(),
+      cameraTarget: z.string().optional(),
+      cameraReason: z.string().optional(),
+      transitionReason: z.string().optional(),
+      expectedEnergy: z.number().min(0).max(1).optional(),
+      voiceAnchor: z.object({ text: z.string().optional(), start: z.number(), end: z.number(), source: z.string() }).optional(),
+    })
+    .passthrough()
+    .optional(),
 });
 
 export const CaptionsSchema = z.object({
@@ -417,6 +476,8 @@ export const MetadataSchema = z.object({
   briefHash: z.string().optional(),
   repairLog: z.array(RepairLogEntrySchema).default([]),
   notes: z.string().optional(),
+  /** Director mode: fast (brief → recipes, the original path) or full (Claude's Shot Script → compiler). */
+  director: z.object({ mode: z.enum(['fast', 'full']), shotScript: z.string().optional(), voiceMap: z.string().optional() }).optional(),
 });
 
 /** Design policy: what the film is allowed to use beyond the clean defaults. */
@@ -444,6 +505,12 @@ export const FilmMotionSchema = z.object({
   seed: z.union([z.string(), z.number()]).optional(),
   /** The director's hero scene id: the soundtrack drop and the biggest hit land here. */
   heroScene: z.string().optional(),
+  /**
+   * Motion model of the shared components: legacy (entrance → hold, the default and every old film) or
+   * principled (Principles Engine lifecycle: anticipation → entrance → settle → sustain → exit). Full Director
+   * Mode compiles principled films; Fast Mode keeps legacy.
+   */
+  model: z.enum(['legacy', 'principled']).optional(),
 });
 
 const RectFraction = z.object({ x: z.number(), y: z.number(), w: z.number().positive(), h: z.number().positive() });
@@ -563,3 +630,4 @@ export type SfxCue = z.infer<typeof SfxCueSchema>;
 export type SharedElement = z.infer<typeof SharedElementSchema>;
 export type SoundtrackSpec = z.infer<typeof SoundtrackSchema>;
 export type CharacterSpec = z.infer<typeof CharacterSpecSchema>;
+export type LifecycleSpec = z.infer<typeof LifecycleSchema>;
