@@ -508,9 +508,11 @@ export const FilmMotionSchema = z.object({
   /**
    * Motion model of the shared components: legacy (entrance → hold, the default and every old film) or
    * principled (Principles Engine lifecycle: anticipation → entrance → settle → sustain → exit). Full Director
-   * Mode compiles principled films; Fast Mode keeps legacy.
+   * Mode compiles principled films; Fast Mode keeps legacy. stage (P1): a Full Director film whose picture is
+   * drawn by the Stage (`spec.stage`, stage.json): global elements + one global camera across shots; the
+   * shared components keep the principled lifecycle.
    */
-  model: z.enum(['legacy', 'principled']).optional(),
+  model: z.enum(['legacy', 'principled', 'stage']).optional(),
 });
 
 const RectFraction = z.object({ x: z.number(), y: z.number(), w: z.number().positive(), h: z.number().positive() });
@@ -609,6 +611,8 @@ export const VideoSchema = z.object({
   timeline: TimelineOptionsSchema.default({}),
   reference: ReferenceSummarySchema.optional(),
   character: CharacterSpecSchema.optional(),
+  /** P1 Stage plan (stage.json, compiled by the Stage Compiler). When present it draws the film. */
+  stage: z.object({ version: z.literal(1) }).passthrough().optional(),
   scenes: z.array(SceneSchema).min(1),
   captions: CaptionsSchema.default({}),
   metadata: MetadataSchema.default({}),

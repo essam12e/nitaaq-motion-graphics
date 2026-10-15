@@ -27,6 +27,8 @@ import type { TimelineEntry } from '../core/timeline';
 import { useVideo } from './context';
 import { CameraRig, DepthLayer } from '../camera/CameraRig';
 import type { CameraPlan } from '../camera/moves';
+import { StageRoot } from '../stage/StageLayer';
+import type { StagePlan } from '../stage/plan';
 
 export interface VideoCompositionProps {
   spec: VideoSpec;
@@ -329,6 +331,18 @@ function SharedLayer() {
 
 function GlobalLayer({ children }: { children: React.ReactNode }) {
   const frame = useCurrentFrame();
+  const v = useVideo();
+  // P1 Stage: the plan draws the world, the global elements and the one camera; the scenes (stage-shot
+  // families draw nothing, legacy families still can) sit on its hero plane.
+  if (v.spec.stage) {
+    return (
+      <>
+        <StageRoot plan={v.spec.stage as unknown as StagePlan}>{children}</StageRoot>
+        <SharedLayer />
+        <TextureOverlay />
+      </>
+    );
+  }
   return (
     <>
       <Background frame={frame} />

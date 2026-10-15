@@ -93,7 +93,7 @@ export function globalLookKey(spec: VideoSpec, projectDir: string): string {
       return `${f}:missing`;
     }
   });
-  return hashOf('look', bundleKey(), spec.canvas, spec.safeArea, spec.brand, spec.style, spec.direction, spec.design, spec.motion, spec.timeline, spec.project.language, spec.project.numerals, spec.captions, spec.assets, files);
+  return hashOf('look', bundleKey(), spec.canvas, spec.safeArea, spec.brand, spec.style, spec.direction, spec.design, spec.motion, spec.timeline, spec.project.language, spec.project.numerals, spec.captions, spec.assets, files, spec.stage ?? null);
 }
 
 /** Cache key of one sampled frame: global look + the scenes visible at that frame + timing. */

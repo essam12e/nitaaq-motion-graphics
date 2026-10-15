@@ -3,6 +3,8 @@
  */
 export type Stage =
   | 'INTAKE'
+  | 'STAGE'
+  | 'CRITIC'
   | 'FONTS'
   | 'BRAND'
   | 'CHARACTER'

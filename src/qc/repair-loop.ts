@@ -32,6 +32,9 @@ export function applyQcRepairs(input: VideoSpec, report: QualityReport, pass: nu
   for (const [idx, list] of byScene) {
     const s = spec.scenes[idx];
     if (!s) continue;
+    // a stage-shot draws nothing itself: its layout is not where the picture lives (the Stage is; its
+    // problems go to the Motion Critic → shots.json repair loop)
+    if (spec.stage && s.type === 'stage-shot') continue;
     const p = `scenes[${idx}]`;
     const actions = new Set(list.map((i) => i.repair!.action));
     const reason = [...new Set(list.map((i) => i.code))].join(', ');

@@ -176,7 +176,7 @@ export function renderKey(spec: VideoSpec, projectDir: string, profile: RenderPr
   return hashOf('render-v2', bundleKey(), profile, PROFILES[profile], rest, files);
 }
 
-export async function renderVideo(input: { spec: VideoSpec; projectDir: string; output: string; profile?: RenderProfile; onProgress?: (p: number) => void; cache?: boolean }): Promise<RenderResult> {
+export async function renderVideo(input: { spec: VideoSpec; projectDir: string; output: string; profile?: RenderProfile; onProgress?: (p: number) => void; cache?: boolean; /** Partial render (P1 repair loop): inclusive frame range, video only — spliced by the caller. */ frameRange?: [number, number] }): Promise<RenderResult> {
   const profile = input.profile ?? 'production';
   // preview / animatic decode light video proxies (same timing); draft / production use the full source
   const opts = profile === 'preview' || profile === 'animatic' ? { ...input, spec: withVideoProxies(input.spec) } : input;
@@ -185,7 +185,7 @@ export async function renderVideo(input: { spec: VideoSpec; projectDir: string; 
   const blocking = issues.filter((i) => i.severity === 'critical');
   if (blocking.length) throw new MotionError({ code: 'SCHEMA_INVALID', what: `video.json has ${blocking.length} critical issue(s)`, why: blocking.slice(0, 5).map((i) => `${i.path}: ${i.message}`).join('; '), action: 'Fix them (or run the auto-repair) before rendering.' });
   const t0 = Date.now();
-  const useCache = opts.cache !== false && process.env.NITAAQ_NO_CACHE !== '1';
+  const useCache = opts.cache !== false && process.env.NITAAQ_NO_CACHE !== '1' && !input.frameRange;
   const key = useCache ? renderKey(opts.spec, opts.projectDir, profile) : '';
   const blob = useCache ? join(blobDir('renders'), `${key}.mp4`) : '';
   const fpsOut = P.fps ?? opts.spec.canvas.fps;
@@ -211,6 +211,7 @@ export async function renderVideo(input: { spec: VideoSpec; projectDir: string; 
       inputProps: prep.inputProps,
       codec: 'h264',
       outputLocation: opts.output,
+      ...(input.frameRange ? { frameRange: input.frameRange, muted: true } : {}),
       crf: P.crf,
       x264Preset: P.x264Preset,
       pixelFormat: 'yuv420p',
@@ -238,7 +239,7 @@ export async function renderVideo(input: { spec: VideoSpec; projectDir: string; 
     });
     // master bus: loudness to the delivery target, true-peak limiter, clipping count (audio only; video copied)
     const hasAudio = Boolean(opts.spec.audio.voice || opts.spec.audio.music || opts.spec.audio.sfx.enabled);
-    if (hasAudio && profile !== 'animatic' && process.env.NITAAQ_NO_MASTER !== '1') {
+    if (hasAudio && profile !== 'animatic' && !input.frameRange && process.env.NITAAQ_NO_MASTER !== '1') {
       try {
         const mr = masterAudio(opts.output, { targetLufs: opts.spec.audio.master?.targetLufs ?? -14, truePeak: opts.spec.audio.master?.truePeak ?? -1, bitrate: P.audioBitrate });
         lastMaster.set(opts.output, mr);

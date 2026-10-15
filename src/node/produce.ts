@@ -50,7 +50,7 @@ export interface ProduceResult {
   specFile: string;
   perf: ReturnType<Perf['report']>;
   /** Motion metrics (P0-A): animatic (Full Director Mode) and final render. Informational, never blocking. */
-  motion?: { animatic?: MotionMetrics; final?: MotionMetrics; review?: MotionReview };
+  motion?: { animatic?: MotionMetrics; final?: MotionMetrics; review?: MotionReview; critic?: { verdict: string; overall: number; passes: number } };
 }
 
 /** The Full Director Mode review of the animatic's motion (P0: measured and recorded, not a gate). */
@@ -89,6 +89,8 @@ export interface ProduceOptions {
   /** Stop after structural QC + sheets (+ animatic): no production render. */
   stopAfterAnimatic?: boolean;
   perf?: Perf;
+  /** Stage films: critic → repair passes after the animatic (default 2). */
+  criticPasses?: number;
   /** Probe frames per scene (classifier budget: 2 for SIMPLE/LONG_FORM, 3 otherwise). */
   perScene?: number;
 }
@@ -215,6 +217,25 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
         writeFileSync(join(opts.projectDir, 'motion_review.json'), JSON.stringify(motion.review, null, 2));
         log.stage('QUALITY', `animatic motion: score ${m.global.score} · still ${Math.round(m.global.stillFrameRatio * 100)}% · longest dead hold ${m.global.longestDeadHold}s · ${m.warnings.length} warning(s) → proceed`);
       }
+    }
+  }
+  // 3b. Stage films (P1): DOM motion probes → Motion Critic → repair loop (partial re-render of the animatic)
+  if (full && spec.stage && animatic && existsSync(join(opts.projectDir, 'stage_source.json')) && process.env.NITAAQ_NO_CRITIC !== '1') {
+    const src = JSON.parse(readFileSync(join(opts.projectDir, 'stage_source.json'), 'utf8')) as { brief: unknown; baseDir: string };
+    const { renderStyleFrames } = await import('./style-frames');
+    const sf = await perf.stage('style-frames', () => renderStyleFrames(spec, opts.projectDir));
+    if (sf.length) log.stage('STAGE', `style frames: ${sf.map((f) => `${f.shot}@${f.t}s`).join(', ')} → style_frames/`);
+    const { criticLoop } = await import('./critic-loop');
+    const loop = await perf.stage('critic', () => criticLoop({ projectDir: opts.projectDir, brief: src.brief, baseDir: src.baseDir, video: animatic!, profile: 'animatic', maxPasses: opts.criticPasses ?? 2 }));
+    motion.critic = { verdict: loop.critic.verdict.status, overall: loop.critic.overall, passes: loop.passes.length - 1 };
+    if (loop.passes.some((p) => p.patches.length)) {
+      // the script changed: the spec on disk is the repaired one; its sound is planned again
+      spec = loadSpec(specFile);
+      soundIssues = await soundStage(spec, opts.projectDir, perf, allRepairs);
+      save(specFile, spec);
+      // the structural report described the pre-repair film: check the repaired one
+      passes++;
+      st = await structural(passes + 1);
     }
   }
   if (opts.stopAfterAnimatic) {

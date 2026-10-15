@@ -22,7 +22,13 @@
 import type { VideoSpec } from '../schema/video';
 import { buildTimeline } from '../core/timeline';
 
-export const METRICS_VERSION = 1;
+export const METRICS_VERSION = 2;
+/**
+ * Per-pixel dead zone (grey levels) — P1-K animatic calibration. Codec noise of a still, compressed frame
+ * moves pixels by ±1–3 levels; without a dead zone that noise reads as motion, so a MORE compressed
+ * animatic scored as MORE alive. v2 ignores changes ≤ DEAD_ZONE (and subtracts it from larger ones).
+ */
+export const DEAD_ZONE = 3;
 /** Mean absolute grey difference (0–255) under which two analysis frames count as "the same picture". */
 export const STILL_THRESHOLD = 0.15;
 export const ANALYSIS_FPS = 10;
@@ -129,8 +135,10 @@ export function frameDiffs(series: FrameSeries): { d: number[]; changed: number[
     let ch = 0;
     for (let k = 0; k < n; k++) {
       const x = Math.abs(a[k] - b[k]);
-      sum += x;
-      if (x > 2) ch++;
+      if (x > DEAD_ZONE) {
+        sum += x - DEAD_ZONE;
+        ch++;
+      }
     }
     d.push(sum / n);
     changed.push(ch / n);
@@ -369,7 +377,7 @@ export function computeMotionMetrics(input: MetricsInput): MotionMetrics {
   // ── typography activity (spec-inferred): seconds in which text is entering, emphasised or leaving
   let typoSec = 0;
   if (spec) {
-    const principled = spec.motion?.model === 'principled';
+    const principled = spec.motion?.model === 'principled' || spec.motion?.model === 'stage';
     scenes.forEach((s, i) => {
       const sc = spec.scenes[i];
       const len = s.holdEnd - s.start;
@@ -450,7 +458,7 @@ export function computeMotionMetrics(input: MetricsInput): MotionMetrics {
     suspiciousHolds: dead.filter((r) => r.sec >= 1.5),
     warnings,
     notes: [
-      `still = mean |Δgrey| < ${STILL_THRESHOLD} between frames ${1 / fps}s apart on a ${series.width}×${series.height} grey thumbnail (same method as the architecture review)`,
+      `still = mean max(0, |Δgrey| − ${DEAD_ZONE}) < ${STILL_THRESHOLD} between frames ${1 / fps}s apart on a ${series.width}×${series.height} grey thumbnail (v${METRICS_VERSION}: the dead zone keeps codec noise from counting as motion)`,
       'a very slow camera drift can count as still at this resolution; contact sheets confirm what the numbers say',
       'P0: metrics are a baseline and warnings only — they never block delivery',
     ],

@@ -72,7 +72,7 @@ export function useMotion(): MotionCtx {
   const { fps } = useVideoConfig();
   const v = useVideo();
   const s = useContext(SceneCtx);
-  const principled = v.spec.motion?.model === 'principled';
+  const principled = v.spec.motion?.model === 'principled' || v.spec.motion?.model === 'stage';
   const life = useMemo(() => (principled && s ? sceneLife(s, v.spec, v.dir, v.timeline.entries.length) : undefined), [principled, s, v.spec, v.dir, v.timeline.entries.length]);
   return useMemo(
     () => ({

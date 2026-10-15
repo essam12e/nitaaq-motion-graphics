@@ -10,7 +10,7 @@ import { validateShotScript, type ShotScript } from '../../src/director/shot-scr
 import { compileShots, plannedScenes, reapplyShotDecisions, applyShotSpec, wordTime, anchorTime, type VoiceWords } from '../../src/director/shot-compiler';
 import { framingFor, matchTarget } from '../../src/director/camera-target';
 import { resolveExit, sustainFor, exitWindow, exitP, exitStyle, lifecycleStyle, emphasisPulse, type LifeCtx } from '../../src/motion/lifecycle';
-import { computeMotionMetrics, classifyHold, staticRuns, compareMetrics, occupancy, motionProfileOf, type FrameSeries } from '../../src/qc/motion-metrics';
+import { computeMotionMetrics, classifyHold, staticRuns, compareMetrics, occupancy, motionProfileOf, METRICS_VERSION, type FrameSeries } from '../../src/qc/motion-metrics';
 import { normWord, tokenize, estimateWordTimes, pausesFrom, keywordsOf, buildVoiceMap, refineWithEnergy, findWord } from '../../src/audio/voice-map';
 import { voiceMap } from '../../src/node/voice-map';
 import { analyzeMotion, analysisSize } from '../../src/node/motion-analysis';
@@ -360,7 +360,7 @@ describe('Motion metrics', () => {
     expect(metrics.global.longestStaticHold.sec).toBeGreaterThan(1.8);
     expect(metrics.global.stillFrameRatio).toBeGreaterThan(0.4);
     expect(metrics.global.stillFrameRatio).toBeLessThan(0.6);
-    expect(JSON.parse(readFileSync(file!, 'utf8')).version).toBe(1);
+    expect(JSON.parse(readFileSync(file!, 'utf8')).version).toBe(METRICS_VERSION);
   });
 });
 

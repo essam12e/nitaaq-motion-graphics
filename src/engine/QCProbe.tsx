@@ -106,6 +106,13 @@ export interface ProbeResult {
   /** Micro FX live on this frame, per scene, and camera layers with a velocity motion blur. */
   fx?: { scene: string; kinds: string[] }[];
   motionBlur?: number;
+  /** P1 Stage: the camera state and every drawn stage element / emphasised word (after all transforms). */
+  stage?: {
+    cam: string;
+    els: { id: string; kind: string; z: number; rect: { x: number; y: number; width: number; height: number }; opacity: number; parent: boolean }[];
+    words: { el: string; word: string; rect: { x: number; y: number; width: number; height: number }; opacity: number }[];
+    mask: boolean;
+  };
   errors: { scene: string; error: string }[];
   fonts: unknown;
   debugOverlay: boolean;
@@ -299,6 +306,27 @@ export function collectProbe(frame: number, width: number, height: number): Prob
   }));
   const fx = Array.from(document.querySelectorAll('[data-qc="micro-fx"]')).map((el) => ({ scene: sceneOf(el), kinds: (el.getAttribute('data-qc-fx') ?? '').split(',').filter(Boolean) }));
   const motionBlur = document.querySelectorAll('[data-qc-motion-blur]').length;
+  const stageRoot = document.querySelector('[data-qc="stage"]');
+  const stage = stageRoot
+    ? {
+        cam: stageRoot.getAttribute('data-qc-stage-cam') ?? '',
+        els: Array.from(document.querySelectorAll('[data-qc="stage-el"]')).map((el) => ({
+          id: el.getAttribute('data-qc-stage-id') ?? '',
+          kind: el.getAttribute('data-qc-stage-kind') ?? '',
+          z: Number(el.getAttribute('data-qc-stage-z') ?? 0),
+          rect: rectOf(el),
+          opacity: effOpacity(el),
+          parent: Boolean(el.parentElement?.closest('[data-qc="stage-el"]')),
+        })),
+        words: Array.from(document.querySelectorAll('[data-qc="stage-el"] [data-qc-word]')).map((el) => ({
+          el: el.closest('[data-qc="stage-el"]')?.getAttribute('data-qc-stage-id') ?? '',
+          word: el.getAttribute('data-qc-word') ?? '',
+          rect: rectOf(el),
+          opacity: effOpacity(el),
+        })),
+        mask: Boolean(document.querySelector('[data-qc="stage-mask"]')),
+      }
+    : undefined;
   const errors = Array.from(document.querySelectorAll('[data-qc="scene-error"]')).map((el) => ({
     scene: el.getAttribute('data-qc-scene') ?? '',
     error: el.getAttribute('data-qc-error') ?? 'unknown',
@@ -313,6 +341,7 @@ export function collectProbe(frame: number, width: number, height: number): Prob
     layers,
     fx,
     motionBlur,
+    ...(stage ? { stage } : {}),
     errors,
     fonts: (window as unknown as { __AMD_FONTS?: unknown }).__AMD_FONTS ?? null,
     debugOverlay: Boolean(document.querySelector('[data-qc="debug-overlay"]')),

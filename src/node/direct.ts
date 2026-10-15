@@ -52,6 +52,9 @@ import { diversify, fingerprint } from '../director/anti-template';
 import { rhythmPlan, motionLanguage } from '../director/rhythm';
 import { loadHistory, recordHistory } from './film-history';
 import { validateShotScript, type ShotScript } from '../director/shot-script';
+import { compileStage } from '../stage/compiler';
+import { validateDirection, type Direction } from '../stage/direction';
+import { makeCanvasProfile } from '../layout/canvas';
 import { compileShots, plannedScenes, reapplyShotDecisions, applyShotSpec, type ResolvedShot, type CompileReport } from '../director/shot-compiler';
 import type { VoiceMap } from '../audio/voice-map';
 
@@ -82,6 +85,8 @@ export async function direct(opts: {
   dryRun?: boolean;
   /** Full Director Mode: a Claude-authored shot script (shots.json content). Without it the automatic director runs (Fast Mode). */
   shots?: unknown;
+  /** P1 Stage mode: the Creative Direction (direction.json content), written before the shot script. Required when shots.json has a `stage`. */
+  direction?: unknown;
 }): Promise<DirectResult> {
   // Full Director Mode: validate the shot script before any work (a decision without a reason is an error)
   let script: ShotScript | null = null;
@@ -90,6 +95,13 @@ export async function direct(opts: {
     if (!v.ok) throw new MotionError({ code: 'INPUT_INVALID', what: 'shots.json is not a valid shot script', why: v.errors.slice(0, 12).join('\n'), action: 'Fix the listed fields (camera moves and transitions need a reason) — see docs/SHOT_SCRIPT.md.' });
     script = v.script;
   }
+  let direction: Direction | null = null;
+  if (opts.direction !== undefined) {
+    const d = validateDirection(opts.direction);
+    if (!d.ok) throw new MotionError({ code: 'INPUT_INVALID', what: 'direction.json is not a valid creative direction', why: d.errors.slice(0, 12).join('\n'), action: 'Fix the listed fields — see docs/STAGE.md (Creative Direction).' });
+    direction = d.direction;
+  }
+  if (script?.stage && !direction) throw new MotionError({ code: 'INPUT_INVALID', what: 'a stage film needs its creative direction', why: 'shots.json has a "stage" but no direction.json was given', action: 'Write direction.json first (docs/STAGE.md) and pass it with --direction.' });
   const perf = opts.perf ?? new Perf();
   const ttsAvailable = voiceProviders().some((p) => p.available);
   const { brief, questions, assumptions } = await perf.stage('intake', () => intake(opts.brief, { assumeNoLogo: opts.assumeNoLogo, ttsAvailable }));
@@ -482,6 +494,35 @@ export async function direct(opts: {
     applyShotSpec(spec, shotPlan.resolved, { shotScript: 'shots.json', voiceMap: voiceMapData ? 'voice_map.json' : undefined });
     writeFileSync(join(projectDir, 'shots.json'), JSON.stringify(opts.shots, null, 2));
     writeFileSync(join(projectDir, 'shot_compile_report.json'), JSON.stringify(shotPlan.report, null, 2));
+    if (script?.stage) {
+      // P1 Stage: one continuous stage — global elements, tracks, one camera — that draws the film
+      const prof = makeCanvasProfile(spec.canvas.width, spec.canvas.height, spec.safeArea.preset ?? spec.platform, spec.safeArea.margin ?? 0);
+      const W = spec.canvas.width;
+      const H = spec.canvas.height;
+      const stageAssets: Record<string, { kind: string; aspect?: number }> = {};
+      for (const [id, a] of Object.entries(spec.assets)) stageAssets[id] = { kind: a.kind, ...(a.width && a.height ? { aspect: a.width / a.height } : {}) };
+      const st = compileStage({
+        script,
+        timing: shotPlan.resolved.map((r) => ({ id: r.shot.id, start: r.start, duration: r.duration, transition: r.transition && r.transition.type !== 'cut' ? r.transition : null, beat: r.beat })),
+        voice: voiceMapData,
+        W,
+        H,
+        safe: { x: prof.safe.x / W, y: prof.safe.y / H, w: prof.safe.width / W, h: prof.safe.height / H },
+        rtl: brief.language !== 'en',
+        assets: stageAssets,
+        cta: brief.content.cta ? { text: brief.content.cta.text, button: brief.content.cta.button, url: brief.content.cta.url } : undefined,
+        direction,
+      });
+      spec.stage = st.plan as unknown as VideoSpec['stage'];
+      for (const sc of spec.scenes) if (sc.type === 'stage-shot') delete sc.motion.cameraPlan;
+      writeFileSync(join(projectDir, 'direction.json'), JSON.stringify(opts.direction, null, 2));
+      // what the repair loop needs to recompile this stage (the brief as given, and where its paths resolve)
+      writeFileSync(join(projectDir, 'stage_source.json'), JSON.stringify({ brief: opts.brief, baseDir: opts.baseDir }, null, 2));
+      writeFileSync(join(projectDir, 'stage.json'), JSON.stringify(st.plan, null, 2));
+      writeFileSync(join(projectDir, 'stage_report.json'), JSON.stringify(st.report, null, 2));
+      for (const w of st.report.warnings) log.stage('STAGE', `${w.shot ? `[${w.shot}] ` : ''}${w.code}: ${w.message}`, 'warn');
+      log.stage('STAGE', `${st.plan.elements.length} elements, ${st.report.persistent.length} persistent, ${st.report.transitions.filter((t) => t.status === 'object').length} object transition(s), ${st.report.handoffs.length} handoff(s), camera moves in ${st.report.camera.moving}/${st.report.camera.total} shots`);
+    }
   }
   if (chapters.length) spec.timeline.chapters = chapters.map((ch, i) => ({ id: `chapter-${i + 1}`, title: ch.title, startScene: ch.scenes[0] }));
 

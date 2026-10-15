@@ -61,6 +61,10 @@ export interface TextProps {
   motion?: string;
   /** Principled model: place in the scene's exit sequence (0 = leaves first). */
   exitOrder?: number;
+  /** Stage (P1): when each word appears (seconds on this Text's own clock) — the voice map's word times. */
+  wordTimes?: number[];
+  /** Stage (P1): emphasised words and when they are spoken (seconds on this Text's own clock). */
+  emphasis?: { word: string; at: number }[];
 }
 
 function groupRuns(line: Token[]): Token[][] {
@@ -88,11 +92,12 @@ export function Text(props: TextProps) {
   const entStyle = (fam: EntranceFamily, p: number) => (pr ? principledEntranceStyle(fam, p, m.intensity, v.canvas.u, v.dir) : entranceStyle(fam, p, m.intensity, v.canvas.u, v.dir));
   /** Scene-local time a highlighted word is spoken (voice map / Shot Script), if the scene has one for it. */
   const spokenAt = (word: string): number | undefined => {
-    if (!pr || !m.life?.emphasis.length) return undefined;
+    const list = props.emphasis?.length ? props.emphasis : pr ? m.life?.emphasis : undefined;
+    if (!list?.length) return undefined;
     const n = (x: string) => x.replace(/[\u064B-\u0652\u0640]/g, '').replace(/[أإآ]/g, 'ا').replace(/[^\p{L}\p{N}]+/gu, '');
     const w = n(word);
     if (!w) return undefined;
-    const hit = m.life.emphasis.find((e) => {
+    const hit = list.find((e) => {
       const x = n(e.word);
       return x && (x === w || w.includes(x) || x.includes(w));
     });
@@ -188,7 +193,7 @@ export function Text(props: TextProps) {
         const idx = gluePrev ? Math.max(0, wi - 1) : wi++;
         gluePrev = run[run.length - 1].glueNext;
         const perWord = unit === 'word' || unit === 'char' || unit === 'cluster';
-        const d = perWord ? delay + idx * famGap : unit === 'line' ? lineStart : delay;
+        const d = perWord ? (props.wordTimes?.[idx] ?? delay + idx * famGap) : unit === 'line' ? lineStart : delay;
         const isLatin = run[0].script === 'latin' || run[0].script === 'neutral';
         const content = run.map((x) => x.text).join(' ');
         const runArabic = hasArabic(content);
@@ -313,7 +318,8 @@ export function Text(props: TextProps) {
           <div key={li} style={{ whiteSpace: 'nowrap', ...(animate === 'lines' ? entStyle(entrance, lineP) : {}) }}>
             {groupRuns(line).map((run, ri) => {
               const wi = wordIndex++;
-              const p = animate === 'words' ? pp(delay + wi * gap, dur) : 1;
+              const wd = props.wordTimes?.[wi] ?? delay + wi * gap;
+              const p = animate === 'words' ? pp(wd, dur) : 1;
               const isLatin = run[0].script === 'latin' || run[0].script === 'neutral';
               const content = run.map((x) => x.text).join(' ');
               const token = run[0];
@@ -330,11 +336,11 @@ export function Text(props: TextProps) {
                     tokens={t}
                     p={p}
                     m={m}
-                    hlDelay={token.highlight && spokenAt(content) !== undefined ? Math.max(spokenAt(content)!, delay + wi * gap + dur * 0.3) : delay + wi * gap + dur * 0.5}
+                    hlDelay={token.highlight && spokenAt(content) !== undefined ? Math.max(spokenAt(content)!, wd + dur * 0.3) : wd + dur * 0.5}
                     style={(() => {
                       const ent = animate === 'words' ? entStyle(entrance, p) : undefined;
                       const at = token.highlight ? spokenAt(content) : undefined;
-                      const pulse = at !== undefined ? emphasisPulse(m.frame / m.fps, Math.max(at, delay + wi * gap + dur * 0.3)) * 0.08 : 0;
+                      const pulse = at !== undefined ? emphasisPulse(m.frame / m.fps, Math.max(at, wd + dur * 0.3)) * 0.08 : 0;
                       return pulse ? composeStyles(ent, { transform: `scale(${(1 + pulse).toFixed(4)})` }) : ent;
                     })()}
                   />
@@ -369,6 +375,8 @@ function Word(props: {
   clusters?: { text: string; style: CSSProperties; mask: boolean }[][];
 }) {
   const { highlight, hlStyle, hl, tokens: t } = props;
+  // DOM motion probes (P1-J): emphasised words report their own box, so QC can see them grow when spoken
+  const qcw = highlight ? { 'data-qc-word': props.text } : {};
   const counted = props.count !== undefined ? countText(props.text, props.count, props.numerals ?? 'latin') : null;
   if (counted !== null) {
     // the final value reserves the width; the counting value sits on top (no layout jitter)
@@ -382,7 +390,7 @@ function Word(props: {
   if (props.clusters) {
     // each group is an inline-block that shapes exactly as inside the whole word (split only where letters do not join)
     return (
-      <span data-ar-clusters="1" style={{ display: 'inline-block', whiteSpace: 'nowrap', ...(highlight ? { color: hl } : {}), ...props.style }}>
+      <span {...qcw} data-ar-clusters="1" style={{ display: 'inline-block', whiteSpace: 'nowrap', ...(highlight ? { color: hl } : {}), ...props.style }}>
         {props.clusters.map((groups, wi) => (
           <React.Fragment key={wi}>
             {wi > 0 ? ' ' : null}
@@ -427,28 +435,28 @@ function Word(props: {
   switch (hlStyle) {
     case 'box':
       return (
-        <span dir={props.latin ? 'ltr' : undefined} style={{ ...base, color: t.palette.textOnPrimary, padding: '0 0.2em', isolation: 'isolate' }}>
+        <span {...qcw} dir={props.latin ? 'ltr' : undefined} style={{ ...base, color: t.palette.textOnPrimary, padding: '0 0.2em', isolation: 'isolate' }}>
           <span style={{ position: 'absolute', inset: '0.04em 0 -0.02em 0', background: hl, borderRadius: '0.12em', transform: `scaleX(${hp})`, transformOrigin: arabic ? 'right' : 'left', zIndex: -1 }} />
           {props.text}
         </span>
       );
     case 'marker':
       return (
-        <span dir={props.latin ? 'ltr' : undefined} style={{ ...base, padding: '0 0.06em', isolation: 'isolate' }}>
+        <span {...qcw} dir={props.latin ? 'ltr' : undefined} style={{ ...base, padding: '0 0.06em', isolation: 'isolate' }}>
           <span style={{ position: 'absolute', left: 0, right: 0, top: '48%', bottom: '4%', background: alpha(t.palette.accent, 0.42), borderRadius: '0.08em', transform: `scaleX(${hp}) skewX(-8deg)`, transformOrigin: arabic ? 'right' : 'left', zIndex: -1 }} />
           {props.text}
         </span>
       );
     case 'underline':
       return (
-        <span dir={props.latin ? 'ltr' : undefined} style={{ ...base, color: hl }}>
+        <span {...qcw} dir={props.latin ? 'ltr' : undefined} style={{ ...base, color: hl }}>
           {props.text}
           <span style={{ position: 'absolute', left: 0, right: 0, bottom: '-0.02em', height: '0.08em', background: t.palette.accent, borderRadius: 99, transform: `scaleX(${hp})`, transformOrigin: arabic ? 'right' : 'left' }} />
         </span>
       );
     case 'glow':
       return (
-        <span dir={props.latin ? 'ltr' : undefined} style={{ ...base, color: hl, textShadow: `0 0 ${0.3 * hp}em ${alpha(hl, 0.55)}, 0 0 ${0.9 * hp}em ${alpha(hl, 0.3)}` }}>
+        <span {...qcw} dir={props.latin ? 'ltr' : undefined} style={{ ...base, color: hl, textShadow: `0 0 ${0.3 * hp}em ${alpha(hl, 0.55)}, 0 0 ${0.9 * hp}em ${alpha(hl, 0.3)}` }}>
           {props.text}
         </span>
       );
@@ -463,7 +471,7 @@ function Word(props: {
     case 'color':
     default:
       return (
-        <span dir={props.latin ? 'ltr' : undefined} style={{ ...base, color: hl }}>
+        <span {...qcw} dir={props.latin ? 'ltr' : undefined} style={{ ...base, color: hl }}>
           {props.text}
         </span>
       );

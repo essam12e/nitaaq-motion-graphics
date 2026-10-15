@@ -9,7 +9,7 @@
  * choice of the automatic director; what it leaves out is filled by the engine and reported as such.
  * Pure (no node APIs): the node side passes the voice map in.
  */
-import type { Shot, ShotScript, ShotTime } from './shot-script';
+import { isObjectTransition, type Shot, type ShotScript, type ShotTime } from './shot-script';
 import type { PlannedScene, PlannedStoryboard } from './storyboard';
 import type { Beat } from '../schema/plan';
 import type { LifecycleSpec, VideoSpec } from '../schema/video';
@@ -135,6 +135,9 @@ export function compileShots(input: CompileInput): { resolved: ResolvedShot[]; r
   };
 
   // ── families, variants, content
+  // P1 Stage mode: shots.json carries a `stage`; stage-shot families are drawn by the Stage (global
+  // elements + camera), so their camera, motion chain and transitions belong to the Stage Compiler.
+  const stageMode = !!script.stage;
   const base = script.shots.map((s, i) => {
     const def = SceneRegistry.get(s.sceneFamily);
     if (!def) throw new Error(`shots[${i}] (${s.id}): unknown sceneFamily "${s.sceneFamily}" — use one of the existing scene families (nitaaq scenes)`);
@@ -147,6 +150,7 @@ export function compileShots(input: CompileInput): { resolved: ResolvedShot[]; r
       variant = pref;
     } else decide(s.id, 'variant', variant, 'script');
     let content = s.elements as Record<string, unknown> | undefined;
+    if (!content && m.id === 'stage-shot') content = {};
     if (!content) {
       const recipe = input.recipeCtx ? RECIPES.find((r) => r.family === m.id && r.when(input.recipeCtx!)) : undefined;
       if (!recipe) throw new Error(`shots[${i}] (${s.id}): no elements given and no recipe can build "${m.id}" from the brief — write the scene's content in "elements"`);
@@ -166,6 +170,12 @@ export function compileShots(input: CompileInput): { resolved: ResolvedShot[]; r
     const last = i === base.length - 1;
     const raw = typeof s.transitionOut === 'string' ? s.transitionOut : s.transitionOut?.type;
     if (last || !raw || raw === 'none') return null;
+    if (stageMode && (base[i].m.id === 'stage-shot' || isObjectTransition(raw))) {
+      // the Stage performs it (object transition) or falls back on stage (reported in stage_report.json):
+      // scene time = film time, no overlap
+      decide(s.id, 'transitionOut', `${raw} (stage)`, 'script', s.transitionReason);
+      return { type: 'cut', duration: 0, reason: (s.transitionReason ?? raw).trim() };
+    }
     let type = raw;
     if (!TRANSITIONS[type]) {
       const alias = TRANSITION_ALIASES[type.toLowerCase()];
@@ -254,9 +264,11 @@ export function compileShots(input: CompileInput): { resolved: ResolvedShot[]; r
       return r2(Math.max(0, w.start - start));
     };
 
-    // camera
+    const staged = stageMode && m.id === 'stage-shot';
+    // camera (stage shots: the global camera of the Stage)
     let camera: ResolvedShot['camera'] = null;
-    if (s.camera !== 'static') {
+    if (staged) decide(s.id, 'camera', s.camera === 'static' ? 'static' : s.camera.move, 'script', 'global stage camera');
+    else if (s.camera !== 'static') {
       let move = s.camera.move;
       let preset: string | undefined;
       if (CAMERA_PRESETS[move]) {
@@ -308,7 +320,7 @@ export function compileShots(input: CompileInput): { resolved: ResolvedShot[]; r
     // lifecycle: sustain / exit / emphasis / hold
     const lifecycle: LifecycleSpec = {};
     const scriptedAt = new Map<string, number>();
-    for (const ev of s.motionChain) {
+    for (const ev of staged ? [] : s.motionChain) {
       if (ev.action === 'sustain') {
         const mode = ev.style && ['still', 'drift', 'breathe', 'parallax', 'auto'].includes(ev.style) ? (ev.style as LifecycleSpec['sustain']) : 'auto';
         if (ev.style && mode === 'auto') map(s.id, 'motionChain.sustain', ev.style, 'auto', 'sustain styles: still, drift, breathe, parallax');
@@ -337,7 +349,7 @@ export function compileShots(input: CompileInput): { resolved: ResolvedShot[]; r
     }
     const emphasis: NonNullable<LifecycleSpec['emphasis']> = [];
     const accents: number[] = [];
-    for (const w of s.emphasisWords) {
+    for (const w of staged ? [] : s.emphasisWords) {
       const hit = wordTime(voice, w, start - 0.3, winEnd);
       if (hit) {
         const at = r2(Math.max(0, hit.start - start));
@@ -361,9 +373,11 @@ export function compileShots(input: CompileInput): { resolved: ResolvedShot[]; r
       for (const e of emphasis) if (copy.includes(e.word) && !hl.includes(e.word)) hl.push(e.word);
       if (hl.length && m.content.safeParse({ ...content, highlight: hl }).success) content = { ...content, highlight: hl };
     }
-    if (s.audioCues.length) warn('AUDIO_CUES_RECORDED', `${s.audioCues.length} audio cue(s) recorded in the shot; the Sound Director keeps placing cues automatically (cue authoring from the script is P1)`, s.id);
-    if (s.continuity) warn('CONTINUITY_RECORDED', `continuity "${s.continuity.element ?? s.continuity.note ?? s.continuity.from}" recorded; element persistence across shots is P1`, s.id);
-    if (s.shotSize !== 'wide' && !s.cameraTarget) warn('SHOT_SIZE_NO_TARGET', `shotSize "${s.shotSize}" needs a cameraTarget to frame; kept at the scene's own framing`, s.id);
+    if (staged) {
+      // emphasis, continuity and framing are compiled by the Stage
+    } else if (s.audioCues.length) warn('AUDIO_CUES_RECORDED', `${s.audioCues.length} audio cue(s) recorded in the shot; the Sound Director keeps placing cues automatically (cue authoring from the script is P1)`, s.id);
+    if (!staged && s.continuity) warn('CONTINUITY_RECORDED', `continuity "${s.continuity.element ?? s.continuity.note ?? s.continuity.from}" recorded; element persistence across shots is P1`, s.id);
+    if (!staged && s.shotSize !== 'wide' && !s.cameraTarget) warn('SHOT_SIZE_NO_TARGET', `shotSize "${s.shotSize}" needs a cameraTarget to frame; kept at the scene's own framing`, s.id);
     decide(s.id, 'intensity', s.expectedEnergy, 'script');
     return {
       shot: s,
@@ -473,7 +487,8 @@ export function applyShotSpec(spec: VideoSpec, resolved: ResolvedShot[], meta: {
       ...(r.shot.voiceAnchor ? { voiceAnchor: { text: r.shot.voiceAnchor.text, start: r.start, end: r.start + r.duration, source: 'voice' } } : {}),
     };
   });
-  spec.motion = { ...spec.motion, model: 'principled' };
+  const staged = resolved.some((r) => r.family === 'stage-shot');
+  spec.motion = { ...spec.motion, model: staged ? 'stage' : 'principled' };
   spec.metadata = { ...spec.metadata, director: { mode: 'full', shotScript: meta.shotScript, ...(meta.voiceMap ? { voiceMap: meta.voiceMap } : {}) } } as VideoSpec['metadata'];
   return spec;
 }
