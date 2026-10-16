@@ -27,7 +27,7 @@ export const CAPABILITIES = {
   shotSizes: [...SIZES],
   roles: ['hero', 'secondary', 'support', 'background'],
   depth: ['front', 'back'],
-  motionActions: ['enter', 'emphasis', 'sustain', 'exit', 'move', 'transform', 'impact', 'draw', 'count', 'morph', 'press', 'reveal', 'attract', 'push'],
+  motionActions: ['enter', 'emphasis', 'sustain', 'exit', 'move', 'transform', 'impact', 'draw', 'count', 'morph', 'press', 'reveal', 'attract', 'push', 'focus', 'settle', 'become', 'respond'],
   cameraMoves: ['static', 'push-in', 'pull-out', 'pan', 'follow', 'orbit', 'parallax'],
   objectTransitions: [...OBJECT_TRANSITIONS],
   transitionHold: 'seconds the carrying element keeps its ink through text-mask / depth-pass (0..0.8)',

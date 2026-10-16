@@ -124,6 +124,23 @@ export function filmPromises(script: ScriptObj, film: FilmPlan): Record<string, 
   return out;
 }
 
+/**
+ * P4: the Art Director's view of the project — the script, the film plan, the sample source and a compiler
+ * that takes a candidate FILM PLAN too (a cross-element transform may change how a motif resolves).
+ */
+export function artContext(projectDir: string): { script: ScriptObj; film: FilmPlan; authored: boolean; src: SampleSource; compile: (s: ScriptObj, film?: FilmPlan | null) => StagePlan } | null {
+  const ctx = filmContext(projectDir);
+  if (!ctx?.compile) return null;
+  const cache = new Map<FilmPlan | null, ((s: unknown) => StagePlan) | null>();
+  const compile = (s: ScriptObj, film?: FilmPlan | null) => {
+    const f = film === undefined ? (ctx.authored ? ctx.film : null) : film;
+    if (!cache.has(f)) cache.set(f, stageCompiler(projectDir, f));
+    const cam = filmAblations().camera ? s : filmScript(s, null).script;
+    return cache.get(f)!(cam);
+  };
+  return { script: ctx.script, film: ctx.film, authored: ctx.authored, src: measuredSource(projectDir, ctx.src), compile };
+}
+
 /** Measured (DOM samples + pixel transitions) when available, else predicted. */
 function measuredSource(projectDir: string, base: SampleSource): SampleSource {
   const samples = readJson<{ samples: StageProbeSample[] }>(join(projectDir, 'dom_samples.json'))?.samples ?? null;

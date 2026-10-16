@@ -16,7 +16,7 @@ import { Text, type TextRole } from '../typography/Text';
 import { Icon } from '../components/Icon';
 import { Surface } from '../components/Surface';
 import { Background } from '../components/Background';
-import { alpha, bestTextOn, contrastRatio } from '../brand/color';
+import { alpha, bestTextOn, contrastRatio, mix as mixHex } from '../brand/color';
 import { cachedMorph } from '../morph/Morph';
 import { morphAt } from '../morph/path';
 import { circlePath, roundRectPath, shapePath } from '../morph/shapes';
@@ -346,6 +346,21 @@ function ElementBody({ el, st, w, h }: { el: StageElement; st: ElState; w: numbe
       const tone = (ct.color === 'primary' ? 'primary' : ct.color === 'accent' ? 'accent' : 'surface') as 'primary' | 'accent' | 'surface';
       const fg = tone === 'surface' ? p.textPrimary : p.textOnPrimary;
       const m = Math.min(w, h);
+      // P4 cross-element transform: a card that becomes a pill / circle rounds off and lets its content go
+      const mk = el.morphShapes && el.morphShapes.length > 1 ? Math.max(0, Math.min(1, st.morph)) : 0;
+      if (mk > 0.001) {
+        const goal = el.morphShapes![Math.min(el.morphShapes!.length - 1, Math.ceil(st.morph))];
+        const r = (goal === 'circle' || goal === 'pill' ? Math.min(w, h) / 2 : 1.2 * u) * mk + 1.2 * u * (1 - mk);
+        const fill = mixHex(tone === 'surface' ? p.surface : tone === 'primary' ? p.primary : p.accent, p.primary, goal === 'circle' || goal === 'pill' ? mk : 0);
+        return (
+          <div data-qc="morph" style={{ position: 'absolute', inset: 0, borderRadius: r, background: fill, boxShadow: `0 ${1.2 * u}px ${3.6 * u}px ${alpha('#000000', 0.12 * (1 - mk))}`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: m * 0.06, overflow: 'hidden' }}>
+            <div style={{ opacity: Math.max(0, 1 - mk * 2.2), display: 'flex', flexDirection: 'column', alignItems: 'center', gap: m * 0.06 }}>
+              {ct.icon ? <Icon name={ct.icon} size={m * 0.26} color={tone === 'surface' ? p.primary : fg} /> : null}
+              {ct.title ? <Text text={ct.title} role="label" size={(m * 0.12) / u} maxWidth={w * 0.84} maxLines={2} color={fg} animate="none" qcId={`${el.id}.title`} /> : null}
+            </div>
+          </div>
+        );
+      }
       return (
         <Surface tone={tone} style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: m * 0.06 }}>
           {ct.icon ? <Icon name={ct.icon} size={m * 0.26} color={tone === 'surface' ? p.primary : fg} /> : null}

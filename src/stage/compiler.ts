@@ -67,6 +67,8 @@ export interface StageReport {
   direction?: { ok: boolean; violations: string[]; checks: string[] };
   warnings: { shot?: string; code: string; message: string }[];
   causality: { event: string; after: string; t: number }[];
+  /** P4: the art-direction primitives the film uses (focus, settle, respond, become) — absent in a P3 film. */
+  art?: Record<string, unknown>[];
 }
 
 const r3 = (x: number) => Math.round(x * 1000) / 1000;
@@ -138,6 +140,23 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
   const T = timing;
   const shotEnd = (i: number) => T[i].start + T[i].duration;
   const heightOfBox = (w: number, aspect: number) => (w * W) / Math.max(0.05, aspect) / H;
+  // ── P4 motion language (film) + motion phrase (shot): the parameters entrances and events compile with.
+  // Neither present → every factor is exactly 1 / undefined and the film compiles exactly as in P3.
+  const lang = script.motionLanguage;
+  const phraseOf = (i: number) => {
+    const p = shots[i]?.phrase;
+    return { tempo: (p?.tempo ?? 1) * (lang?.tempo ?? 1), bounce: p?.bounce ?? lang?.bounce, stagger: p?.stagger, accel: p?.accel ?? 'even', amplitude: (p?.amplitude ?? 1) * (lang?.amplitude ?? 1), tilt: lang?.tilt ?? 0 };
+  };
+  /** k-th sibling's offset under a phrase stagger: even, accelerating (gaps shrink) or decelerating (gaps grow). */
+  const staggerAt = (k: number, n: number, gap: number, accel: string) => {
+    let t = 0;
+    for (let j = 0; j < k; j++) {
+      const f = n > 2 ? j / (n - 2) : 0;
+      t += gap * (accel === 'accelerate' ? 1.35 - 0.7 * f : accel === 'decelerate' ? 0.65 + 0.7 * f : 1);
+    }
+    return t;
+  };
+  const amp = (v: number, a: number) => (a === 1 ? v : v * a);
   // CTA enforcement (P1-H): the closing CTA shot shows the brief's CTA, unless the script says why not
   let ctaReport: StageReport['cta'] = { status: 'none', note: 'no CTA in the brief' };
   const synthetic: StageElementDecl[] = [];
@@ -291,6 +310,10 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
   const causality: StageReport['causality'] = [];
   const morphShapes = new Map<string, string[]>();
   const zOverride = new Map<string, number>();
+  // P4: focus dims (checked once placements are known), become hand-overs, and the report of every P4 primitive used
+  const focusDims: { act: string; el: string; shot: number }[] = [];
+  const becomes: { from: string; to: string; id: string; shot: number; fallback: boolean }[] = [];
+  const artOps: Record<string, unknown>[] = [];
 
   // base box: an element's size the first time it is on stage; later sizes are the scale track
   const base = new Map<string, { w: number; h: number }>();
@@ -419,11 +442,13 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
       const s0 = scaleIn(id, i);
       const order = compReports[i].readingOrder.indexOf(id);
       const ev = evOf(i, id, 'enter');
-      const enterAt = i === 0 ? 0.25 + Math.max(0, order) * 0.16 : cutAfter(i - 1) ? boundary(i - 1) - 0.02 : T[i].start + 0.05 + Math.max(0, order) * 0.14;
+      const ph = phraseOf(i);
+      const ordOff = (gap: number) => (ph.stagger === undefined ? Math.max(0, order) * gap : staggerAt(Math.max(0, order), compReports[i].readingOrder.length, ph.stagger, ph.accel));
+      const enterAt = i === 0 ? 0.25 + ordOff(0.16) : cutAfter(i - 1) ? boundary(i - 1) - 0.02 : T[i].start + 0.05 + ordOff(0.14);
       const at = ev ? placeOf(i, ev, enterAt, `enter ${id}`) : enterAt;
-      const style = (ev?.style as CastEntry['enter']) ?? cast.enter ?? (d.kind === 'line' ? 'draw' : d.kind === 'text' ? 'rise' : cast.role === 'background' ? 'fade' : 'scale');
+      const style = (ev?.style as CastEntry['enter']) ?? cast.enter ?? lang?.enter[d.kind] ?? (d.kind === 'line' ? 'draw' : d.kind === 'text' ? 'rise' : cast.role === 'background' ? 'fade' : 'scale');
       const oT = tgtOpacity(id, i);
-      const eid = uid(`in_${k}_${i}`);
+      const eid = uid(ev?.id ? evId(i, ev.id) : `in_${k}_${i}`); // an enter event with an id is addressable by `after`
       enterIds.set(`${id}@${i}`, eid);
       const onCut = i > 0 && cutAfter(i - 1) && !ev;
       if (onCut) {
@@ -437,13 +462,23 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
         act({ id: eid, target: k, at, dur: 0.01, ease: 'linear', props: { o: oT } });
       } else {
         const fromXY: Record<string, number> = {};
-        const props: Record<string, number> = { x: b0.x, y: b0.y, s: s0 };
-        if (style === 'rise') fromXY.y = b0.y + 0.05;
-        else if (style === 'drop') fromXY.y = b0.y - 0.12;
-        else if (style === 'slide') fromXY.x = b0.x - flow[0] * 0.09;
-        else if (style === 'scale') fromXY.s = s0 * 0.78;
-        const sp = style === 'drop' ? { bounce: 0.35, visualDuration: 0.6 } : style === 'scale' ? { bounce: 0.22, visualDuration: 0.55 } : { bounce: 0.12, visualDuration: 0.6 };
-        act({ id: eid, target: k, at, dur: sp.visualDuration, spring: sp, props, from: { x: b0.x, y: b0.y, s: s0, ...fromXY } });
+        // P4 progressive hero: the entrance arrives at a hero pose first ("settle" takes it to its place later)
+        const arr = cast.arriveAt;
+        const props: Record<string, number> = arr ? { x: arr.x, y: arr.y, s: r3(s0 * arr.scale) } : { x: b0.x, y: b0.y, s: s0 };
+        const a = ph.amplitude;
+        if (style === 'rise') fromXY.y = props.y + amp(0.05, a);
+        else if (style === 'drop') fromXY.y = props.y - amp(0.12, a);
+        else if (style === 'slide') fromXY.x = props.x - flow[0] * amp(0.09, a);
+        else if (style === 'scale') fromXY.s = props.s * (a === 1 ? 0.78 : clamp(1 - 0.22 * a, 0.3, 0.95));
+        const sp0 = style === 'drop' ? { bounce: 0.35, visualDuration: 0.6 } : style === 'scale' ? { bounce: 0.22, visualDuration: 0.55 } : { bounce: 0.12, visualDuration: 0.6 };
+        const b = ph.bounce;
+        const sp = b === undefined && ph.tempo === 1 ? sp0 : { bounce: b === undefined ? sp0.bounce : r3(clamp(style === 'drop' ? b + 0.2 : style === 'scale' ? b + 0.07 : b * 0.8, 0, 0.7)), visualDuration: r3(sp0.visualDuration * ph.tempo) };
+        // P4 motion language: a playful tilt that settles (small objects only, never text)
+        if (ph.tilt > 0 && ['chip', 'icon', 'shape', 'card'].includes(d.kind) && (style === 'drop' || style === 'scale')) {
+          fromXY.r = (cast.rotation ?? 0) + ph.tilt * (Math.max(0, order) % 2 ? -1 : 1);
+          props.r = cast.rotation ?? 0;
+        }
+        act({ id: eid, target: k, at, dur: sp.visualDuration, spring: sp, props, from: { x: props.x, y: props.y, s: props.s, ...fromXY } });
         act({ id: uid(`fade_${k}_${i}`), target: k, at: typeof at === 'number' ? at : undefined, trigger: typeof at === 'string' ? at : undefined, dur: style === 'fade' ? 0.6 : 0.28, ease: 'ease-out-quint', props: { o: oT }, from: { o: 0 } } as Omit<Act, 'type'>);
         if (style === 'draw') act({ id: uid(`draw_${k}_${i}`), target: k, at: typeof at === 'number' ? at : undefined, trigger: typeof at === 'string' ? at : undefined, dur: 0.9, ease: 'ease-in-out-cubic', props: { draw: 1 }, from: { draw: 0 } } as Omit<Act, 'type'>);
         if (style === 'mask') act({ id: uid(`clip_${k}_${i}`), target: k, at: typeof at === 'number' ? at : undefined, trigger: typeof at === 'string' ? at : undefined, dur: 0.7, ease: 'ease-out-quint', props: { clip: 1 }, from: { clip: 0 } } as Omit<Act, 'type'>);
@@ -487,7 +522,7 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
         const lead = 0.5 + 0.06 * Math.max(0, compReports[j].readingOrder.length - 1 - compReports[j].readingOrder.indexOf(id));
         const cutOut = cutAfter(j) && !xev;
         const xAt = cutOut ? r3(boundary(j) - 0.03) : xev ? placeOf(j, xev, boundary(j) - lead, `exit ${id}`) : boundary(j) - lead;
-        const xid = uid(`out_${k}_${j}`);
+        const xid = uid(xev?.id ? evId(j, xev.id) : `out_${k}_${j}`);
         exitIds.set(`${id}@${j}`, xid);
         const props: Record<string, number> = { o: 0 };
         let ease = 'ease-in-quart';
@@ -703,18 +738,19 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
         if (ev.id) skippedEv.add(baseId);
         return;
       }
+      const ph = phraseOf(i);
       els.forEach((el, m) => {
         const k = keys.get(el)!;
         const id = m === 0 ? baseId : uid(`${baseId}_${m}`);
         const stagger = m * 0.12;
         const pl = typeof at === 'number' ? { at: at + stagger } : { trigger: `${at}${stagger ? `+${stagger}` : ''}` };
-        const dur = ev.dur ?? 0.7;
+        const dur = amp(ev.dur ?? 0.7, ph.tempo);
         const bx = boxes[i][el] ?? boxes[Math.max(0, i - 1)][el];
         switch (ev.action) {
           case 'move': {
             const tb = ev.to ? targetBox(ev.to, i) : null;
             const dv = ev.direction ? VEC[ev.direction] : flow;
-            let props = tb ? { x: tb.x + tb.w / 2, y: tb.y + tb.h / 2 } : { x: bx.x + dv[0] * (ev.amount ?? 0.1), y: bx.y + dv[1] * (ev.amount ?? 0.1) };
+            let props = tb ? { x: tb.x + tb.w / 2, y: tb.y + tb.h / 2 } : { x: bx.x + dv[0] * amp(ev.amount ?? 0.1, ph.amplitude), y: bx.y + dv[1] * amp(ev.amount ?? 0.1, ph.amplitude) };
             if (tb && decls.get(el)!.kind === 'cursor') {
               // the arrow's tip (≈17% / 8% of its box) lands on the target, toward its reading end so the label stays readable
               const cb = base.get(el)!;
@@ -724,14 +760,14 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
             break;
           }
           case 'transform':
-            act({ id, target: k, ...pl, dur, spring: { bounce: 0.2, visualDuration: dur }, props: { s: scaleIn(el, i) * (ev.amount ?? 1.15) } } as Omit<Act, 'type'>);
+            act({ id, target: k, ...pl, dur, spring: { bounce: 0.2, visualDuration: dur }, props: { s: scaleIn(el, i) * (ph.amplitude === 1 ? ev.amount ?? 1.15 : 1 + ((ev.amount ?? 1.15) - 1) * ph.amplitude) } } as Omit<Act, 'type'>);
             break;
           case 'impact': {
-            act({ id, target: k, ...pl, dur: 0.6, shape: 'kick', spring: { bounce: 0.5, visualDuration: 0.32 }, props: { s: ev.amount ?? 0.09 }, event: { type: 'word_impact', importance: 0.6 } } as Omit<Act, 'type'>);
+            act({ id, target: k, ...pl, dur: 0.6, shape: 'kick', spring: { bounce: 0.5, visualDuration: 0.32 }, props: { s: amp(ev.amount ?? 0.09, ph.amplitude) }, event: { type: 'word_impact', importance: 0.6 } } as Omit<Act, 'type'>);
             break;
           }
           case 'draw':
-            act({ id, target: k, ...pl, dur: ev.dur ?? 1, ease: 'ease-in-out-cubic', props: { draw: 1 }, from: { draw: 0 }, event: { type: 'draw_stroke', importance: 0.4 } } as Omit<Act, 'type'>);
+            act({ id, target: k, ...pl, dur: amp(ev.dur ?? 1, ph.tempo), ease: 'ease-in-out-cubic', props: { draw: 1 }, from: { draw: 0 }, event: { type: 'draw_stroke', importance: 0.4 } } as Omit<Act, 'type'>);
             initial[`${k}.draw`] = 0;
             break;
           case 'count':
@@ -773,10 +809,84 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
               // arrival = contact: the receiver takes the hit
               act({ id: uid(`${id}_hit`), target: keys.get(into)!, trigger: `${id}.end`, dur: 0.5, shape: 'kick', spring: { bounce: 0.5, visualDuration: 0.3 }, props: { s: 0.06 } });
             } else {
-              act({ id, target: k, ...pl, dur, ease: 'ease-in-out-cubic', props: { x: bx.x + (vec[0] / len) * 0.05, y: bx.y + (vec[1] / len) * 0.05 } } as Omit<Act, 'type'>);
-              act({ id: uid(`${id}_hit`), target: keys.get(into)!, trigger: `${id}.peak`, dur: 0.6, shape: 'kick', spring: { bounce: 0.45, visualDuration: 0.35 }, props: { x: (vec[0] / len) * 0.035, y: (vec[1] / len) * 0.035 } });
+              act({ id, target: k, ...pl, dur, ease: 'ease-in-out-cubic', props: { x: bx.x + (vec[0] / len) * amp(0.05, ph.amplitude), y: bx.y + (vec[1] / len) * amp(0.05, ph.amplitude) } } as Omit<Act, 'type'>);
+              act({ id: uid(`${id}_hit`), target: keys.get(into)!, trigger: `${id}.peak`, dur: 0.6, shape: 'kick', spring: { bounce: 0.45, visualDuration: 0.35 }, props: { x: (vec[0] / len) * amp(0.035, ph.amplitude), y: (vec[1] / len) * amp(0.035, ph.amplitude) } });
             }
             handoffs.push({ from: el, to: into, t: -1, vector: [r3(vec[0] / len), r3(vec[1] / len)], velocity: 0.7, momentum: r3(0.7 * Math.sqrt(bx.w * bx.h) * 2), kind: ev.action, reason: ev.reason });
+            break;
+          }
+          // ── P4 primitives (src/art): information focus, progressive hero, cross-element transform, secondary motion
+          case 'focus': {
+            // the element becomes the focus; its siblings (same kind, same shot) step back — dimmed, never removed.
+            // style "release": every sibling (and the element) returns to full presence
+            const sibs = (shots[i].cast ?? []).map((c) => c.id).filter((x) => x !== el && decls.get(x)?.kind === decls.get(el)!.kind && !decls.get(x)!.parent);
+            const fd = amp(0.45, ph.tempo);
+            const release = ev.style === 'release';
+            act({ id, target: k, ...pl, dur: fd, ease: 'ease-in-out-cubic', props: { s: r3(scaleIn(el, i) * (release ? 1 : ev.amount ?? 1.06)), o: tgtOpacity(el, i) } } as Omit<Act, 'type'>);
+            for (const sb of sibs) {
+              const did = uid(`${id}_dim_${keys.get(sb)}`);
+              act({ id: did, target: keys.get(sb)!, ...pl, dur: fd, ease: 'ease-in-out-cubic', props: release ? { s: scaleIn(sb, i), o: tgtOpacity(sb, i) } : { s: r3(scaleIn(sb, i) * 0.94), o: r3(tgtOpacity(sb, i) * 0.4) } } as Omit<Act, 'type'>);
+              focusDims.push({ act: did, el: sb, shot: i });
+            }
+            artOps.push({ op: 'focus', shot: s.id, element: el, siblings: sibs, release });
+            break;
+          }
+          case 'settle': {
+            // from a hero pose (cast.arriveAt) or any displacement back to its composed place
+            const sb = boxes[i][el];
+            act({ id, target: k, ...pl, dur: amp(ev.dur ?? 0.6, ph.tempo), spring: { bounce: ph.bounce ?? 0.14, visualDuration: amp(ev.dur ?? 0.6, ph.tempo) }, props: { x: sb.x, y: sb.y, s: scaleIn(el, i) } } as Omit<Act, 'type'>);
+            artOps.push({ op: 'settle', shot: s.id, element: el });
+            break;
+          }
+          case 'respond': {
+            // secondary motion: a reaction to a cause — recoil (away from it), echo (a smaller pulse), counter (a tilt)
+            const cause = ev.to && decls.has(ev.to) ? boxes[i][ev.to] ?? null : null;
+            const st = ev.style ?? 'recoil';
+            if (st === 'echo') act({ id, target: k, ...pl, dur: 0.55, shape: 'kick', spring: { bounce: 0.45, visualDuration: 0.3 }, props: { s: amp(ev.amount ?? 0.045, ph.amplitude) } } as Omit<Act, 'type'>);
+            else if (st === 'counter') act({ id, target: k, ...pl, dur: 0.6, shape: 'kick', spring: { bounce: 0.4, visualDuration: 0.35 }, props: { r: amp(ev.amount ?? 4, ph.amplitude) * (bx.x < 0.5 ? -1 : 1) } } as Omit<Act, 'type'>);
+            else {
+              const v: [number, number] = cause ? [bx.x - cause.x, bx.y - cause.y] : [flow[0], 0];
+              const l = Math.hypot(v[0], v[1]) || 1;
+              const d0 = amp(ev.amount ?? 0.03, ph.amplitude);
+              act({ id, target: k, ...pl, dur: 0.6, shape: 'kick', spring: { bounce: 0.45, visualDuration: 0.35 }, props: { x: r3((v[0] / l) * d0), y: r3((v[1] / l) * d0) } } as Omit<Act, 'type'>);
+            }
+            artOps.push({ op: 'respond', shot: s.id, element: el, cause: ev.to, style: st });
+            break;
+          }
+          case 'become': {
+            // cross-element transform: this element travels to B's place, takes B's outline and size, and hands over to B
+            const into = ev.to && decls.has(ev.to) && on(ev.to, i) ? ev.to : null;
+            const kd = decls.get(el)!.kind;
+            if (!into) {
+              warn('BECOME_NO_TARGET', `become: "${ev.to ?? ''}" is not on stage in this shot`, s.id);
+              if (ev.id) skippedEv.add(baseId);
+              break;
+            }
+            const tb = boxes[i][into];
+            const asset = kd === 'image' || kd === 'ui';
+            const D = amp(ev.dur ?? 0.75, ph.tempo);
+            if (asset) {
+              // fallback: assets are never reshaped — A dissolves on B's arrival (a crossfade in place)
+              act({ id, target: k, ...pl, dur: D, ease: 'ease-in-out-cubic', props: { o: 0 } } as Omit<Act, 'type'>);
+              becomes.push({ from: el, to: into, id, shot: i, fallback: true });
+              artOps.push({ op: 'become', shot: s.id, element: el, into, fallback: 'user asset: crossfade' });
+              warn('BECOME_FALLBACK', `"${el}" is a user asset (${kd}): never reshaped — crossfade into "${into}"`, s.id);
+              break;
+            }
+            const to = decls.get(into)!;
+            const shape = to.kind === 'shape' ? to.shape ?? 'circle' : to.kind === 'button' || to.kind === 'chip' ? 'pill' : to.kind === 'card' || to.kind === 'ui' ? 'card' : 'rounded';
+            const sx = r3(tb.w / bx.w);
+            const sy = r3(tb.h / bx.h);
+            act({ id, target: k, ...pl, dur: D, ease: 'ease-in-out-cubic', props: kd === 'shape' || kd === 'card' || kd === 'chip' || kd === 'button' ? { x: tb.x, y: tb.y, sx, sy } : { x: tb.x, y: tb.y, s: r3(scaleIn(el, i) * Math.sqrt(sx * sy)) }, event: { type: to.kind === 'button' ? 'cta_reveal' : 'hero_reveal', importance: 0.75, anchor: 'completion' } } as Omit<Act, 'type'>);
+            if (['shape', 'card', 'chip', 'button'].includes(kd)) {
+              const list = morphShapes.get(el) ?? [decls.get(el)!.shape ?? (kd === 'chip' || kd === 'button' ? 'pill' : kd === 'card' ? 'card' : 'circle')];
+              list.push(shape);
+              morphShapes.set(el, list);
+              act({ id: uid(`${id}_morph`), target: k, ...(typeof pl.at === 'number' ? { at: pl.at + D * 0.1 } : { trigger: `${(pl as { trigger: string }).trigger}+${r3(D * 0.1)}` }), dur: r3(D * 0.85), ease: 'ease-in-out-cubic', props: { morph: list.length - 1 } } as Omit<Act, 'type'>);
+            }
+            act({ id: uid(`${id}_handover`), target: k, trigger: `${id}.end`, dur: 0.12, ease: 'linear', props: { o: 0 } });
+            becomes.push({ from: el, to: into, id, shot: i, fallback: false });
+            artOps.push({ op: 'become', shot: s.id, element: el, into, shape });
             break;
           }
           case 'sustain':
@@ -785,6 +895,32 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
       });
     });
   });
+  // P4 become: B's entrance is the hand-over — B appears where A arrives, when A arrives (and settles with a small kick)
+  for (const bc of becomes) {
+    const eid = enterIds.get(`${bc.to}@${bc.shot}`);
+    const rk = keys.get(bc.to)!;
+    const node = eid ? (acts.find((a) => (a as Act).id === eid) as Act | undefined) : undefined;
+    if (!node) {
+      warn('BECOME_RECEIVER_PRESENT', `"${bc.to}" is already on stage before "${bc.from}" becomes it: it stays (no hand-over)`, shots[bc.shot].id);
+      continue;
+    }
+    delete node.at;
+    node.trigger = bc.fallback ? `${bc.id}.start` : `${bc.id}.end`;
+    if (!bc.fallback) {
+      const rb = boxes[bc.shot][bc.to];
+      node.from = { x: rb.x, y: rb.y, s: scaleIn(bc.to, bc.shot) * 0.96 };
+      node.props = { ...(node.props ?? {}), x: rb.x, y: rb.y, s: scaleIn(bc.to, bc.shot) };
+      node.spring = { bounce: 0.3, visualDuration: 0.45 };
+      node.dur = 0.45;
+      delete node.ease;
+    }
+    for (const a of acts as Act[]) if (a.id?.startsWith(`fade_${rk}_${bc.shot}`) || a.id?.startsWith(`clip_${rk}_${bc.shot}`) || a.id?.startsWith(`draw_${rk}_${bc.shot}`)) {
+      delete a.at;
+      a.trigger = node.trigger;
+      a.dur = bc.fallback ? 0.6 : 0.1;
+    }
+    handoffs.push({ from: bc.from, to: bc.to, t: -1, vector: [0, 0], velocity: 0.5, momentum: 0.5, kind: 'impact', reason: `${bc.from} becomes ${bc.to}` });
+  }
 
   function targetBox(name: string, i: number): FracRect | null {
     const a = anchorOf.get(name);
@@ -1037,6 +1173,20 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
     }
   };
   let compiled = compileOrThrow(spec);
+  // P4 focus: a sibling that has not entered yet is not dimmed (a dim would show it before its entrance)
+  if (focusDims.length) {
+    const drop = new Set<string>();
+    for (const fdm of focusDims) {
+      const eid = enterIds.get(`${fdm.el}@${fdm.shot}`);
+      const ds = compiled.byId[fdm.act]?.start;
+      const es = eid ? compiled.byId[eid]?.start : undefined;
+      if (ds !== undefined && (es === undefined || ds < es + 0.05)) drop.add(fdm.act);
+    }
+    if (drop.size) {
+      for (let q = acts.length - 1; q >= 0; q--) if (drop.has((acts[q] as Act).id ?? '')) acts.splice(q, 1);
+      compiled = compileOrThrow(spec);
+    }
+  }
   if (followJobs.length) {
     // camera follow: keys every 0.25 s on the target's actual tracked position (a line follows its drawing tip)
     for (const job of followJobs) {
@@ -1226,6 +1376,7 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
     ...(dirReport ? { direction: dirReport } : {}),
     warnings,
     causality,
+    ...(artOps.length ? { art: artOps } : {}),
   };
   return { plan, report };
 }

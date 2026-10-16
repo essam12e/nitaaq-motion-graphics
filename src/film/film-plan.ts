@@ -31,9 +31,10 @@ export const MotifSchema = z.object({
   meaning: Line,
   firstAppearance: z.string(),
   /** persist = the same element continues · become = it turns into `into` at the cut into that shot ·
-   *  halo = it returns behind `into` (a ground / halo) · accent = it returns small beside `into`. */
-  transformations: z.array(z.object({ shot: z.string(), as: z.enum(['persist', 'become', 'halo', 'accent']), into: z.string().optional(), note: Line })).default([]),
-  finalResolution: z.object({ shot: z.string(), as: z.enum(['persist', 'become', 'halo', 'accent']), into: z.string().optional(), note: Line }),
+   *  halo = it returns behind `into` (a ground / halo) · accent = it returns small beside `into` ·
+   *  transform (P4) = it returns and turns into `into` inside that shot (cross-element transform). */
+  transformations: z.array(z.object({ shot: z.string(), as: z.enum(['persist', 'become', 'halo', 'accent', 'transform']), into: z.string().optional(), note: Line })).default([]),
+  finalResolution: z.object({ shot: z.string(), as: z.enum(['persist', 'become', 'halo', 'accent', 'transform']), into: z.string().optional(), note: Line }),
 });
 export type Motif = z.infer<typeof MotifSchema>;
 
@@ -143,7 +144,7 @@ export function validateFilmPlan(input: unknown, script?: ScriptObj): { ok: true
       if (!els.has(m.element)) errors.push(`motif "${m.id}": element "${m.element}" is not a stage element`);
       for (const t of [...m.transformations, m.finalResolution]) {
         if (!ids.has(t.shot)) errors.push(`motif "${m.id}": shot "${t.shot}" is not in the script`);
-        if ((t.as === 'become' || t.as === 'halo' || t.as === 'accent') && (!t.into || !els.has(t.into))) errors.push(`motif "${m.id}" ${t.as} in "${t.shot}" needs "into": a stage element`);
+        if ((t.as === 'become' || t.as === 'halo' || t.as === 'accent' || t.as === 'transform') && (!t.into || !els.has(t.into))) errors.push(`motif "${m.id}" ${t.as} in "${t.shot}" needs "into": a stage element`);
       }
     }
     for (const p of f.phrases) for (const b of p.beats) if (!ids.has(b.shot)) errors.push(`phrase "${p.id}": shot "${b.shot}" is not in the script`);
@@ -168,7 +169,7 @@ export interface FilmPlanReport {
 
 const trType = (s: ShotObj) => (typeof s.transitionOut === 'string' ? s.transitionOut : (s.transitionOut as { type?: string } | undefined)?.type);
 const trEl = (s: ShotObj) => (typeof s.transitionOut === 'object' && s.transitionOut ? (s.transitionOut as { element?: string }).element : undefined);
-const PEAK_ACTIONS = ['impact', 'press', 'count', 'emphasis', 'transform', 'attract', 'push', 'morph'];
+const PEAK_ACTIONS = ['impact', 'press', 'count', 'emphasis', 'transform', 'attract', 'push', 'morph', 'become'];
 
 /** Applies the film plan to a shot script (a copy): energy, camera arc, motifs, phrases, contracts. */
 export function applyFilmPlan(input: ScriptObj, film: FilmPlan): { script: ScriptObj; report: FilmPlanReport } {
@@ -234,6 +235,20 @@ export function applyFilmPlan(input: ScriptObj, film: FilmPlan): { script: Scrip
         // the motif element leaves the cast of the receiving shot (it has become something else)
         s.cast = cast.filter((c) => c.id !== m.element);
         apps.push({ shot: t.shot, as: 'become', ok: true, note: t.note });
+      } else if (t.as === 'transform') {
+        // P4: the motif returns and becomes `into` inside the shot (cross-element transform, src/art)
+        const into = t.into!;
+        if (!cast.some((c) => c.id === into)) {
+          rep.skipped.push({ what: `motif ${m.id}`, shot: t.shot, why: `${into} is not cast in ${t.shot}` });
+          apps.push({ shot: t.shot, as: 'transform', ok: false, note: `${into} not cast` });
+          continue;
+        }
+        // the script's own placement wins; else the circle comes back where `into` will be (behind it)
+        if (!cast.some((c) => c.id === m.element)) cast.push({ id: m.element, role: 'background', behind: into, scale: 1.25, enter: 'scale' });
+        const chain = (s.motionChain ??= []);
+        if (!chain.some((e) => e.element === m.element && e.action === 'become')) chain.push({ id: `fp-${m.id}-become`, element: m.element, action: 'become', to: into, at: 0.45, reason: `motif ${m.id}: ${m.identity} becomes ${into} (${t.note})` });
+        rep.applied.push({ what: `motif ${m.id}`, shot: t.shot, change: `${m.element} returns and becomes ${into} (${t.note})` });
+        apps.push({ shot: t.shot, as: 'transform', ok: true, note: t.note });
       } else {
         // halo / accent: the motif returns around (behind) or beside the element it now serves
         const into = t.into!;

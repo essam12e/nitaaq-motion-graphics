@@ -105,6 +105,16 @@ function directorBudget(projectDir: string): { perScene?: number; animatic?: boo
   }
 }
 
+/** The P3 film again (the art pass's fail-safe): shots / film plan from before the art pass, re-directed. */
+async function restoreP3(dir: string, src: { brief: unknown; baseDir: string }, direction: unknown): Promise<VideoSpec> {
+  copyFileSync(join(dir, 'shots.before-art.json'), join(dir, 'shots.json'));
+  if (existsSync(join(dir, 'film_plan.before-art.json'))) copyFileSync(join(dir, 'film_plan.before-art.json'), join(dir, 'film_plan.json'));
+  const { direct } = await import('./direct');
+  const shots = JSON.parse(readFileSync(join(dir, 'shots.json'), 'utf8')) as unknown;
+  const r = await direct({ brief: src.brief, baseDir: src.baseDir, projectDir: dir, shots: shots as never, direction });
+  return r.spec!;
+}
+
 const save = (file: string, spec: VideoSpec) => writeFileSync(file, JSON.stringify(spec, null, 2));
 
 export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
@@ -146,6 +156,35 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
         const r = await direct({ brief: src.brief, baseDir: src.baseDir, projectDir: opts.projectDir, shots: pre.script, direction });
         spec = r.spec!;
         log.stage('FILM', `film pre-pass applied (${pre.neighborhood?.steps.filter((x) => x.move).length ?? 0} boundary move(s), ${pre.subjects.filter((x) => x.choice !== 'all-at-once').length} sequence change(s), ${pre.global?.actions.length ?? 0} global action(s))`);
+      }
+    }
+  }
+
+  // 0c. P4 Motion Art Director: diagnose → candidates → PREVIEW RENDER → judge → select, before the animatic
+  let artApplied = false;
+  if (isFullDirector(spec) && spec.stage && existsSync(join(opts.projectDir, 'stage_source.json')) && process.env.NITAAQ_NO_CRITIC !== '1') {
+    const { artOn, artDirectorPass } = await import('./art-director');
+    if (artOn()) {
+      const dir = opts.projectDir;
+      const src = JSON.parse(readFileSync(join(dir, 'stage_source.json'), 'utf8')) as { brief: unknown; baseDir: string };
+      const direction = JSON.parse(readFileSync(join(dir, 'direction.json'), 'utf8')) as unknown;
+      copyFileSync(join(dir, 'shots.json'), join(dir, 'shots.before-art.json'));
+      if (existsSync(join(dir, 'film_plan.json'))) copyFileSync(join(dir, 'film_plan.json'), join(dir, 'film_plan.before-art.json'));
+      try {
+        const art = await perf.stage('art-director', async () => artDirectorPass(spec, dir));
+        if (art.script) {
+          if (art.film) writeFileSync(join(dir, 'film_plan.json'), JSON.stringify(art.film, null, 2));
+          const { direct } = await import('./direct');
+          const r = await direct({ brief: src.brief, baseDir: src.baseDir, projectDir: dir, shots: art.script, direction });
+          spec = r.spec!;
+          artApplied = true;
+          const t = art.tournament?.totals;
+          log.stage('ART', `art pass applied: ${art.changed.join('; ') || 'motion language + phrases'}${t ? ` (${t.candidates} candidates, ${t.rendered} rendered, ${t.accepted} accepted)` : ''}`);
+        }
+      } catch (e) {
+        // fail-safe (AL): the art pass never stops a film — the P3 version is directed again
+        log.stage('ART', `art pass failed (${(e as Error).message.slice(0, 160)}): the P3 film is kept`, 'warn');
+        spec = await restoreP3(dir, src, direction);
       }
     }
   }
@@ -265,6 +304,45 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
       // the structural report described the pre-repair film: check the repaired one
       passes++;
       st = await structural(passes + 1);
+    }
+  }
+  // 3c. P4 Art Director Gate (after the critic): is the film directed? + the fail-safe to the P3 film when the
+  //     art pass left a technical failure the critic could not repair
+  if (artApplied && criticTechFail.length && process.env.NITAAQ_NO_ART_FALLBACK !== '1') {
+    log.stage('ART', `the technical layer failed on the art-directed film (${criticTechFail.join(' | ')}): falling back to the P3 film`, 'warn');
+    const src = JSON.parse(readFileSync(join(opts.projectDir, 'stage_source.json'), 'utf8')) as { brief: unknown; baseDir: string };
+    const direction = JSON.parse(readFileSync(join(opts.projectDir, 'direction.json'), 'utf8')) as unknown;
+    spec = await restoreP3(opts.projectDir, src, direction);
+    artApplied = false;
+    writeFileSync(join(opts.projectDir, 'art_fallback.json'), JSON.stringify({ version: 1, reason: criticTechFail, at: 'after-critic' }, null, 2));
+    const rep2 = repairSpec(spec, nodeValidateOptions(opts.projectDir, spec));
+    spec = rep2.spec;
+    save(specFile, spec);
+    passes++;
+    st = await structural(passes + 1);
+    soundIssues = await soundStage(spec, opts.projectDir, perf, allRepairs);
+    save(specFile, spec);
+    const outA = join(renders, `${spec.project.id}-animatic.mp4`);
+    const ra = await perf.stage('animatic', () => renderVideo({ spec, projectDir: opts.projectDir, output: outA, profile: 'animatic' }), 'P3 fallback');
+    animatic = ra.output;
+    const src2 = JSON.parse(readFileSync(join(opts.projectDir, 'stage_source.json'), 'utf8')) as { brief: unknown; baseDir: string };
+    const { criticLoop } = await import('./critic-loop');
+    const loop = await perf.stage('critic', () => criticLoop({ projectDir: opts.projectDir, brief: src2.brief, baseDir: src2.baseDir, video: animatic!, profile: 'animatic', maxPasses: opts.criticPasses ?? 2 }), 'P3 fallback');
+    motion.critic = { verdict: loop.critic.verdict.status, overall: loop.critic.overall, passes: loop.passes.length - 1 };
+    criticTechFail = loop.critic.technical.checks.filter((c) => !c.pass && c.severity === 'critical').map((c) => `${c.id}: ${c.evidence}`);
+    if (loop.passes.some((p) => p.patches.length)) {
+      spec = loadSpec(specFile);
+      soundIssues = await soundStage(spec, opts.projectDir, perf, allRepairs);
+      save(specFile, spec);
+      passes++;
+      st = await structural(passes + 1);
+    }
+  }
+  if (full && spec.stage && existsSync(join(opts.projectDir, 'stage_source.json')) && process.env.NITAAQ_NO_CRITIC !== '1') {
+    const { artOn, artGateFor } = await import('./art-director');
+    if (artOn()) {
+      const g = await perf.stage('art-gate', async () => artGateFor(opts.projectDir));
+      if (g) log.stage('ART', `Art Director Gate: ${g.passed ? 'passed' : 'REJECTED'}${g.rejections.length ? ` — ${g.rejections.map((r) => r.code).join(', ')}` : ''}`, g.passed ? 'info' : 'warn');
     }
   }
   if (opts.stopAfterAnimatic) {

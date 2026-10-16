@@ -128,11 +128,45 @@ export const CastSchema = z
     /** P3 motif: sits centred BEHIND another element of the shot (a halo / ground), `scale` × its width — placed after the composition, never moving it. */
     behind: StageId.optional(),
     scale: z.number().min(0.3).max(4).optional(),
+    /** P4 progressive hero: the entrance arrives here first (canvas fractions, × its own size); a later "settle" event takes it to its composed place. */
+    arriveAt: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), scale: z.number().min(0.3).max(4).default(1) }).optional(),
   })
   .strict();
 export type CastEntry = z.infer<typeof CastSchema>;
 
-export const MOTION_ACTIONS = ['enter', 'emphasis', 'sustain', 'exit', 'move', 'transform', 'impact', 'draw', 'count', 'morph', 'press', 'reveal', 'attract', 'push'] as const;
+export const MOTION_ACTIONS = ['enter', 'emphasis', 'sustain', 'exit', 'move', 'transform', 'impact', 'draw', 'count', 'morph', 'press', 'reveal', 'attract', 'push', 'focus', 'settle', 'become', 'respond'] as const;
+
+/**
+ * P4 Motion Phrase v2: the motion parameters of one shot (they change the compiled motion, not a label).
+ * tempo × every entrance / event duration · bounce = spring bounce of entrances · stagger = seconds between
+ * siblings entering together · accel = how that stagger evolves · amplitude × travel / impact sizes.
+ */
+export const MotionPhraseSchema = z
+  .object({
+    name: z.string().optional(),
+    tempo: z.number().min(0.4).max(2.5).default(1),
+    bounce: z.number().min(0).max(0.7).optional(),
+    stagger: z.number().min(0).max(0.8).optional(),
+    accel: z.enum(['even', 'accelerate', 'decelerate']).default('even'),
+    amplitude: z.number().min(0.3).max(2.5).default(1),
+  })
+  .strict();
+export type MotionPhrase = z.infer<typeof MotionPhraseSchema>;
+
+/** P4 motion language (brand motion): defaults for the whole film, overridden by a shot's phrase. */
+export const MotionLanguageSchema = z
+  .object({
+    id: z.string().min(2),
+    tempo: z.number().min(0.4).max(2.5).default(1),
+    bounce: z.number().min(0).max(0.7).default(0.15),
+    amplitude: z.number().min(0.3).max(2.5).default(1),
+    /** Default entrance per element kind (text keeps an RTL-safe entrance). */
+    enter: z.record(z.enum(['rise', 'slide', 'scale', 'fade', 'draw', 'mask', 'drop', 'none'])).default({}),
+    /** Degrees of playful tilt allowed on small objects (0 = none). */
+    tilt: z.number().min(0).max(12).default(0),
+  })
+  .strict();
+export type MotionLanguage = z.infer<typeof MotionLanguageSchema>;
 export const MotionEventSchema = z.object({
   /** Stage mode: a name other events can follow ("after": "hub-impact"). */
   id: z.string().regex(/^[a-z0-9][a-z0-9-]*$/, 'event ids: lowercase letters, digits, dashes').optional(),
@@ -205,6 +239,8 @@ export const ShotSchema = z
     metaphor: z.string().optional(),
     /** A deliberate CTA without CTA copy (Stage mode enforces CTA content otherwise) — the reason is required. */
     ctaOverride: z.object({ reason: Reason }).optional(),
+    /** P4: the shot's motion phrase (parameters the compiler applies). */
+    phrase: MotionPhraseSchema.optional(),
   })
   .superRefine((s, ctx) => {
     if (s.camera !== 'static' && !(s.cameraReason && s.cameraReason.trim().length >= 4)) ctx.addIssue({ code: 'custom', path: ['cameraReason'], message: `camera "${s.camera.move}" needs a cameraReason (why the camera moves)` });
@@ -221,6 +257,8 @@ export const ShotScriptSchema = z
     /** Text motion personality for the whole film (premium, tech, corporate, …); omitted → the brief's. */
     personality: z.string().optional(),
     shots: z.array(ShotSchema).min(1),
+    /** P4: the brand's motion language (motion_language.json) — film-wide motion parameters. */
+    motionLanguage: MotionLanguageSchema.optional(),
     /** Stage mode (P1): the film's global elements. Present → the Stage Compiler renders the film as one continuous stage. */
     stage: z
       .object({
