@@ -732,3 +732,36 @@ describe('P2 a displacement written for another layout (found on the SaaS featur
     expect(drop.directive.dropMotion!.sort()).toEqual(['nudge', 'nudge2']);
   });
 });
+
+describe('P2-N best version: a tie is broken by the problems on screen', () => {
+  it('weights critical > major > minor', async () => {
+    const { issueWeight } = await import('../../src/node/critic-loop');
+    const mk = (sev: string[]) => ({ issues: sev.map((severity) => ({ severity })) }) as never;
+    expect(issueWeight(mk(['critical']))).toBe(2);
+    expect(issueWeight(mk(['major', 'minor', 'minor']))).toBe(1.6);
+    expect(issueWeight(mk(['major', 'major']))).toBeGreaterThan(issueWeight(mk(['major', 'minor'])));
+  });
+});
+
+describe('P2 brand signature and type margins (found on the voice film)', () => {
+  it('unpin "*" re-composes the shot but leaves the placed logo in its corner', () => {
+    const sc = script({ features: { cast: [...ROW, { id: 'logo.brand', role: 'support', at: { x: 0.92, y: 0.13 }, w: 0.06 }] } });
+    const { script: out } = applyRedirection(sc as ShotScript & Record<string, unknown>, RedirectionSchema.parse({ shots: [{ shot: 'features', diagnosis: 'row too small', strategy: 'hero-focus', unpin: ['*'] }] }));
+    const cast = (out.shots[1] as { cast: { id: string; at?: unknown; w?: number }[] }).cast;
+    expect(cast.find((c) => c.id === 'logo.brand')!.at).toEqual({ x: 0.92, y: 0.13 });
+    expect(cast.find((c) => c.id === 'card.f2')!.at).toBeUndefined();
+    const named = applyRedirection(sc as ShotScript & Record<string, unknown>, RedirectionSchema.parse({ shots: [{ shot: 'features', diagnosis: 'move the mark', unpin: ['logo.brand'] }] }));
+    expect((named.script.shots[1] as { cast: { id: string; at?: unknown }[] }).cast.find((c) => c.id === 'logo.brand')!.at).toBeUndefined();
+  });
+  it('a line of type flush on the frame edge at rest fails the technical layer (clipped glyphs)', () => {
+    const { plan, report } = compile();
+    const t0 = settleTimeOf(plan, 'hook');
+    const samples = synth(plan, [t0, t0 + 0.1, t0 + 0.2]);
+    for (const s of samples) {
+      const e = s.els.find((x) => x.id === 'text.hook')!;
+      e.rect = { ...e.rect, y: 1 };
+    }
+    const c = critique({ plan, report, samples });
+    expect(c.issues.some((i) => i.code === 'TEXT_OFF_FRAME' && i.elements?.includes('text.hook') && /flush/.test(i.evidence))).toBe(true);
+  });
+});

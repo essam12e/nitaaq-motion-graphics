@@ -289,6 +289,22 @@ export function critique(input: CriticInput): CriticReport {
             worst.set(e.id, { inside: Math.min(w.inside, inside), n: w.n + 1 });
           }
         }
+      // a line of type whose box sits flush on the frame edge has its glyphs clipped (Arabic ascenders and
+      // dots overhang the box): found on the voice film, where a re-composed headline ended at y = 1px
+      const flush = new Map<string, number>();
+      const m = 0.004 * Math.min(W, H);
+      for (const x of late)
+        for (const e of x.els) {
+          if (e.parent || e.kind !== 'text' || e.opacity < 0.5 || e.rect.width * e.rect.height <= 0) continue;
+          const r = e.rect;
+          const fullyIn = r.x >= -1 && r.y >= -1 && r.x + r.width <= W + 1 && r.y + r.height <= H + 1;
+          if (fullyIn && Math.min(r.x, r.y, W - r.x - r.width, H - r.y - r.height) < m) flush.set(e.id, (flush.get(e.id) ?? 0) + 1);
+        }
+      for (const [id, n] of flush) {
+        if (n < 2 || worst.has(id)) continue;
+        cutLabels.push(`${id} at the edge`);
+        add({ layer: 'technical', code: 'TEXT_OFF_FRAME', severity: 'major', shot: s.id, dims: ['typography', 'composition'], evidence: `${id} sits flush on the frame edge after the shot settled: its glyphs are clipped`, fix: 'keep a margin between the type and the frame edge (wider end framing, re-composition)', elements: [id] });
+      }
       for (const [id, w] of worst) {
         if (w.n < 2) continue;
         cutLabels.push(`${id} ${Math.round((1 - w.inside) * 100)}%`);

@@ -181,6 +181,9 @@ export function applyRedirection<T extends ScriptObj>(script: T, red: Redirectio
         const c = cast.find((x) => x.id === id);
         if (!c) continue;
         if (decl(id)?.kind === 'cursor') continue;
+        // a placed logo is the brand's signature (a corner mark): "*" never releases it, only naming it does
+        const d = decl(id) as { kind?: string; asset?: string } | undefined;
+        if ((d?.kind === 'logo' || d?.asset === 'logo' || /^logo\b/.test(id)) && r.unpin.includes('*') && !r.unpin.includes(id)) continue;
         if (c.at || c.w) {
           delete c.at;
           delete c.w;

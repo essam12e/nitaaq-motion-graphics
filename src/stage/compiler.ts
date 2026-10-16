@@ -817,7 +817,9 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
         const p = projectPoint({ x: r.x, y: r.y }, d, c, W, H);
         const q = projectPoint({ x: r.x + r.w, y: r.y + r.h }, d, c, W, H);
         const area = Math.max(1e-6, (q.x - p.x) * (q.y - p.y));
-        const inside = (Math.max(0, Math.min(1, q.x) - Math.max(0, p.x)) * Math.max(0, Math.min(1, q.y) - Math.max(0, p.y))) / area;
+        // type needs a margin: a line that ends flush on the edge has its glyphs clipped
+        const m = decls.get(id)?.kind === 'text' ? 0.015 : 0;
+        const inside = (Math.max(0, Math.min(1 - m, q.x) - Math.max(m, p.x)) * Math.max(0, Math.min(1 - m, q.y) - Math.max(m, p.y))) / area;
         return inside > 0.03 && inside < 0.97;
       });
     if (cut(a) || !cut(b)) return 1;

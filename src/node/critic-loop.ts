@@ -87,6 +87,9 @@ export function spliceVideo(base: string, segments: { range: [number, number]; f
   execFileSync('rm', ['-f', tmp]);
 }
 
+/** Weighted count of the problems a viewer sees (critical 2, major 1, minor 0.3). */
+export const issueWeight = (c: Pick<CriticReport, 'issues'>): number => Math.round(c.issues.reduce((a, i) => a + (i.severity === 'critical' ? 2 : i.severity === 'major' ? 1 : 0.3), 0) * 10) / 10;
+
 const SNAP = ['video.json', 'stage.json', 'stage_report.json', 'shots.json', 'critic.json', 'dom_motion.json', 'dom_samples.json', 'transition_quality.json'];
 function snapshot(projectDir: string, pass: number, video?: string): void {
   const d = join(projectDir, 'passes', `pass${pass}`);
@@ -239,6 +242,9 @@ export async function criticLoop(opts: {
     const techWin = critic.technical.pass && !best.critic.technical.pass && critic.overall >= best.critic.overall - 0.5;
     if (techWin) best = { pass, critic, reason: `fixes the technical layer (visual ${critic.overall})` };
     else if (critic.overall > best.critic.overall + 0.001 && (critic.technical.pass || !best.critic.technical.pass)) best = { pass, critic, reason: `highest visual score (${critic.overall}) with technical ${critic.technical.pass ? 'pass' : 'fail'}` };
+    // a tie on the (rounded, capped) overall is broken by what the viewer is shown: fewer visible problems
+    else if (Math.abs(critic.overall - best.critic.overall) <= 0.05 && (critic.technical.pass || !best.critic.technical.pass) && issueWeight(critic) <= issueWeight(best.critic) - 0.5)
+      best = { pass, critic, reason: `same visual score (${critic.overall}), fewer problems on screen (${issueWeight(best.critic)} → ${issueWeight(critic)})` };
     // a technical failure still open keeps the loop going within the pass budget (the next candidate is tried)
     const techOpen = !critic.technical.pass && pass < base;
     // a shot to take back keeps the loop going for one more pass (within the budget, or the consolidation pass)
