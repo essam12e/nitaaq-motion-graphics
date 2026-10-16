@@ -74,16 +74,41 @@ The CTA comes from the brief only (never fabricated); a stage film without one f
 script gives `ctaOverride` with a reason. Ending: motion resolves → brand settles → CTA readable →
 short hold (`hold.maxSec`, default 1.6 s) → end. `END_HOLD_LONG` if the hold overruns.
 
-## 8. Probes → Critic → Repair
+## 8. Probes → Critic → Re-Director → Repair (P2)
 
 - `dom_motion.json`: per element visible / moving seconds, travel, scale; per camera move its
   effect on the target; word reactions; frame and subject occupancy per shot; still runs;
-  text collisions.
-- `critic.json`: ten scores /10 (motionQuality, composition, camera, transitions, typography,
-  audioSync, visualStorytelling, commercialQuality, continuity, frameUtilization), issues
-  (POWERPOINT_FEELING, DEAD_HOLD, TINY_SUBJECT, CAMERA_OVERUSE, CAMERA_NO_VISIBLE_EFFECT,
-  DISCONNECTED_SHOTS, TEXT_COLLISION, CTA_WEAKNESS, …) and a verdict accept / repair / reject.
-  Camera overuse is judged against the direction budget, not a fixed number.
-- Repair (`repair_log.json`, `shots.repair{n}.json`): rules edit framing, size, camera, sustain or
-  timing (never copy); only the affected frames re-render (frame range + splice). A timing change
-  re-renders the whole film.
+  collisions with a class (critical / text-obstruction / subject-obstruction / decorative-collision /
+  safe-overlap / intentional).
+- `critic.json` v2 has two layers. **technical** (pass/fail checks: text in frame, collisions,
+  transitions resolved, ending hold …) never raises a visual score. **visual**: 14 dimensions /10, each
+  with a band (weak < 4 ≤ acceptable < 6 ≤ good < 7.5 ≤ professional < 9 ≤ exceptional), a basis
+  (measured / heuristic / judgment / n/a) and evidence. Automatic evidence is capped at 9.0; above it
+  only with a `judgment` passed in. The overall is held to ≤ weakest dimension + 3 and ≤ weakest shot + 2.5.
+  Shots are judged at their settle frame in context (subject type × shot size): frame utilisation,
+  seen hierarchy (first / second / third read from DOM dominance, not metadata), composition,
+  typography, cleanliness. Rows of equal small objects, thumbnails under a headline, items covering
+  each other (`ITEMS_OVERLAP`) and cast elements out of a still frame (`ELEMENT_OFF_FRAME`) are flagged.
+- `transition_quality.json` + `qc/transitions/*.png`: frames before / through / after each cut, pixel
+  occupancy curve; `EMPTY_TRANSITION_FRAME`, `VISUAL_VOID`, `FLASH_FRAME`, `OVERLAP_TRANSITION`,
+  `UNREADABLE_MORPH`, `BROKEN_CONTINUITY`.
+- **Style-frame gate** (`style_frame_gate.json`, before the animatic): settle frames judged on
+  composition only (accept ≥ 5.5, reject < 3.5); failing shots are re-composed (never camera / timing
+  here); a re-direction that makes its own frame worse is undone for that shot.
+- **Re-Director** (`src/stage/redirector.ts`): diagnoses a weak shot (row of equals, weak subject,
+  too much space …) and predicts candidate organisations (strategy × subject × shot size) with the
+  critic's own curves. Strategies: centered, hero-focus, asymmetric-split, split, stack, card-cascade,
+  spatial-cluster, focus-sequence, center-stage, full-frame-typography, ui-zoom, timeline-flow, radial,
+  cta-lockup (generic: any row of objects).
+- **Repair planner** (`repair_plan.passN.json`): candidates per issue with cost (low / medium / high /
+  very-high), predicted gain, risk and intent changes; cheaper repairs first; disabling the camera is
+  the very-high last resort and must declare the lost intent. Memory (`repair_memory.json`) never
+  retries a failed repair; side effects (new issues, dropped dimensions) are recorded.
+- **Loop V2** (`repair_log.json` v2): 2 passes (a 3rd only when both improved); stops on regression,
+  no improvement or issue churn; the best pass is restored. Only affected frames re-render.
+- **redirection.json** (the same document Claude or a human writes): `nitaaq redirect request <project>`
+  writes `redirection_request.json` (critic, diagnosis, capabilities, JSON schema, previous attempts);
+  `nitaaq redirect apply <project> <redirection.json>` validates, maps or rejects each ask with a reason,
+  and re-directs. It changes organisation only (strategy, size, subject, roles, placement, depth, motion,
+  camera, transition hold, timing) — never copy, logos, screenshots or new libraries.
+- Ablations: `NITAAQ_NO_GATE=1`, `NITAAQ_NO_REDIRECTOR=1`, `NITAAQ_NO_REPAIR=1`, `NITAAQ_NO_CRITIC=1`.

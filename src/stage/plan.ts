@@ -127,6 +127,10 @@ export interface StageShot {
   camera: ShotCamera;
   composition: CompositionReport;
   cast: { id: string; role: string }[];
+  /** P2: the shot's narrative job and planned energy (0..1) — the Visual Critic judges in that context. */
+  purpose?: string;
+  metaphor?: string;
+  energy?: number;
 }
 
 export interface StagePlan {

@@ -213,8 +213,14 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
     const reg = regionBox(regions[i], i);
     const safe = reg ? { x: reg.x + reg.w * 0.06, y: reg.y + reg.h * 0.08, w: reg.w * 0.88, h: reg.h * 0.84 } : input.safe;
     // composing inside a region: the region is the "canvas" (its own pixel size)
-    const compIn = reg ? { W: reg.w * W, H: reg.h * H, safe: { x: 0.06, y: 0.08, w: 0.88, h: 0.84 } } : { W, H, safe };
-    const comp = composeShot({ W: compIn.W, H: compIn.H, safe: compIn.safe, rtl, shotSize: s.shotSize as ShotSize, purpose: s.purpose, elements: top.map(mk), exitDirection: exitTo });
+    // P2: compose under the move — a push / follow over a group of items leaves the room the move takes,
+    // so the camera can travel without coming to rest on a half-cut item
+    const fam0 = s.camera === 'static' ? 'static' : moveFamily(s.camera.move);
+    const group = top.filter((c) => decls.get(c.id)?.kind !== 'cursor' && c.role !== 'background').length >= 3;
+    const room = !reg && group && (fam0 === 'push' || fam0 === 'follow') ? 0.1 * clamp(s.camera === 'static' ? 0 : (s.camera.amplitude ?? 1), 0.3, 1) : 0;
+    const roomSafe = room ? { x: safe.x + safe.w * room, y: safe.y + safe.h * room * 0.6, w: safe.w * (1 - 2 * room), h: safe.h * (1 - 1.2 * room) } : safe;
+    const compIn = reg ? { W: reg.w * W, H: reg.h * H, safe: { x: 0.06, y: 0.08, w: 0.88, h: 0.84 } } : { W, H, safe: roomSafe };
+    const comp = composeShot({ W: compIn.W, H: compIn.H, safe: compIn.safe, rtl, shotSize: s.shotSize as ShotSize, purpose: s.purpose, elements: top.map(mk), exitDirection: exitTo, strategy: s.composition });
     const out: Record<string, Box> = {};
     for (const [id, b] of Object.entries(comp.boxes)) out[id] = reg ? { x: reg.x + b.x * reg.w, y: reg.y + b.y * reg.h, w: b.w * reg.w, h: b.h * reg.h } : b;
     void safe;
@@ -513,6 +519,7 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
     const tr = s.transitionOut;
     const type = typeof tr === 'string' ? tr : tr?.type;
     const reason = s.transitionReason ?? '';
+    const hold = typeof tr === 'object' && tr && typeof (tr as { hold?: number }).hold === 'number' ? (tr as { hold: number }).hold : 0;
     const bp = bplan[i];
     const b = boundary(i);
     const next = shots[i + 1].id;
@@ -571,7 +578,8 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
       // the text stops being ink and becomes the window: it grows until its glyphs open the whole frame
       const grow = r3(Math.max(14, 2.6 / Math.min(bi.w, bi.h)) * scaleIn(el, i));
       act({ id: uid(`maskgrow_${k}_${i}`), target: k, at: b - 0.15, dur: 1.05, ease: 'ease-in-quart', props: { s: grow } });
-      act({ id: uid(`maskink_${k}_${i}`), target: k, at: b - 0.15, dur: 0.25, ease: 'linear', props: { o: 0 } });
+      // hold (P2-G repair): the ink stays while the glyphs grow, so the frame is carried until the window is open
+      act({ id: uid(`maskink_${k}_${i}`), target: k, at: r3(b - 0.15 + hold), dur: r3(0.25 + hold * 0.5), ease: 'linear', props: { o: 0 } });
       const reveals = (shots[i + 1].cast ?? []).map((c) => c.id).filter((id) => !on(id, i));
       masks.push({ element: el, from: r3(b - 0.15), to: r3(b + 0.9), reveals });
       t0 = b - 0.15;
@@ -598,7 +606,7 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
     } else if (bp.kind === 'depth-pass') {
       // the element flies toward the lens and past it (pass-through), revealing the next shot behind
       act({ id: uid(`pass_${k}_${i}`), target: k, at: b - 0.5, dur: 0.85, ease: 'ease-in-quart', props: { z: -0.92 } });
-      act({ id: uid(`passfade_${k}_${i}`), target: k, at: b + 0.05, dur: 0.3, ease: 'linear', props: { o: 0 } });
+      act({ id: uid(`passfade_${k}_${i}`), target: k, at: r3(b + 0.05 + hold), dur: 0.3, ease: 'linear', props: { o: 0 } });
       t0 = b - 0.5;
       t1 = b + 0.35;
     }
@@ -785,6 +793,35 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
     const cb = projectPoint({ x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 }, d, b, W, H);
     return { scale: r3(planeScale(d, b) / planeScale(d, a)), shift: r3(Math.hypot(cb.x - ca.x, (cb.y - ca.y) * (H / W))), bgScale: r3(planeScale(LAYER_DEPTH.bg, b) / planeScale(LAYER_DEPTH.bg, a)) };
   };
+  /**
+   * P2: a move never ends with a cast item half out of the frame. Returns how much of the move (0.3..1)
+   * keeps every item whole (wholly outside = deliberately out of view, fine); 1 when the composition itself
+   * already cuts it (the camera is not the cause, re-composition is).
+   */
+  const castWhole = (i: number, a: Cam, b: Cam): number => {
+    // the element the move dives into (it holds the target) and big fills (an interface, a photo) are cropped by design
+    const tgt = shots[i].cameraTarget;
+    const holder = tgt ? (anchorOf.get(tgt)?.element ?? tgt) : undefined;
+    const ids = (shots[i].cast ?? []).filter((c) => c.role !== 'background' && decls.get(c.id)?.kind !== 'cursor' && c.id !== holder).map((c) => c.id).filter((id) => {
+      const r = boxOn(id, i);
+      return !r || r.w * r.h < 0.3;
+    });
+    const cut = (c: Cam) =>
+      ids.some((id) => {
+        const r = boxOn(id, i);
+        if (!r || r.w >= 0.95 || r.h >= 0.95) return false;
+        const d = depthOf(id);
+        const p = projectPoint({ x: r.x, y: r.y }, d, c, W, H);
+        const q = projectPoint({ x: r.x + r.w, y: r.y + r.h }, d, c, W, H);
+        const area = Math.max(1e-6, (q.x - p.x) * (q.y - p.y));
+        const inside = (Math.max(0, Math.min(1, q.x) - Math.max(0, p.x)) * Math.max(0, Math.min(1, q.y) - Math.max(0, p.y))) / area;
+        return inside > 0.03 && inside < 0.97;
+      });
+    if (cut(a) || !cut(b)) return 1;
+    for (const k of [0.8, 0.65, 0.5, 0.4, 0.3]) if (!cut(mixCam(a, b, k))) return k;
+    warn('CAMERA_CUTS_CAST', 'even a third of the move ends with a cast item half out of the frame: the composition leaves no room for this move (re-compose, or choose another move)', shots[i].id);
+    return 0.3;
+  };
   shots.forEach((s, i) => {
     const start = T[i].start;
     const end = shotEnd(i);
@@ -830,7 +867,12 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
       const centre = { x: tRect!.x + tRect!.w / 2, y: tRect!.y + tRect!.h / 2 };
       const anchor = { x: 0.5 + (centre.x - 0.5) * 0.35, y: 0.5 + (centre.y - 0.5) * 0.35 };
       const full = fit(tRect!, d, want, anchor);
-      const endCam = mixCam(cam, full, clamp(amp, 0.2, 1));
+      let endCam = mixCam(cam, full, clamp(amp, 0.2, 1));
+      const k = castWhole(i, cam, endCam);
+      if (k < 1) {
+        endCam = mixCam(cam, endCam, k);
+        warn('CAMERA_KEEPS_CAST', `the push stops at ${Math.round(k * 100)}% so no cast item ends cut by the frame`, s.id);
+      }
       camTo(uid(`cam_push_${i}`), t0, t1 - t0, endCam);
       shotCam.visible = visibleOf(tRect!, d, from, endCam);
       cam = endCam;
@@ -849,7 +891,7 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
       // follow the target through its own motion (keys sampled from the element tracks after a first compile)
       const d = depthOf(target!);
       const fill = STAGE_FILL[s.shotSize as ShotSize] ?? 0.62;
-      followJobs.push({ i, target: target!, t0, t1, d, fill, amp: clamp(amp, 0.2, 1), from: { ...cam } });
+      followJobs.push({ i, target: target!, t0, t1, d, fill, amp: clamp(amp, 0.2, 1), from: { ...cam } }); // (cast kept whole in the key pass)
       const endCam = mixCam(cam, fit(tRect!, d, fill), clamp(amp, 0.2, 1));
       shotCam.visible = visibleOf(tRect!, d, from, endCam);
       cam = endCam;
@@ -965,7 +1007,8 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
       const bb = base.get(elId)!;
       const n = Math.max(2, Math.round((job.t1 - job.t0) / 0.25));
       const step = (job.t1 - job.t0) / n;
-      let c = job.from;
+      const keysFor = (amp: number): Cam[] => {
+      const out: Cam[] = [];
       for (let q = 0; q < n; q++) {
         // key q runs [t0 + q·step, t0 + (q+1)·step] toward the framing of the target at its end
         const t = job.t0 + step * (q + 1);
@@ -989,11 +1032,21 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
           h *= a.box.h;
         }
         const want = fit({ x: cx - w / 2, y: cy - h / 2, w, h }, job.d, job.fill);
-        const next = mixCam(job.from, want, job.amp);
-        acts.push({ type: 'action', id: uid(`cam_follow_${job.i}_${q}`), target: CAMERA_KEY, at: r3(t - step), dur: r3(step), ease: q === 0 ? 'emphasized-accelerate' : q === n - 1 ? 'emphasized-decelerate' : 'linear', props: { x: r3(next.x), y: r3(next.y), dolly: r3(next.dolly), zoom: r3(next.zoom) } } as Act);
-        c = next;
+        out.push(mixCam(job.from, want, amp));
       }
-      void c;
+      return out;
+      };
+      let ks = keysFor(job.amp);
+      // P2: the follow never comes to rest with a cast item half out of the frame (the travel is shortened)
+      const k = castWhole(job.i, job.from, ks[ks.length - 1]);
+      if (k < 1) {
+        ks = keysFor(job.amp * k);
+        warn('CAMERA_KEEPS_CAST', `the follow travels ${Math.round(k * 100)}% of its way so no cast item ends cut by the frame`, shots[job.i].id);
+      }
+      ks.forEach((next, q) => {
+        const t = job.t0 + step * (q + 1);
+        acts.push({ type: 'action', id: uid(`cam_follow_${job.i}_${q}`), target: CAMERA_KEY, at: r3(t - step), dur: r3(step), ease: q === 0 ? 'emphasized-accelerate' : q === n - 1 ? 'emphasized-decelerate' : 'linear', props: { x: r3(next.x), y: r3(next.y), dolly: r3(next.dolly), zoom: r3(next.zoom) } } as Act);
+      });
     }
     compiled = compileOrThrow(spec);
   }
@@ -1114,7 +1167,7 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
     elements,
     choreo: spec,
     masks,
-    shots: shots.map((s, i) => ({ id: s.id, start: r3(T[i].start), end: r3(shotEnd(i)), ...(regions[i] ? { region: regions[i] } : {}), camera: shotCams[i], composition: compReports[i], cast: (s.cast ?? []).map((c) => ({ id: c.id, role: c.role })) })),
+    shots: shots.map((s, i) => ({ id: s.id, start: r3(T[i].start), end: r3(shotEnd(i)), ...(regions[i] ? { region: regions[i] } : {}), camera: shotCams[i], composition: compReports[i], cast: (s.cast ?? []).map((c) => ({ id: c.id, role: c.role })), purpose: s.purpose, ...(s.metaphor ? { metaphor: s.metaphor } : {}), energy: s.expectedEnergy ?? 0.6 })),
     handoffs,
     transitions,
     ending,

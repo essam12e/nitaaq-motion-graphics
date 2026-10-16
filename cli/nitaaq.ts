@@ -7,6 +7,8 @@
  *                   --shots: Full Director Mode (Claude-authored shot script → voice map → animatic → motion metrics → final)
  *   nitaaq produce  <projectDir|video.json> [--profile …] [--animatic]  → staged QC + repair + render + final QC
  *   nitaaq animatic <projectDir|video.json>                            → structural QC + sheets + half-size 15 fps animatic
+ *   nitaaq redirect request <projectDir>                  → redirection_request.json (critic, diagnosis, capabilities, style frames) for Claude
+ *   nitaaq redirect apply <projectDir> <redirection.json>  → applied / mapped / rejected report, shots recompiled (P2-E)
  *   nitaaq validate <video.json> [--fix]
  *   nitaaq render   <projectDir|video.json> [--profile preview|animatic|draft|production] [--out file.mp4] [--no-cache]
  *   nitaaq quality  <projectDir|video.json> [--video file.mp4]
@@ -101,6 +103,51 @@ async function main(): Promise<number> {
       return r.ok ? 0 : 1;
     }
     case 'create':
+    case 'redirect': {
+      const [sub, dirArg, redFile] = pos;
+      const dir = resolve(dirArg ?? '.');
+      const { RedirectionSchema, applyRedirection, CAPABILITIES } = await import('../src/stage/redirection');
+      const shots = JSON.parse(readFileSync(join(dir, 'shots.json'), 'utf8'));
+      if (sub === 'request') {
+        const { diagnoseShot } = await import('../src/stage/redirector');
+        const critic = JSON.parse(readFileSync(join(dir, 'critic.json'), 'utf8'));
+        const gate = existsSync(join(dir, 'style_frame_gate.json')) ? JSON.parse(readFileSync(join(dir, 'style_frame_gate.json'), 'utf8')) : null;
+        const stage = JSON.parse(readFileSync(join(dir, 'stage.json'), 'utf8'));
+        const req = {
+          version: 1,
+          task: 'Re-direct the shots the critic failed. Answer with redirection.json (schema below): per shot a diagnosis and a change of ORGANISATION (strategy, shot size, subject, roles, placement, depth, motion, camera, transition, timing). Never code, never new copy.',
+          capabilities: CAPABILITIES,
+          schema: (await import('zod-to-json-schema')).zodToJsonSchema(RedirectionSchema),
+          critic: { overall: critic.overall, verdict: critic.verdict, shots: critic.shots, issues: critic.issues },
+          diagnosis: critic.shots.filter((x: { overall: number }) => x.overall < 7).map((x: { shot: string }) => diagnoseShot(critic, shots, x.shot)),
+          shots: shots.shots.map((x: Record<string, unknown>) => ({ id: x.id, purpose: x.purpose, message: x.message, subject: x.subject, shotSize: x.shotSize, composition: x.composition, cast: x.cast, camera: x.camera, cameraReason: x.cameraReason, transitionOut: x.transitionOut, transitionReason: x.transitionReason, metaphor: x.metaphor })),
+          compositions: stage.shots.map((x: { id: string; composition: unknown }) => ({ shot: x.id, composition: x.composition })),
+          styleFrames: existsSync(join(dir, 'style_frames')) ? readdirSync(join(dir, 'style_frames')).map((f) => join(dir, 'style_frames', f)) : [],
+          gate: gate?.rounds?.[gate.rounds.length - 1] ?? null,
+          previousAttempts: existsSync(join(dir, 'repair_memory.json')) ? JSON.parse(readFileSync(join(dir, 'repair_memory.json'), 'utf8')).attempts : [],
+        };
+        writeFileSync(join(dir, 'redirection_request.json'), JSON.stringify(req, null, 2));
+        out({ request: join(dir, 'redirection_request.json'), shots: req.diagnosis.map((d: { shot: string }) => d.shot) });
+        return 0;
+      }
+      if (sub === 'apply') {
+        if (!redFile) throw new Error('Usage: nitaaq redirect apply <projectDir> <redirection.json>');
+        const parsed = RedirectionSchema.safeParse(JSON.parse(readFileSync(resolve(redFile), 'utf8')));
+        if (!parsed.success) {
+          out({ ok: false, errors: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`) });
+          return 1;
+        }
+        const { script, report } = applyRedirection(shots, parsed.data);
+        writeFileSync(join(dir, 'shots.redirected.json'), JSON.stringify(script, null, 2));
+        writeFileSync(join(dir, 'redirection_apply.json'), JSON.stringify(report, null, 2));
+        const src = JSON.parse(readFileSync(join(dir, 'stage_source.json'), 'utf8'));
+        const direction = JSON.parse(readFileSync(join(dir, 'direction.json'), 'utf8'));
+        await direct({ brief: src.brief, baseDir: src.baseDir, projectDir: dir, shots: script, direction });
+        out({ ok: true, applied: report.applied.length, mapped: report.mapped, rejected: report.rejected, intent: report.intent, timing: report.timing });
+        return 0;
+      }
+      throw new Error('Usage: nitaaq redirect request|apply <projectDir> [redirection.json]');
+    }
     case 'direct': {
       const file = pos[0];
       if (!file) throw new Error(`Usage: nitaaq ${cmd} <brief.json>`);

@@ -14,12 +14,16 @@
 import type { StagePlan } from '../stage/plan';
 import { planeScale } from '../stage/compiler';
 import { LAYER_DEPTH } from '../stage/plan';
+import { compileChoreo, valueAt, type CompiledChoreo } from '../motion/choreography';
+const settleCache = new WeakMap<object, CompiledChoreo>();
 
 export interface StageProbeSample {
   t: number;
   cam: { x: number; y: number; dolly: number; zoom: number };
-  els: { id: string; kind: string; rect: { x: number; y: number; width: number; height: number }; opacity: number; parent: boolean }[];
+  els: { id: string; kind: string; z?: number; rect: { x: number; y: number; width: number; height: number }; opacity: number; parent: boolean }[];
   words: { el: string; word: string; rect: { x: number; y: number; width: number; height: number }; opacity: number }[];
+  /** P2: rendered text boxes (font px after transforms) — readability and typographic hierarchy. */
+  texts?: { el: string; id: string; role: string; px: number; lines: number; rect: { x: number; y: number; width: number; height: number }; opacity: number }[];
   mask: boolean;
 }
 
@@ -51,11 +55,14 @@ export interface DomMotionReport {
   typography: { activeSec: number; share: number };
   still: { sec: number; share: number; longest: number; runs: { t0: number; t1: number }[] };
   /** Text overlapped by another drawn element (seconds, per pair) — collisions the eye sees. */
-  collisions: { shot: string; text: string; other: string; sec: number; overlap: number }[];
+  collisions: { shot: string; text: string; other: string; sec: number; overlap: number; t0?: number; cls?: CollisionClass; front?: string }[];
   /** Readable text cut by the frame edge outside transitions (a camera push cropping a line mid-read). */
   offFrame: { shot: string; text: string; sec: number; worst: number; words: string[] }[];
   masks: number;
 }
+
+/** P2 collision classes: what an overlap means, not just that it exists. */
+export type CollisionClass = 'intentional' | 'safe-overlap' | 'decorative-collision' | 'text-obstruction' | 'subject-obstruction' | 'critical';
 
 type R = { x: number; y: number; width: number; height: number };
 const r3 = (x: number) => Math.round(x * 1000) / 1000;
@@ -233,9 +240,8 @@ export function analyzeStageProbes(plan: StagePlan, samples: StageProbeSample[],
   let longest = 0;
   const runs: { t0: number; t1: number }[] = [];
   let runStart = -1;
-  const coll = new Map<string, { shot: string; text: string; other: string; sec: number; overlap: number }>();
+  const coll = new Map<string, DomMotionReport['collisions'][number]>();
   const off = new Map<string, { shot: string; text: string; sec: number; worst: number; words: string[] }>();
-  const inTransition = (t: number) => (plan.transitions ?? []).some((tr) => t >= tr.t0 - 0.05 && t <= tr.t1 + 0.05);
   S.forEach((s, i) => {
     if (!i) return;
     const p = S[i - 1];
@@ -258,11 +264,15 @@ export function analyzeStageProbes(plan: StagePlan, samples: StageProbeSample[],
       run = 0;
       runStart = -1;
     }
-    // off frame: a visible word cut by the frame edge (outside object transitions)
-    if (!inTransition(s.t)) {
+    // off frame: a visible word cut by the frame edge. Inside an object transition only a fully inked word
+    // counts (an arriving line already readable but cut is seen), and never inside the transitions whose
+    // carrier is meant to overflow the frame (text-mask, depth-pass, expand-to-background)
+    const trAt = (plan.transitions ?? []).find((tr) => s.t >= tr.t0 - 0.05 && s.t <= tr.t1 + 0.05);
+    const overflowKind = trAt && ['text-mask', 'depth-pass', 'expand-to-background'].includes(trAt.kind);
+    if (!overflowKind) {
       const cut = new Map<string, { worst: number; words: Set<string> }>();
       for (const w of s.words) {
-        if (w.opacity < 0.5 || w.rect.width < 1) continue;
+        if (w.opacity < (trAt ? 0.85 : 0.5) || w.rect.width < 1) continue;
         const vis = Math.max(0, Math.min(w.rect.x + w.rect.width, W) - Math.max(w.rect.x, 0)) * Math.max(0, Math.min(w.rect.y + w.rect.height, H) - Math.max(w.rect.y, 0));
         const lost = 1 - vis / Math.max(1, w.rect.width * w.rect.height);
         if (lost < 0.05) continue;
@@ -271,25 +281,61 @@ export function analyzeStageProbes(plan: StagePlan, samples: StageProbeSample[],
         c.words.add(w.word);
         cut.set(w.el, c);
       }
+      // the rendered text box too: a word list can be partial (only emphasised words are tracked one by one)
+      for (const x of s.texts ?? []) {
+        const id = x.id || x.el;
+        if (cut.has(id) || x.opacity < (trAt ? 0.85 : 0.5) || x.rect.width < 1) continue;
+        const vis = Math.max(0, Math.min(x.rect.x + x.rect.width, W) - Math.max(x.rect.x, 0)) * Math.max(0, Math.min(x.rect.y + x.rect.height, H) - Math.max(x.rect.y, 0));
+        const lost = 1 - vis / Math.max(1, x.rect.width * x.rect.height);
+        if (lost >= 0.03 && lost < 0.97) cut.set(id, { worst: lost, words: new Set([`(${x.role || 'text'} line)`]) }); // wholly outside = not in view yet, not cut
+      }
       for (const [el, c] of cut) {
-        const o = off.get(el) ?? { shot: shotAt(s.t).id, text: el, sec: 0, worst: 0, words: [] };
+        // the shot that owns the line (an arriving CTA cut during the hand-off is the CTA shot's problem)
+        const base = el.split('.').slice(0, 2).join('.');
+        const owner = plan.shots.find((sh) => sh.cast?.some((c) => c.id === el || c.id === base) && s.t >= sh.start - 1 && s.t < sh.end + 0.5) ?? shotAt(s.t);
+        const o = off.get(el) ?? { shot: owner.id, text: el, sec: 0, worst: 0, words: [] };
         o.sec = r3(o.sec + step);
         o.worst = r3(Math.max(o.worst, c.worst));
         o.words = [...new Set([...o.words, ...c.words])].slice(0, 6);
         off.set(el, o);
       }
     }
-    // collisions: a readable text overlapped by another opaque top-level element
+    // collisions (P2: classified): a drawn element overlapping a readable text or the hero
     const tops = s.els.filter((e) => !e.parent && e.opacity > 0.5 && e.kind !== 'cursor');
-    for (const a of tops.filter((e) => e.kind === 'text')) {
+    const sh = shotAt(s.t);
+    const roleOf = (id: string) => sh.cast?.find((c) => c.id === id)?.role;
+    const trNow = (plan.transitions ?? []).find((tr) => s.t >= tr.t0 - 0.05 && s.t <= tr.t1 + 0.05);
+    // (a path / line hero is a connector: what sits on it is the design, not an obstruction)
+    for (const a of tops.filter((e) => e.kind === 'text' || (roleOf(e.id) === 'hero' && e.kind !== 'shape' && e.kind !== 'line'))) {
       for (const b of tops) {
         if (b.id === a.id) continue;
         const ix = Math.max(0, Math.min(a.rect.x + a.rect.width, b.rect.x + b.rect.width) - Math.max(a.rect.x, b.rect.x));
         const iy = Math.max(0, Math.min(a.rect.y + a.rect.height, b.rect.y + b.rect.height) - Math.max(a.rect.y, b.rect.y));
         const ov = (ix * iy) / Math.max(1, a.rect.width * a.rect.height);
-        if (ov < 0.08 || unionCover([b.rect], W, H) > 0.85) continue; // a full-frame world is a backdrop, not a collision
-        const key = `${a.id}|${b.id}`;
-        const c = coll.get(key) ?? { shot: shotAt(s.t).id, text: a.id, other: b.id, sec: 0, overlap: 0 };
+        const textA = a.kind === 'text';
+        const growingShapeBehind = textA && s.els.indexOf(b) < s.els.indexOf(a) && b.kind === 'shape' && ov < 0.9;
+        if (ov < 0.08 || (unionCover([b.rect], W, H) > 0.85 && !growingShapeBehind)) continue; // a full-frame world is a backdrop, not a collision
+        if (!textA && ov < 0.15) continue;
+        // stacking = DOM order (the stage draws far → near, later is in front)
+        const bInFront = s.els.indexOf(b) > s.els.indexOf(a);
+        const inTransition = Boolean(trNow && [trNow.element, trNow.into].some((x) => x === a.id || x === b.id));
+        const decorative = (b.kind === 'shape' || b.kind === 'line') && roleOf(b.id) !== 'hero';
+        // in a transition the carrying element may pass over / under anything — except a readable line caught
+        // half across its edge (the text straddles two backgrounds: it reads as a collision, not a reveal)
+        const edgeCross = textA && !bInFront && ov >= 0.12 && ov < 0.9 && a.opacity > 0.6 && (b.kind === 'shape' || b.kind === 'card');
+        const cls: CollisionClass = inTransition
+          ? edgeCross
+            ? 'decorative-collision'
+            : 'intentional'
+          : !bInFront
+            ? decorative || ov < 0.3
+              ? 'safe-overlap'
+              : 'decorative-collision'
+            : textA
+              ? 'text-obstruction'
+              : 'subject-obstruction';
+        const key = `${a.id}|${b.id}|${cls}`;
+        const c = coll.get(key) ?? { shot: sh.id, text: a.id, other: b.id, sec: 0, overlap: 0, t0: r3(s.t), cls, front: bInFront ? b.id : a.id };
         c.sec = r3(c.sec + step);
         c.overlap = r3(Math.max(c.overlap, ov));
         coll.set(key, c);
@@ -309,7 +355,9 @@ export function analyzeStageProbes(plan: StagePlan, samples: StageProbeSample[],
     subjects,
     typography: { activeSec: r3(typo), share: r3(total ? typo / total : 0) },
     still: { sec: r3(still), share: r3(total ? still / total : 0), longest: r3(longest), runs },
-    collisions: [...coll.values()].filter((c) => c.sec >= 0.2),
+    collisions: [...coll.values()]
+      .filter((c) => c.sec >= (c.cls === 'decorative-collision' ? 0.12 : 0.2))
+      .map((c) => (c.cls === 'text-obstruction' && c.overlap > 0.3 && c.sec >= 0.4 ? { ...c, cls: 'critical' as const } : c)),
     offFrame: [...off.values()].filter((o) => o.sec >= 0.2),
     masks: S.filter((s) => s.mask).length,
   };
@@ -321,5 +369,38 @@ export function stageProbeTimes(plan: StagePlan, duration: number, step = 0.2): 
   for (let t = 0; t < duration - 1e-6; t += step) out.add(Math.round(t * 100) / 100);
   for (const el of plan.elements) for (const em of el.emphasis ?? []) for (const d of [-0.3, -0.1, 0.1, 0.2, 0.3, 0.45]) out.add(Math.round((el.life.from + em.at + d) * 100) / 100);
   for (const sh of plan.shots) if (sh.camera.move !== 'static') for (const t of [sh.camera.t0, sh.camera.t1]) out.add(Math.round(t * 100) / 100);
+  // P2: a dense window round every transition (the occupancy curve through the cut)
+  for (const tr of plan.transitions ?? []) for (let t = tr.t0 - 0.16; t <= tr.t1 + 0.16 + 1e-6; t += 0.08) out.add(Math.round(t * 100) / 100);
+  // P2: every shot's settle frame (style frame / composition judgement)
+  for (const t of settleTimes(plan)) out.add(t);
   return [...out].filter((t) => t >= 0 && t < duration).sort((a, b) => a - b);
+}
+
+/** The calm moment of each shot: just before its exit transition starts (or ~80% in when it has none). */
+export function settleTimes(plan: Pick<StagePlan, 'shots' | 'transitions'> & Partial<Pick<StagePlan, 'choreo' | 'elements'>>): number[] {
+  return plan.shots.map((s) => settleTimeOf(plan, s.id));
+}
+export function settleTimeOf(plan: Pick<StagePlan, 'shots' | 'transitions'> & Partial<Pick<StagePlan, 'choreo' | 'elements'>>, shotId: string): number {
+  const s = plan.shots.find((x) => x.id === shotId)!;
+  const exit = (plan.transitions ?? []).find((tr) => tr.from === s.id);
+  const enter = (plan.transitions ?? []).find((tr) => tr.to === s.id);
+  const calmEnd = Math.min(s.end, exit ? exit.t0 : s.start + (s.end - s.start) * 0.8 + 0.15);
+  const calmStart = Math.max(s.start, enter ? enter.t1 : s.start);
+  const t0 = Math.round(Math.max(calmStart, calmEnd - 0.15) * 100) / 100;
+  // with the choreography at hand: the latest moment before that when the whole cast is on screen (nothing has left yet)
+  if (!plan.choreo || !plan.elements) return t0;
+  let c = settleCache.get(plan.choreo);
+  if (!c) {
+    try {
+      c = compileChoreo(plan.choreo);
+    } catch {
+      return t0;
+    }
+    settleCache.set(plan.choreo, c);
+  }
+  const cast = (s.cast ?? []).filter((x) => x.role !== 'background').map((x) => plan.elements!.find((e) => e.id === x.id)).filter((e): e is StagePlan['elements'][number] => Boolean(e && !e.parent && e.kind !== 'cursor'));
+  if (!cast.length) return t0;
+  const allIn = (t: number) => cast.every((e) => t >= e.life.from && t <= e.life.to && valueAt(c!, `${e.key}.o`, t, 1) >= 0.9);
+  for (let t = t0; t >= calmStart - 1e-6; t -= 0.05) if (allIn(t)) return Math.round(t * 100) / 100;
+  return t0;
 }

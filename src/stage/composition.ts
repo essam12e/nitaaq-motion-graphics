@@ -51,6 +51,8 @@ export interface ComposeInput {
   elements: ComposeElement[];
   /** Direction the energy leaves this shot to (lead room is kept on that side). */
   exitDirection?: 'left' | 'right' | 'up' | 'down' | 'in' | 'out';
+  /** Composition strategy (P2-C, shot.composition). Absent / "centered": the P1 layout. */
+  strategy?: string;
 }
 
 export interface CompositionReport {
@@ -151,6 +153,8 @@ export function unionArea(boxes: Box[], n = 80): number {
  * occupancy, reading order, lead room).
  */
 export function composeShot(input: ComposeInput): { boxes: Record<string, Box>; report: CompositionReport } {
+  const strat = input.strategy ? resolveStrategy(input.strategy) : null;
+  if (strat && strat !== 'centered') return composeStrategy(input, strat);
   const { W, H, safe, rtl, shotSize } = input;
   const landscape = W / H > 1.05;
   const notes: string[] = [];
@@ -312,4 +316,321 @@ export function composeShot(input: ComposeInput): { boxes: Record<string, Box>; 
   }
   const leadRoom = input.exitDirection && input.exitDirection !== 'in' && input.exitDirection !== 'out' ? `energy leaves ${input.exitDirection}: supports kept off that side` : undefined;
   return { boxes, report: { subject: hero?.id ?? null, subjectType, shotSize, target, heroOccupancy, totalOccupancy, readingOrder, layout, leadRoom, notes } };
+}
+
+// ═════════════════════════════ P2-C: composition strategies ═════════════════════════════
+/**
+ * A strategy is a way of ORGANISING a shot, not a scene template: it takes whatever elements the
+ * shot already has (any kind, any count) and decides who leads, how big, where the rest go and what
+ * stays free. The Re-Director chooses one when the critic shows the P1 layout failing
+ * (e.g. a row of equal small cards); the script names it in `shot.composition`.
+ */
+export const STRATEGIES = ['centered', 'hero-focus', 'asymmetric-split', 'split', 'stack', 'card-cascade', 'spatial-cluster', 'focus-sequence', 'center-stage', 'full-frame-typography', 'ui-zoom', 'timeline-flow', 'radial', 'cta-lockup'] as const;
+export type Strategy = (typeof STRATEGIES)[number];
+/** Names from the direction vocabulary that are performed by an existing strategy (+ timing from the Re-Director). */
+export const STRATEGY_ALIASES: Record<string, Strategy> = {
+  'focus-supporting': 'hero-focus',
+  'focus+supporting': 'hero-focus',
+  carousel: 'focus-sequence',
+  'progressive-reveal': 'focus-sequence',
+  'before-after': 'split',
+  'detail-insert': 'ui-zoom',
+  'edge-to-center': 'center-stage',
+  'hero-first': 'hero-focus',
+};
+export function resolveStrategy(name: string): Strategy | null {
+  if ((STRATEGIES as readonly string[]).includes(name)) return name as Strategy;
+  return STRATEGY_ALIASES[name] ?? null;
+}
+
+function sizeBox(e: ComposeElement, area: number, maxW: number, maxH: number, W: number, H: number): { w: number; h: number } {
+  let w = widthForArea(area, e.aspect, W, H);
+  let h = heightOf(w, e.aspect, W, H);
+  if (w > maxW) {
+    w = maxW;
+    h = e.kind === 'text' ? Math.max(heightOf(w, e.aspect, W, H), Math.min(area / w, (w * W) / H / 1.15)) : heightOf(w, e.aspect, W, H);
+  }
+  if (h > maxH) {
+    h = maxH;
+    w = e.kind === 'text' ? Math.min(maxW, Math.max(w, (h * H * e.aspect) / W)) : (h * H * e.aspect) / W;
+  }
+  return { w, h };
+}
+
+function composeStrategy(input: ComposeInput, strat: Strategy): { boxes: Record<string, Box>; report: CompositionReport } {
+  const { W, H, safe, rtl, shotSize } = input;
+  const landscape = W / H > 1.05;
+  const notes: string[] = [`strategy: ${strat}`];
+  const boxes: Record<string, Box> = {};
+  const els = input.elements;
+  const hero = els.find((e) => e.role === 'hero') ?? els.find((e) => e.role !== 'background' && e.role !== 'support') ?? els[0] ?? null;
+  const subjectType = hero ? subjectTypeOf(hero.kind, hero.assetKind) : null;
+  const target: [number, number] = subjectType ? OCCUPANCY[subjectType][shotSize] : [0, 0];
+  const start = rtl ? 1 : -1;
+  const sx0 = safe.x;
+  const sx1 = safe.x + safe.w;
+  const sy0 = safe.y;
+  const sy1 = safe.y + safe.h;
+  // the cursor and explicitly placed elements are not re-organised (the script placed them on purpose)
+  const fixed = els.filter((e) => e !== hero && (e.kind === 'cursor' || e.at));
+  const backgrounds = els.filter((e) => e.role === 'background' && !fixed.includes(e));
+  const rest = els.filter((e) => e !== hero && !fixed.includes(e) && !backgrounds.includes(e));
+  // reading order of the rest: secondaries first, then supports, script order inside each
+  rest.sort((a, b) => (a.role === b.role ? 0 : a.role === 'secondary' ? -1 : b.role === 'secondary' ? 1 : 0));
+  const texts = rest.filter((e) => e.kind === 'text');
+  const things = rest.filter((e) => e.kind !== 'text');
+  const place = (e: ComposeElement, b: Box) => {
+    const hw = Math.min(b.w, safe.w) / 2;
+    const hh = Math.min(b.h, safe.h) / 2;
+    const x = Math.min(sx1 - hw, Math.max(sx0 + hw, b.x));
+    const y = Math.min(sy1 - hh, Math.max(sy0 + hh, b.y));
+    boxes[e.id] = { x: r4(x), y: r4(y), w: r4(b.w), h: r4(b.h) };
+  };
+  const areaOf = (e: ComposeElement, size: ShotSize = shotSize) => mid(OCCUPANCY[subjectTypeOf(e.kind, e.assetKind)][size]);
+  const hiArea = (e: ComposeElement, size: ShotSize = shotSize) => OCCUPANCY[subjectTypeOf(e.kind, e.assetKind)][size][1];
+  /** Stack `list` vertically inside a column (centre x, width cw), filling [ya, yb]. */
+  const column = (list: ComposeElement[], cx: number, cw: number, ya: number, yb: number, areaK: number) => {
+    if (!list.length) return;
+    const gap = 0.035;
+    const slot = (yb - ya - gap * (list.length - 1)) / list.length;
+    const sizes = list.map((e) => sizeBox(e, Math.max(areaOf(e) * areaK, 0.004), cw, slot, W, H));
+    const total = sizes.reduce((a, s) => a + s.h, 0) + gap * (list.length - 1);
+    let y = (ya + yb) / 2 - total / 2;
+    list.forEach((e, i) => {
+      place(e, { x: cx, y: y + sizes[i].h / 2, ...sizes[i] });
+      y += sizes[i].h + gap;
+    });
+  };
+  /** A horizontal row of `list` across [xa, xb] in reading order, centred on y. */
+  const row = (list: ComposeElement[], xa: number, xb: number, y: number, maxH: number, areaFor: (e: ComposeElement) => number) => {
+    if (!list.length) return;
+    const gap = 0.025;
+    const slot = (xb - xa - gap * (list.length - 1)) / list.length;
+    list.forEach((e, i) => {
+      const s = sizeBox(e, areaFor(e), slot, maxH, W, H);
+      const k = rtl ? list.length - 1 - i : i;
+      place(e, { x: xa + k * (slot + gap) + slot / 2, y, ...s });
+    });
+  };
+  const notHero = (l: ComposeElement[]) => l.filter((e) => e !== hero);
+  let layout: string = strat;
+
+  if (hero) {
+    switch (strat) {
+      case 'hero-focus':
+      case 'focus-sequence':
+      case 'asymmetric-split':
+      case 'split': {
+        // the hero owns the reading-start column; the rest is an ordered supporting column
+        const share = strat === 'split' ? 0.5 : strat === 'asymmetric-split' ? 0.6 : 0.62;
+        if (landscape) {
+          const heroCol = safe.w * share - 0.02;
+          const restCol = safe.w - heroCol - 0.04;
+          const hx = 0.5 + start * (safe.w / 2 - heroCol / 2);
+          const rx = 0.5 - start * (safe.w / 2 - restCol / 2);
+          const ha = strat === 'split' ? areaOf(hero) : Math.max(hiArea(hero), areaOf(hero, 'close'));
+          // a headline among the rest goes with the hero (above it) when the hero is not text
+          const headline = hero.kind !== 'text' ? texts[0] : undefined;
+          let hy0 = sy0;
+          if (headline) {
+            const hs = sizeBox(headline, areaOf(headline), heroCol, safe.h * 0.2, W, H);
+            place(headline, { x: hx, y: sy0 + hs.h / 2, ...hs });
+            hy0 = sy0 + hs.h + 0.03;
+          }
+          const hs = sizeBox(hero, ha, heroCol, sy1 - hy0, W, H);
+          place(hero, { x: hx, y: (hy0 + sy1) / 2, ...hs });
+          const side = notHero(rest).filter((e) => e !== headline);
+          const k = strat === 'split' ? 0.9 : strat === 'asymmetric-split' ? 0.7 : 0.5;
+          column(side, rx, restCol, sy0 + 0.04, sy1 - 0.04, k);
+          layout = `${strat}: hero ${Math.round(share * 100)}% column (reading start), ${side.length} in the supporting column`;
+        } else {
+          const hs = sizeBox(hero, Math.max(hiArea(hero), areaOf(hero, 'close')), safe.w * 0.92, safe.h * 0.55, W, H);
+          place(hero, { x: 0.5, y: sy0 + hs.h / 2 + 0.02, ...hs });
+          row(notHero(rest), sx0, sx1, Math.min(sy1 - 0.12, sy0 + hs.h + 0.16), safe.h * 0.25, (e) => areaOf(e) * 0.6);
+          layout = `${strat}: hero on top, supporting row below`;
+        }
+        break;
+      }
+      case 'stack': {
+        // tiers top to bottom: a headline (when the hero is not text), the hero, then the rest; same-kind
+        // things share ONE row tier (five cards are a row under the headline, never a column of five)
+        const head = hero.kind !== 'text' && texts.length ? texts[0] : undefined;
+        const others = rest.filter((e) => e !== head);
+        const tiers: ComposeElement[][] = [];
+        if (head) tiers.push([head]);
+        tiers.push([hero]);
+        const byKind = new Map<string, ComposeElement[]>();
+        for (const e of others) byKind.set(e.kind, [...(byKind.get(e.kind) ?? []), e]);
+        for (const e of others) {
+          const g = byKind.get(e.kind)!;
+          if (g.length >= 2) {
+            if (g[0] === e) tiers.push(g);
+          } else tiers.push([e]);
+        }
+        const gap = 0.035;
+        const avail = safe.h - gap * (tiers.length - 1);
+        const heroH = tiers.length === 1 ? avail : avail * (tiers.length === 2 ? 0.55 : 0.45);
+        const otherH = tiers.length === 1 ? 0 : (avail - heroH) / (tiers.length - 1);
+        const sized = tiers.map((t) => {
+          const isHero = t.includes(hero);
+          const maxH = isHero ? heroH : otherH;
+          if (t.length === 1) return [sizeBox(t[0], isHero ? hiArea(t[0]) : areaOf(t[0]) * 0.7, safe.w * 0.9, maxH, W, H)];
+          const slot = (safe.w * 0.92 - 0.025 * (t.length - 1)) / t.length;
+          return t.map((e) => sizeBox(e, areaOf(e) * 0.7, slot, maxH, W, H));
+        });
+        const tierH = sized.map((ss) => Math.max(...ss.map((x) => x.h)));
+        const total = tierH.reduce((a, h) => a + h, 0) + gap * (tiers.length - 1);
+        let y = 0.5 - total / 2;
+        tiers.forEach((t, i) => {
+          const cy = y + tierH[i] / 2;
+          if (t.length === 1) place(t[0], { x: 0.5, y: cy, ...sized[i][0] });
+          else {
+            const ws = sized[i].map((x) => x.w);
+            const rowW = ws.reduce((a, w) => a + w, 0) + 0.025 * (t.length - 1);
+            let x = 0.5 - rowW / 2;
+            t.forEach((e, j) => {
+              const idx = rtl ? t.length - 1 - j : j;
+              const w = ws[idx];
+              place(t[idx], { x: x + w / 2, y: cy, ...sized[i][idx] });
+              x += w + 0.025;
+            });
+          }
+          y += tierH[i] + gap;
+        });
+        layout = `stack: ${tiers.map((t) => (t.length > 1 ? `row of ${t.length}` : t[0] === hero ? 'hero' : t[0].kind)).join(' / ')}`;
+        break;
+      }
+      case 'card-cascade': {
+        // a fanned deck: the hero in front and largest, the others step back toward the reading end
+        const deck = [hero, ...things];
+        const hs = sizeBox(hero, Math.max(hiArea(hero), areaOf(hero, 'close')), safe.w * 0.5, safe.h * 0.72, W, H);
+        const cx = 0.5 + start * safe.w * 0.12;
+        place(hero, { x: cx, y: 0.54, ...hs });
+        deck.slice(1).forEach((e, i) => {
+          const k = 0.8 - i * 0.12;
+          const s = sizeBox(e, hs.w * hs.h * k * k, hs.w * k, hs.h * k, W, H);
+          place(e, { x: cx - start * (hs.w * 0.62 + i * hs.w * 0.42), y: 0.5 - (i + 1) * 0.06, ...s });
+        });
+        if (texts.length) row(texts, sx0, sx1, sy1 - 0.06, 0.12, (e) => areaOf(e) * 0.6);
+        layout = `card cascade: hero front, ${deck.length - 1} stepping back`;
+        break;
+      }
+      case 'spatial-cluster':
+      case 'radial':
+      case 'center-stage': {
+        const big = strat === 'center-stage' ? Math.max(hiArea(hero), areaOf(hero, 'close')) : hiArea(hero);
+        const hs = sizeBox(hero, big, safe.w * (strat === 'radial' ? 0.4 : 0.6), safe.h * (strat === 'radial' ? 0.45 : 0.62), W, H);
+        place(hero, { x: 0.5, y: strat === 'center-stage' && texts.length ? 0.46 : 0.5, ...hs });
+        if (strat === 'center-stage') {
+          row(notHero(rest), sx0 + 0.05, sx1 - 0.05, Math.min(sy1 - 0.07, 0.5 + hs.h / 2 + 0.11), safe.h * 0.16, (e) => areaOf(e) * 0.45);
+        } else {
+          const list = notHero(rest);
+          const n = list.length;
+          list.forEach((e, i) => {
+            const s = sizeBox(e, areaOf(e) * (strat === 'radial' ? 0.55 : 0.6), safe.w * 0.26, safe.h * 0.24, W, H);
+            const a = (strat === 'radial' ? -Math.PI / 2 : -Math.PI / 3) + (i / Math.max(1, n)) * Math.PI * 2 * (rtl ? 1 : -1);
+            const rx = hs.w / 2 + s.w / 2 + 0.04;
+            const ry = hs.h / 2 + s.h / 2 + 0.04;
+            place(e, { x: 0.5 + Math.cos(a) * rx, y: 0.5 + Math.sin(a) * ry, ...s });
+          });
+        }
+        break;
+      }
+      case 'full-frame-typography': {
+        const hs = sizeBox(hero, hero.kind === 'text' ? OCCUPANCY.text['extreme-close'][0] : hiArea(hero), safe.w * 0.94, safe.h * 0.62, W, H);
+        place(hero, { x: 0.5, y: 0.47, ...hs });
+        row(notHero(rest), sx0 + 0.1, sx1 - 0.1, Math.min(sy1 - 0.06, 0.47 + hs.h / 2 + 0.1), safe.h * 0.14, (e) => areaOf(e) * 0.4);
+        break;
+      }
+      case 'ui-zoom': {
+        const hs = sizeBox(hero, Math.max(hiArea(hero), areaOf(hero, 'close')), safe.w, safe.h * 0.92, W, H);
+        place(hero, { x: 0.5, y: 0.5, ...hs });
+        const list = notHero(rest);
+        list.forEach((e, i) => {
+          const s = sizeBox(e, areaOf(e) * 0.5, safe.w * 0.22, safe.h * 0.16, W, H);
+          place(e, { x: 0.5 - start * (safe.w / 2 - s.w / 2), y: sy0 + s.h / 2 + i * (s.h + 0.03), ...s });
+        });
+        break;
+      }
+      case 'timeline-flow': {
+        // items of the flow in reading order across the frame, as large as the row allows;
+        // a line (if any) runs through them; a headline sits above
+        const line = [hero, ...rest].find((e) => e.kind === 'line');
+        const items = [hero, ...things].filter((e) => e !== line);
+        const headline = texts[0];
+        const top = headline ? sy0 + 0.16 : sy0;
+        if (headline) {
+          const hs = sizeBox(headline, areaOf(headline), safe.w * 0.8, 0.14, W, H);
+          place(headline, { x: 0.5, y: sy0 + hs.h / 2, ...hs });
+        }
+        const cy = (top + sy1) / 2;
+        const maxH = (sy1 - top) * 0.82;
+        const n = items.length;
+        const gap = 0.03;
+        const slot = (safe.w - gap * (n - 1)) / n;
+        items.forEach((e, i) => {
+          const s = sizeBox(e, 0.5, slot, maxH * (e === hero && hero.kind !== 'line' ? 1 : 0.92), W, H);
+          const k = rtl ? n - 1 - i : i;
+          // a gentle wave keeps the row from reading as a table
+          place(e, { x: sx0 + k * (slot + gap) + slot / 2, y: cy + (i % 2 ? 0.04 : -0.03), ...s });
+        });
+        if (line) {
+          const lw = safe.w * 0.96;
+          place(line, { x: 0.5, y: cy, w: lw, h: heightOf(lw, line.aspect, W, H) });
+        }
+        texts.slice(1).forEach((t) => place(t, { x: 0.5, y: sy1 - 0.04, ...sizeBox(t, areaOf(t) * 0.5, safe.w * 0.6, 0.08, W, H) }));
+        layout = `timeline flow: ${items.length} items across the frame in reading order${line ? ', the line through them' : ''}`;
+        break;
+      }
+      case 'cta-lockup': {
+        // one lock-up: the action line leads, the button sits under it, the brand signs above, the url closes
+        const all = [hero, ...rest];
+        const ctaText = all.find((e) => e.kind === 'text' && e.role !== 'support') ?? all.find((e) => e.kind === 'text');
+        const button = all.find((e) => e.kind === 'button');
+        const logo = all.find((e) => e.kind === 'image' && e.assetKind === 'logo');
+        const small = all.filter((e) => e !== ctaText && e !== button && e !== logo);
+        const parts: { e: ComposeElement; s: { w: number; h: number } }[] = [];
+        if (logo) parts.push({ e: logo, s: sizeBox(logo, OCCUPANCY.logo.close[0], safe.w * 0.2, safe.h * 0.16, W, H) });
+        if (ctaText) parts.push({ e: ctaText, s: sizeBox(ctaText, OCCUPANCY.text.close[1], safe.w * 0.86, safe.h * 0.32, W, H) });
+        if (button) parts.push({ e: button, s: sizeBox(button, OCCUPANCY.button.close[1], safe.w * 0.4, safe.h * 0.15, W, H) });
+        for (const e of small) parts.push({ e, s: sizeBox(e, areaOf(e) * 0.35, safe.w * 0.4, safe.h * 0.07, W, H) });
+        const gap = 0.04;
+        const total = parts.reduce((a, p) => a + p.s.h, 0) + gap * (parts.length - 1);
+        let y = 0.5 - total / 2;
+        for (const p of parts) {
+          place(p.e, { x: 0.5, y: y + p.s.h / 2, ...p.s });
+          y += p.s.h + gap;
+        }
+        layout = `CTA lock-up: ${parts.map((p) => p.e.id).join(' / ')}`;
+        break;
+      }
+      default:
+        break;
+    }
+  }
+  for (const e of fixed) {
+    const s = e.w ? { w: e.w, h: heightOf(e.w, e.aspect, W, H) } : sizeBox(e, areaOf(e), safe.w * 0.3, safe.h * 0.25, W, H);
+    boxes[e.id] = { x: r4(e.at?.x ?? 0.5), y: r4(e.at?.y ?? 0.5), w: r4(s.w), h: r4(s.h) };
+  }
+  for (const e of backgrounds) {
+    const w = e.w ?? 0.9;
+    boxes[e.id] = { x: 0.5, y: 0.5, w: r4(w), h: r4(heightOf(w, e.aspect, W, H)) };
+  }
+  for (const e of els) if (!boxes[e.id]) place(e, { x: 0.5, y: 0.5, ...sizeBox(e, areaOf(e) * 0.5, safe.w * 0.3, safe.h * 0.25, W, H) });
+  const readingOrder = els
+    .filter((e) => e.role !== 'background' && boxes[e.id])
+    .slice()
+    .sort((a, b) => {
+      if (a === hero) return -1;
+      if (b === hero) return 1;
+      const A = boxes[a.id];
+      const B = boxes[b.id];
+      if (Math.abs(A.y - B.y) > 0.18) return A.y - B.y;
+      return rtl ? B.x - A.x : A.x - B.x;
+    })
+    .map((e) => e.id);
+  const heroBox = hero ? boxes[hero.id] : null;
+  const heroOccupancy = heroBox ? r4(Math.min(1, heroBox.w) * Math.min(1, heroBox.h)) : 0;
+  const totalOccupancy = r4(unionArea(els.filter((e) => e.role !== 'background' && boxes[e.id]).map((e) => boxes[e.id])));
+  return { boxes, report: { subject: hero?.id ?? null, subjectType, shotSize, target, heroOccupancy, totalOccupancy, readingOrder, layout, notes } };
 }

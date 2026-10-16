@@ -50,6 +50,8 @@ export const ShotTransitionSchema = z.union([
     element: z.string().optional(),
     /** Morph / shape-transform: the element in the next shot it becomes. */
     into: z.string().optional(),
+    /** text-mask / depth-pass: seconds the carrying element keeps its ink while the transition opens (the frame never empties). */
+    hold: z.number().min(0).max(0.8).optional(),
   }),
 ]);
 

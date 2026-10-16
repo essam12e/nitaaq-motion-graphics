@@ -125,6 +125,15 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
   perf.meta.effects = estimateEffectCost(spec);
   perf.meta.canvas = `${spec.canvas.width}x${spec.canvas.height}@${spec.canvas.fps}`;
 
+  // 0. Stage films (P2-F): style frame gate — weak compositions are re-directed before any motion is rendered
+  if (isFullDirector(spec) && spec.stage && existsSync(join(opts.projectDir, 'stage_source.json')) && process.env.NITAAQ_NO_CRITIC !== '1' && process.env.NITAAQ_NO_GATE !== '1') {
+    const src = JSON.parse(readFileSync(join(opts.projectDir, 'stage_source.json'), 'utf8')) as { brief: unknown; baseDir: string };
+    const { styleFrameGate } = await import('./style-frames');
+    const g = await perf.stage('style-frame-gate', () => styleFrameGate({ spec, projectDir: opts.projectDir, brief: src.brief, baseDir: src.baseDir, redirector: process.env.NITAAQ_NO_REDIRECTOR !== '1' }));
+    spec = g.spec;
+    if (!g.passed) log.stage('GATE', 'a style frame is still rejected after re-direction: the animatic proceeds, the critic will judge it (see style_frame_gate.json)', 'warn');
+  }
+
   // 1. validation + deterministic repair
   const rep = await perf.stage('validation', () => {
     log.stage('VALIDATION', `${spec.scenes.length} scenes, ${spec.canvas.aspect}, style ${spec.style.preset}`);
@@ -219,15 +228,19 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
       }
     }
   }
+  let criticTechFail: string[] = [];
   // 3b. Stage films (P1): DOM motion probes → Motion Critic → repair loop (partial re-render of the animatic)
   if (full && spec.stage && animatic && existsSync(join(opts.projectDir, 'stage_source.json')) && process.env.NITAAQ_NO_CRITIC !== '1') {
     const src = JSON.parse(readFileSync(join(opts.projectDir, 'stage_source.json'), 'utf8')) as { brief: unknown; baseDir: string };
-    const { renderStyleFrames } = await import('./style-frames');
-    const sf = await perf.stage('style-frames', () => renderStyleFrames(spec, opts.projectDir));
-    if (sf.length) log.stage('STAGE', `style frames: ${sf.map((f) => `${f.shot}@${f.t}s`).join(', ')} → style_frames/`);
     const { criticLoop } = await import('./critic-loop');
     const loop = await perf.stage('critic', () => criticLoop({ projectDir: opts.projectDir, brief: src.brief, baseDir: src.baseDir, video: animatic!, profile: 'animatic', maxPasses: opts.criticPasses ?? 2 }));
     motion.critic = { verdict: loop.critic.verdict.status, overall: loop.critic.overall, passes: loop.passes.length - 1 };
+    // P2: the critic's technical layer (text lost at the frame edge, collisions …) is a delivery gate, never a footnote
+    const failed = loop.critic.technical.checks.filter((c) => !c.pass && c.severity === 'critical');
+    if (failed.length) {
+      criticTechFail = failed.map((c) => `${c.id}: ${c.evidence}`);
+      log.stage('CRITIC', `technical layer FAILED after the repair loop — ${criticTechFail.join(' | ')}`, 'error');
+    }
     if (loop.passes.some((p) => p.patches.length)) {
       // the script changed: the spec on disk is the repaired one; its sound is planned again
       spec = loadSpec(specFile);
@@ -277,7 +290,8 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
     }
   }
 
-  const ok = Boolean(report?.passed);
+  const ok = Boolean(report?.passed) && (!criticTechFail.length || process.env.NITAAQ_ALLOW_TECH_FAIL === '1');
+  if (report?.passed && criticTechFail.length && !ok) log.stage('QUALITY', `held back by the critic's technical layer (set NITAAQ_ALLOW_TECH_FAIL=1 to deliver anyway): ${criticTechFail.join(' | ')}`, 'error');
   let delivered: string | null = null;
   const name = opts.name ?? spec.project.id;
   if (ok && render) {

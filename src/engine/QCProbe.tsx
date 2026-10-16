@@ -111,6 +111,8 @@ export interface ProbeResult {
     cam: string;
     els: { id: string; kind: string; z: number; rect: { x: number; y: number; width: number; height: number }; opacity: number; parent: boolean }[];
     words: { el: string; word: string; rect: { x: number; y: number; width: number; height: number }; opacity: number }[];
+    /** P2: every text box inside a stage element — its rendered font size (after all transforms) and lines. */
+    texts?: { el: string; id: string; role: string; px: number; lines: number; rect: { x: number; y: number; width: number; height: number }; opacity: number }[];
     mask: boolean;
   };
   errors: { scene: string; error: string }[];
@@ -324,6 +326,19 @@ export function collectProbe(frame: number, width: number, height: number): Prob
           rect: rectOf(el),
           opacity: effOpacity(el),
         })),
+        texts: Array.from(document.querySelectorAll('[data-qc="stage-el"] [data-qc="text"]')).map((el) => {
+          const r = rectOf(el);
+          const oh = (el as HTMLElement).offsetHeight || r.height || 1;
+          return {
+            el: el.closest('[data-qc="stage-el"]')?.getAttribute('data-qc-stage-id') ?? '',
+            id: el.getAttribute('data-qc-id') ?? '',
+            role: el.getAttribute('data-qc-role') ?? '',
+            px: Number(el.getAttribute('data-qc-font-size') ?? 0) * (r.height / oh),
+            lines: Number(el.getAttribute('data-qc-lines') ?? 1),
+            rect: r,
+            opacity: effOpacity(el),
+          };
+        }),
         mask: Boolean(document.querySelector('[data-qc="stage-mask"]')),
       }
     : undefined;

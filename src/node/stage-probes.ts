@@ -10,12 +10,12 @@ import { collectProbes } from '../qc/probes';
 import { analyzeStageProbes, parseCam, stageProbeTimes, type DomMotionReport, type StageProbeSample } from '../qc/stage-probes';
 import { buildTimeline } from '../core/timeline';
 
-export async function runStageProbes(spec: VideoSpec, projectDir: string, opts: { out?: string; step?: number } = {}): Promise<{ report: DomMotionReport; samples: StageProbeSample[] } | null> {
+export async function runStageProbes(spec: VideoSpec, projectDir: string, opts: { out?: string; step?: number; times?: number[]; samplesOut?: string | false } = {}): Promise<{ report: DomMotionReport; samples: StageProbeSample[] } | null> {
   const plan = spec.stage as unknown as StagePlan | undefined;
   if (!plan) return null;
   const fps = spec.canvas.fps;
   const tl = buildTimeline(spec.scenes, fps);
-  const times = stageProbeTimes(plan, tl.totalFrames / fps, opts.step ?? 0.2);
+  const times = opts.times ?? stageProbeTimes(plan, tl.totalFrames / fps, opts.step ?? 0.2);
   const frames = [...new Set(times.map((t) => Math.min(tl.totalFrames - 1, Math.round(t * fps))))];
   const dir = join(projectDir, 'qc', 'stage-probes');
   mkdirSync(dir, { recursive: true });
@@ -24,9 +24,11 @@ export async function runStageProbes(spec: VideoSpec, projectDir: string, opts: 
   for (const f of frames) {
     const p = run.probes.get(f);
     if (!p?.stage) continue;
-    samples.push({ t: f / fps, cam: parseCam(p.stage.cam), els: p.stage.els, words: p.stage.words, mask: p.stage.mask });
+    samples.push({ t: f / fps, cam: parseCam(p.stage.cam), els: p.stage.els, words: p.stage.words, texts: p.stage.texts, mask: p.stage.mask });
   }
   const report = analyzeStageProbes(plan, samples, { W: spec.canvas.width, H: spec.canvas.height });
   writeFileSync(opts.out ?? join(projectDir, 'dom_motion.json'), JSON.stringify(report, null, 2));
+  // P2: the raw samples (what the browser drew) — the Visual Critic reads settle frames from them
+  if (opts.samplesOut !== false) writeFileSync(opts.samplesOut ?? join(projectDir, 'dom_samples.json'), JSON.stringify({ version: 1, W: spec.canvas.width, H: spec.canvas.height, samples }));
   return { report, samples };
 }

@@ -17,7 +17,8 @@ import { keyOf, LAYER_DEPTH, type StagePlan } from '../../src/stage/plan';
 import { compiledStage, cameraAtT, elementState, planeMatrix, backdropAt, inkOn } from '../../src/stage/StageLayer';
 import { analyzeStageProbes, stageProbeTimes, unionCover, type StageProbeSample } from '../../src/qc/stage-probes';
 import { critique } from '../../src/qc/critic';
-import { repairScript, repairRanges } from '../../src/stage/repair';
+import { repairRanges, issueCandidates, planRepairs } from '../../src/stage/repair-planner';
+import { applyRedirection } from '../../src/stage/redirection';
 import { spliceVideo } from '../../src/node/critic-loop';
 import { frameDiffs, METRICS_VERSION, DEAD_ZONE } from '../../src/qc/motion-metrics';
 import { valueAt } from '../../src/motion/choreography';
@@ -490,10 +491,11 @@ describe('DOM Motion Probes', () => {
 
 describe('Motion Critic', () => {
   const dom = (over: Record<string, unknown> = {}) => ({ version: 1 as const, samples: 10, dt: 0.2, elements: [], camera: { movingSec: 1, shots: [] }, words: [], occupancy: { mean: 0.4, min: 0.2, byShot: [] }, subjects: [], typography: { activeSec: 3, share: 0.3 }, still: { sec: 1, share: 0.08, longest: 0.6, runs: [] }, collisions: [], offFrame: [], masks: 0, ...over });
-  it('scores ten dimensions out of 10 and accepts a clean film', () => {
+  it('scores the visual dimensions out of 10 (P2: fourteen, technical checks apart)', () => {
     const { plan, report } = compile();
     const c = critique({ plan, report, dom: dom(), direction });
-    expect(Object.keys(c.scores)).toHaveLength(10);
+    expect(Object.keys(c.scores)).toHaveLength(14);
+    expect(c.technical.checks.length).toBeGreaterThan(3);
     for (const v of Object.values(c.scores)) expect(v).toBeGreaterThanOrEqual(0);
     expect(c.issues.some((i) => i.code === 'BROKEN_HANDOFF')).toBe(true); // the deliberate fallback
   });
@@ -520,25 +522,26 @@ describe('Motion Critic', () => {
       }),
     });
     const codes = c.issues.map((i) => i.code);
-    expect(codes).toEqual(expect.arrayContaining(['DEAD_HOLD', 'UNDER_ANIMATION', 'CAMERA_NO_VISIBLE_EFFECT', 'TEXT_COLLISION', 'SUBJECT_BACKGROUND_COMPETITION']));
+    expect(codes).toEqual(expect.arrayContaining(['DEAD_HOLD', 'UNDER_ANIMATION', 'CAMERA_NO_VISIBLE_EFFECT', 'TEXT_COLLISION']));
     expect(c.verdict.status).not.toBe('accept');
     expect(c.verdict.repairShots).toContain('demo');
   });
 });
 
 describe('Repair loop and partial render', () => {
-  it('turns critic findings into script edits with a log (camera tightened, closing shot shortened)', () => {
+  it('plans repairs from critic findings: an invisible camera is reframed closer (cheapest first); a long ending is shortened', () => {
     const sc = film();
     const raw = JSON.parse(JSON.stringify({ version: 1, stage: sc.stage, shots: sc.shots }));
     const { plan, report } = compile();
     const c = critique({ plan, report, direction, dom: { version: 1, samples: 3, dt: 0.2, elements: [], camera: { movingSec: 2, shots: [{ shot: 'demo', move: 'push', cameraMovingSec: 2, targetScale: 1.0, targetShift: 0, bgScale: 1, visible: false, note: 'x' }] }, words: [], occupancy: { mean: 0.4, min: 0.1, byShot: [] }, subjects: [], typography: { activeSec: 1, share: 0.1 }, still: { sec: 0, share: 0, longest: 0, runs: [] }, collisions: [], offFrame: [], masks: 0 } });
-    c.issues.push({ code: 'CTA_WEAKNESS', severity: 'minor', shot: 'cta', dims: ['commercialQuality'], evidence: 'hold 2.1s', fix: 'shorten the closing shot by 0.5s' });
-    const { script, patches } = repairScript(raw, c);
-    expect(patches.find((p) => p.shot === 'demo')!.code).toBe('CAMERA_NO_VISIBLE_EFFECT');
-    expect((script.shots.find((s) => s.id === 'demo') as { framing: { end: string } }).framing.end).toBe('extreme-close');
-    const cta = patches.find((p) => p.shot === 'cta')!;
-    expect(cta.timing).toBe(true);
-    expect((script.shots.find((s) => s.id === 'cta') as { timing: { duration: number } }).timing.duration).toBeCloseTo(2.1, 2);
+    c.issues.push({ code: 'CTA_WEAKNESS', severity: 'major', layer: 'technical', shot: 'cta', dims: ['cta'], evidence: 'hold 2.1s', fix: 'shorten the closing shot by 0.5s' });
+    const rp = planRepairs({ plan, script: raw, critic: c });
+    const demo = rp.selected.find((x) => x.shot === 'demo')!;
+    expect(demo.id).toMatch(/reframe/);
+    const { script, report: ar } = applyRedirection(raw, rp.redirection);
+    expect((script.shots.find((s: { id: string }) => s.id === 'demo') as { framing: { end: string } }).framing.end).toBe('extreme-close');
+    expect(ar.timing).toBe(true);
+    expect((script.shots.find((s: { id: string }) => s.id === 'cta') as { timing: { duration: number } }).timing.duration).toBeCloseTo(2.1, 2);
     expect(validateShotScript(script).ok).toBe(true);
   });
   it('re-renders only the patched shots (±0.6 s), merged; a timing change re-renders to the end', () => {
@@ -638,17 +641,21 @@ describe('P1-G whisper check (local, never a pipeline dependency)', () => {
 });
 
 describe('P1 text cut by the camera (critic + repair)', () => {
-  it('a push that crops a line mid-read is critical and the repair frames wider', () => {
+  it('a push that crops a line mid-read is critical; the camera is disabled only as a last resort', () => {
     const { plan, report } = compile();
     const dom = { version: 1 as const, samples: 10, dt: 0.2, elements: [], camera: { movingSec: 1, shots: [] }, words: [], occupancy: { mean: 0.4, min: 0.2, byShot: [] }, subjects: [], typography: { activeSec: 3, share: 0.3 }, still: { sec: 1, share: 0.08, longest: 0.6, runs: [] }, collisions: [], offFrame: [{ shot: plan.shots[0].id, text: 'text.a', sec: 0.8, worst: 0.4, words: ['ساعة'] }], masks: 0 };
     const c = critique({ plan, report, dom, direction });
     const i = c.issues.find((x) => x.code === 'TEXT_OFF_FRAME');
     expect(i?.severity).toBe('critical');
     expect(c.verdict.status).toBe('reject');
-    const script = { shots: [{ id: plan.shots[0].id, camera: { move: 'push-in' }, framing: { end: 'close' } }] };
-    const { patches, script: out } = repairScript(script as never, c, null);
-    expect(patches.some((p) => p.code === 'TEXT_OFF_FRAME')).toBe(true);
-    expect((out.shots[0] as { framing: { end: string } }).framing.end).toBe('medium');
+    const script = { shots: [{ id: plan.shots[0].id, camera: { move: 'push-in' }, cameraTarget: 'x.y', cameraReason: 'lean', framing: { end: 'close' }, cast: [{ id: 'text.a', role: 'hero', w: 0.5 }] }] };
+    // P2: the planner offers composition / reflow / reframe repairs first; disabling the camera is the LAST resort
+    const cs = issueCandidates(plan, script as never, i!);
+    const order = cs.map((x) => x.id.split(':')[1]);
+    expect(cs.map((x) => x.id)).toContain(`${plan.shots[0].id}:camera:static`);
+    void order;
+    const rank = (id: string) => cs.map((x) => ({ id: x.id, v: x.gain - ({ low: 0.1, medium: 0.35, high: 0.8, 'very-high': 1.6 } as const)[x.cost] })).sort((a, b) => b.v - a.v).findIndex((x) => x.id.endsWith(id));
+    expect(rank('camera:static')).toBe(cs.length - 1);
   });
 });
 
