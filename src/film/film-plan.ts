@@ -274,7 +274,8 @@ export function applyFilmPlan(input: ScriptObj, film: FilmPlan): { script: Scrip
         added = 'impact';
         present = true;
       }
-      if (b.beat === 'release') {
+      // (the last shot has no next shot to hand energy to: its release is whatever the element does there)
+      if (b.beat === 'release' && s !== script.shots[script.shots.length - 1]) {
         const cast = s.cast?.find((c) => c.id === b.element);
         if (cast && !cast.exit) {
           cast.exit = 'handoff';

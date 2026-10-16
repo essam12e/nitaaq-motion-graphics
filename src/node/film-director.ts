@@ -30,6 +30,7 @@ import { filmCritic, filmMemory, localSequenceScore, versionScore, type FilmCrit
 import { directRhythm, informationFlow } from '../film/rhythm';
 import { globalRedirect, multipleSubjects, type GlobalResult } from '../film/global-redirector';
 import { stageCompiler } from './film-compile';
+import { validateShotScript } from '../director/shot-script';
 
 const env = (k: string) => process.env[k] === '1';
 export const filmOn = () => !env('NITAAQ_NO_FILM_DIRECTOR');
@@ -85,8 +86,11 @@ export function loadFilm(projectDir: string, script: ScriptObj, given?: unknown,
 
 /** The current film (authored or derived) and a compiler for candidate scripts. */
 function filmContext(projectDir: string): { script: ScriptObj; film: FilmPlan; authored: boolean; compile: ((s: ScriptObj) => StagePlan) | null; src: SampleSource } | null {
-  const script = readJson<ScriptObj>(join(projectDir, 'shots.json'));
-  if (!script) return null;
+  const raw = readJson<ScriptObj>(join(projectDir, 'shots.json'));
+  if (!raw) return null;
+  // the script with its defaults (motion chain, cast …), as the compiler reads it
+  const v = validateShotScript(raw);
+  const script = (v.ok ? v.script : raw) as unknown as ScriptObj;
   const brief = readJson<{ brief?: { title?: string; content?: { cta?: { text?: string } } } }>(join(projectDir, 'stage_source.json'));
   const { film, authored } = loadFilm(projectDir, script, undefined, { title: brief?.brief?.title, cta: brief?.brief?.content?.cta?.text });
   const f = ablate(film);
