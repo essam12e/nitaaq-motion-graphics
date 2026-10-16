@@ -348,6 +348,7 @@ describe('P3-D Transition Re-Director and P3-E eye flow', () => {
     const r = redirectBoundary(sc, plan, 1, compiler());
     const fh = r.candidates.find((c) => c.move === 'full-head');
     expect(fh!.predicted!.issues).toContain('CHOREOGRAPHY_COLLAPSED');
+    for (const c of r.candidates) if (c.predicted!.issues.includes('CREATES_DEAD_HOLD')) expect(c.predicted!.value).toBeLessThan(0);
     expect(r.chosen?.move).not.toBe('full-head');
   });
   it('a hard cut ({type:"cut", hard:true}) keeps A on screen to the cut and B there on it; a plain "cut" keeps the P2 timing', () => {

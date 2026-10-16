@@ -276,8 +276,11 @@ export function redirectBoundary(script: ScriptObj, plan: StagePlan, i: number, 
     const value = Math.round((gain - c.cost * 2 - (clash >= 0.1 ? 3 : 0) - stilled * 2) * 100) / 100;
     const issues = me.issues.map((x) => x.code as string);
     if (stilled > 0.05) issues.push('CHOREOGRAPHY_COLLAPSED');
+    // past the dead-hold line (P0: > 1.6 s with nothing moving) it is not a cost, it is a veto
+    const dead = stillAfter.some((s2, j) => s2 > 1.6 && s2 > stillBefore[j] + 0.3);
+    if (dead) issues.push('CREATES_DEAD_HOLD');
     if (clash >= 0.1 && !issues.includes('OVERLAP_TRANSITION')) issues.push('OVERLAP_TRANSITION');
-    c.predicted = { boundary: Math.round(me.score * 100) / 100, quality: me.quality.score, min: me.quality.min, dip: me.quality.dip, neighbours, eyeTravel: me.eye.travel, guided: me.eye.guided, value, issues };
+    c.predicted = { boundary: Math.round(me.score * 100) / 100, quality: me.quality.score, min: me.quality.min, dip: me.quality.dip, neighbours, eyeTravel: me.eye.travel, guided: me.eye.guided, value: dead ? Math.min(value, -1) : value, issues };
   }
   const ranked = cands.filter((c) => c.predicted && c.predicted.value > (opts.minGain ?? 0.6)).sort((a, b2) => b2.predicted!.value - a.predicted!.value);
   const best = ranked[0] ?? null;
