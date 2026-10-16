@@ -100,7 +100,7 @@ const brief = (bs: Boundary[]) => bs.map((b) => ({ id: b.id, score: r2(b.score),
  * times; a move that was tried is not tried again.
  */
 export function neighborhoodRepair(inp: { script: ScriptObj; plan: StagePlan; compile: (s: ScriptObj) => StagePlan; src?: SampleSource; only?: string[]; reference?: StagePlan | null; changed?: string[]; trigger?: string; maxRounds?: number; minGain?: number }): { script: ScriptObj; plan: StagePlan; report: NeighborhoodReport } {
-  const src: SampleSource = { energy: inp.src?.energy, words: inp.src?.words, intentional: inp.src?.intentional };
+  const src: SampleSource = { energy: inp.src?.energy, words: inp.src?.words, intentional: inp.src?.intentional, contracts: inp.src?.contracts };
   let script = inp.script;
   let plan = inp.plan;
   const before = buildBoundaries(plan, src);

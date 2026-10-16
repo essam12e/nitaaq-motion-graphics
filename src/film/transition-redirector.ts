@@ -244,7 +244,12 @@ export function redirectBoundary(script: ScriptObj, plan: StagePlan, i: number, 
   const nb = [i - 1, i, i + 1].filter((k) => k >= 0 && k < plan.shots.length - 1);
   // the neighbourhood "before" uses the same (predicted) model as the candidates, so the comparison is fair
   const beforePred = new Map(nb.map((k) => [k, buildBoundary(plan, k, { energy: src.energy, words: src.words, intentional: src.intentional }).score]));
-  const cands = boundaryCandidates(script, plan, b).filter((c) => !opts.tried?.has(`${b.id}:${c.move}`));
+  // a cut that carries a film-plan promise (a contract, a motif becoming the next thing) keeps its carrier:
+  // only the timing around it may change (the film plan outranks a local gain)
+  const promise = src.contracts?.[b.id];
+  const cands = boundaryCandidates(script, plan, b).filter((c) => !opts.tried?.has(`${b.id}:${c.move}`) && !(promise && ['cut', 'carrier-swap', 'shared-bridge'].includes(c.move)));
+  if (promise) decision.answer += ` · the film plan protects this cut (${promise}): its carrier stays`;
+
   for (const c of cands) {
     let p: StagePlan;
     try {

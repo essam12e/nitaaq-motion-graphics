@@ -117,6 +117,8 @@ export interface SampleSource {
   words?: { word: string; start: number; end: number }[];
   /** Boundaries declared intentional (film plan): ids "a->b" with the reason (a deliberate reset / jump). */
   intentional?: Record<string, string>;
+  /** Boundaries that carry a film-plan promise (a sequence contract, a motif becoming something): "a->b" → what. */
+  contracts?: Record<string, string>;
 }
 
 function nearestSample(samples: StageProbeSample[], t: number): StageProbeSample | null {

@@ -101,7 +101,27 @@ function filmContext(projectDir: string): { script: ScriptObj; film: FilmPlan; a
         return compile0(cam);
       }
     : null;
-  return { script, film: f, authored, compile, src: { energy: f.arcs.energy.curve, intentional: Object.fromEntries(f.transitionStrategy.resetsAllowed.map((r) => [r.boundary, r.why])) } };
+  return { script, film: f, authored, compile, src: { energy: f.arcs.energy.curve, intentional: Object.fromEntries(f.transitionStrategy.resetsAllowed.map((r) => [r.boundary, r.why])), contracts: authored ? filmPromises(script, f) : {} } };
+}
+
+/** The cuts an authored film plan promises something on: a sequence delivering its element, a motif becoming another. */
+export function filmPromises(script: ScriptObj, film: FilmPlan): Record<string, string> {
+  const ids = script.shots.map((s) => s.id);
+  const out: Record<string, string> = {};
+  film.sequences.forEach((seq, k) => {
+    const next = film.sequences[k + 1];
+    const d = seq.contract.delivers;
+    if (!next || !d) return;
+    const a = seq.shots[seq.shots.length - 1];
+    const b = next.shots[0];
+    if (ids.indexOf(b) === ids.indexOf(a) + 1) out[`${a}->${b}`] = `sequence ${seq.id} delivers ${d.element}`;
+  });
+  for (const m of film.motifs)
+    for (const t of m.transformations.filter((x) => x.as === 'become')) {
+      const k = ids.indexOf(t.shot);
+      if (k > 0) out[`${ids[k - 1]}->${t.shot}`] = `motif ${m.id} becomes ${t.into}`;
+    }
+  return out;
 }
 
 /** Measured (DOM samples + pixel transitions) when available, else predicted. */

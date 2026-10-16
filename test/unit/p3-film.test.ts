@@ -316,6 +316,13 @@ describe('P3-D Transition Re-Director and P3-E eye flow', () => {
     expect(r.chosen!.predicted!.boundary).toBeGreaterThan(r.before.score);
     expect(r.chosen!.predicted!.neighbours.length).toBeGreaterThanOrEqual(2);
   });
+  it('a cut that carries a film-plan promise keeps its carrier (no cut / carrier swap / bridge), only its timing may change', () => {
+    const sc = script();
+    const plan = compiler()(sc);
+    const r = redirectBoundary(sc, plan, 0, compiler(), { contracts: { 'hook->solution': 'sequence open delivers shape.hub' } });
+    for (const c of r.candidates) expect(['cut', 'carrier-swap', 'shared-bridge']).not.toContain(c.move);
+    expect(r.decision.answer).toMatch(/protects this cut/);
+  });
   it('a hard cut ({type:"cut", hard:true}) keeps A on screen to the cut and B there on it; a plain "cut" keeps the P2 timing', () => {
     const plain = compiler()(script());
     const hard = compiler()(script({ solution: { transitionOut: { type: 'cut', hard: true } } }));
