@@ -12,7 +12,7 @@
  *
  * The four kinds of evidence are kept apart everywhere: predicted (stage.json), preview-measured (these
  * renders), final-measured (the full animatic / film) and Claude judgment (only for what pixels cannot say).
- * A technical failure (a clash, cut text, an empty frame) vetoes a candidate whatever its other numbers.
+ * A technical failure (a clash, cut text, an empty frame, an element blown up over the frame) vetoes a candidate whatever its other numbers.
  * Pure: the node side decodes the frames and passes numbers.
  */
 
@@ -45,6 +45,8 @@ export interface PreviewMeasure {
   motion: { mean: number; peak: number; stillShare: number; longestStill: number; early: number; contrast: number };
   clash: { worst: number; at: number | null; pair: string | null; frames: number };
   offCanvas: { frames: number; worst: string | null };
+  /** an element (not a world / background) grown over most of the frame — a mid-motion blow-up. */
+  flood: { frames: number; worst: string | null };
   void: { min: number; minAt: number | null; dip: number; empty: boolean };
   midMotion: { frames: number; failures: { t: number; what: string }[] };
   presence: { allTogetherAt: number | null; items: string[] };
@@ -96,6 +98,8 @@ export function measurePreview(frames: PreviewFrame[], W: number, H: number, opt
   let offWorst: string | null = null;
   const fails: { t: number; what: string }[] = [];
   let minPx: number | null = null;
+  let floodFrames = 0;
+  let floodWorst: string | null = null;
   for (const fr of f) {
     const vis = fr.texts.filter((x) => x.opacity > 0.35 && x.rect.width > 2 && x.rect.height > 2);
     let fw = 0;
@@ -119,6 +123,11 @@ export function measurePreview(frames: PreviewFrame[], W: number, H: number, opt
     if (cut.length) {
       offFrames++;
       offWorst ??= `${cut[0].id} @ ${fr.t.toFixed(2)}s`;
+    }
+    const big = fr.els.find((e) => e.opacity > 0.3 && ['shape', 'card', 'button', 'chip', 'icon'].includes(e.kind) && e.rect.width * e.rect.height > 0.6 * W * H);
+    if (big) {
+      floodFrames++;
+      floodWorst ??= `${big.id} @ ${fr.t.toFixed(2)}s`;
     }
     for (const x of vis) if (x.opacity > 0.9) minPx = minPx === null ? x.px : Math.min(minPx, x.px);
     // mid-motion composition: the moving frames are judged too
@@ -180,7 +189,7 @@ export function measurePreview(frames: PreviewFrame[], W: number, H: number, opt
     }
     handover = { from, to, ok: gap !== null && gap < 0.12 * Math.hypot(W, H), gapPx: gap === null ? null : Math.round(gap), at: k >= 0 ? f[k].t : null };
   }
-  return { ...(handover ? { handover } : {}), frames: f.length, range: [f[0]?.t ?? 0, f[f.length - 1]?.t ?? 0], motion, clash: { worst: r3(worst), at, pair, frames: clashFrames }, offCanvas: { frames: offFrames, worst: offWorst }, void: v, midMotion: { frames: fails.length, failures: failures.slice(0, 8) }, presence: { allTogetherAt: together, items }, readability: { minTextPx: minPx === null ? null : Math.round(minPx), headlineRestAt: rest } };
+  return { ...(handover ? { handover } : {}), frames: f.length, range: [f[0]?.t ?? 0, f[f.length - 1]?.t ?? 0], motion, clash: { worst: r3(worst), at, pair, frames: clashFrames }, offCanvas: { frames: offFrames, worst: offWorst }, flood: { frames: floodFrames, worst: floodWorst }, void: v, midMotion: { frames: fails.length, failures: failures.slice(0, 8) }, presence: { allTogetherAt: together, items }, readability: { minTextPx: minPx === null ? null : Math.round(minPx), headlineRestAt: rest } };
 }
 
 export type ProblemKind = 'hook' | 'climax' | 'energy' | 'boundary' | 'focus' | 'subjects' | 'cta' | 'choreography' | 'camera-free' | 'global';
@@ -203,6 +212,7 @@ export function judgeCandidate(kind: ProblemKind, m: PreviewMeasure, base: Previ
   const baseClash = base?.clash.worst ?? 0;
   if (m.clash.worst > 0.25 && m.clash.frames >= 2 && m.clash.worst > baseClash + 0.05) veto = `TEXT_CLASH ${Math.round(m.clash.worst * 100)}% (${m.clash.pair}) at ${m.clash.at?.toFixed(2)}s`;
   else if (m.offCanvas.frames > (base?.offCanvas.frames ?? 0) + 1) veto = `TEXT_OFF_CANVAS ${m.offCanvas.worst}`;
+  else if (m.flood.frames >= 2 && m.flood.frames > (base?.flood.frames ?? 0) + 1) veto = `ELEMENT_FLOODS_FRAME ${m.flood.worst}`;
   else if (m.void.empty && !(base?.void.empty ?? false)) veto = `EMPTY_FRAME ${Math.round(m.void.min * 100)}% at ${m.void.minAt?.toFixed(2)}s`;
   else if (m.presence.items.length && m.presence.allTogetherAt === null && (base?.presence.allTogetherAt ?? null) !== null) veto = 'INFORMATION_DROPPED: the items are never on screen together';
   const rel = (a: number, b: number | undefined, k = 1) => (b === undefined || b <= 1e-6 ? 0 : Math.max(-3, Math.min(3, (a / b - 1) * k)));

@@ -457,7 +457,10 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
         act({ id: uid(`fade_${k}_${i}`), target: k, at: r3(boundary(i - 1) - 0.02), dur: 0.02, ease: 'linear', props: { o: oT }, from: { o: 0 } });
       } else if (broughtByMorph) {
         // appears exactly where the morphing element arrives (the source hides at the same instant)
-        act({ id: eid, target: k, at: r3(boundary(i - 1) + 0.42), dur: 0.08, ease: 'linear', props: { o: oT }, from: { o: 0 } });
+        // an element that was on stage in an earlier shot (a motif returning) also takes its place here —
+        // its tracks still hold its last pose (e.g. expanded to the world), which must not leak into this shot
+        const seenBefore = shots.slice(0, i).some((_, q) => on(id, q));
+        act({ id: eid, target: k, at: r3(boundary(i - 1) + 0.42), dur: 0.08, ease: 'linear', props: seenBefore ? { o: oT, x: b0.x, y: b0.y, s: s0 } : { o: oT }, from: seenBefore ? { o: 0, x: b0.x, y: b0.y, s: s0 } : { o: 0 } });
       } else if (style === 'none') {
         act({ id: eid, target: k, at, dur: 0.01, ease: 'linear', props: { o: oT } });
       } else {

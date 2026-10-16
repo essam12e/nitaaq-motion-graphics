@@ -218,6 +218,17 @@ describe('P4 motion primitives', () => {
     expect(r.report.warnings.some((w) => /BECOME_FALLBACK/.test(w.code ?? String(w)))).toBe(true);
     expect(r.plan.elements.find((e) => e.id === 'logo.brand')!.morphShapes ?? []).toEqual([]);
   });
+  it('a motif brought back by a morph takes its place in the new shot (its expanded pose never leaks in)', () => {
+    const sc = script({ features: { transitionOut: { type: 'morph', element: 'card.f2', into: 'shape.hub' }, transitionReason: 'the card becomes the circle again' }, cta: { cast: [{ id: 'text.cta', role: 'hero' }, { id: 'button.cta', role: 'secondary' }, { id: 'shape.hub', role: 'background', behind: 'button.cta', scale: 1.25 }] } } as never);
+    const plan = plain()(sc);
+    const c = compiledStage(plan);
+    const hook = plan.shots[0];
+    const cta = plan.shots[plan.shots.length - 1];
+    const k = keyOf(plan, 'shape.hub');
+    const grown = Math.max(...Array.from({ length: 20 }, (_, q) => elementState(c, k, hook.end - 0.4 + q * 0.06).s));
+    expect(grown).toBeGreaterThan(3);
+    expect(elementState(c, k, cta.start + 0.8).s).toBeLessThan(3);
+  });
   it('settle brings an element from its hero pose (cast.arriveAt) back to its composed place', () => {
     const sc = withChain(script(), 'features', [
       { id: 'arrive', element: 'card.f2', action: 'enter', at: 0.1, reason: 'arrives as the hero' },
@@ -421,6 +432,12 @@ describe('P4 preview judge', () => {
     const shaped = measurePreview(Array.from({ length: 40 }, (_, k) => frame(k * 0.25, { diff: k % 8 < 2 ? 0.05 : 0.01 })), W, H);
     expect(shaped.motion.contrast).toBeGreaterThan(flatM.motion.contrast);
     expect(judgeCandidate('global', shaped, flatM).score).toBeGreaterThan(judgeCandidate('global', flatM, flatM).score);
+  });
+  it('an element blown up over the frame mid-motion is a veto (the kept version did not do it)', () => {
+    const el = (w: number) => [{ id: 'shape.hub', kind: 'shape', rect: { x: 0, y: 0, width: w, height: w * 0.56 }, opacity: 0.4 }];
+    const base = measurePreview([0, 0.1, 0.2, 0.3].map((t) => frame(t, { els: el(300) })), W, H);
+    const blown = measurePreview([0, 0.1, 0.2, 0.3].map((t, k) => frame(t, { els: el(k ? 2000 : 300) })), W, H);
+    expect(judgeCandidate('cta', blown, base).veto).toMatch(/ELEMENT_FLOODS_FRAME/);
   });
   it('mid-motion failures are found on moving frames', () => {
     const fr = [frame(0, { diff: 0 }), frame(0.1, { diff: 0.05, texts: [txt('a', 0), txt('b', 30)] })];
