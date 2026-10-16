@@ -27,6 +27,7 @@ import { artGate, AD_CODES } from '../../src/art/gate';
 import { validateReferenceReview, StudioReferenceSchema, buildBuildersDoc } from '../../src/art/references';
 import { audioSync, typographyMotion, motionCharacter } from '../../src/art/polish';
 import { artOn, artAblations, stripPhrases, gateOf } from '../../src/node/art-director';
+import { habitsOf, globalVarietyCandidate } from '../../src/art/global';
 
 const W = 1920;
 const H = 1080;
@@ -545,5 +546,41 @@ describe('P4 determinism', () => {
     const ca = a.problems.flatMap((pr) => a.make(pr, sc, p, film)).map((c) => JSON.stringify(c.script));
     const cb = b.problems.flatMap((pr) => b.make(pr, sc, p, film)).map((c) => JSON.stringify(c.script));
     expect(ca).toEqual(cb);
+  });
+});
+
+describe('P4 Global Re-Director v2', () => {
+  const boring = () => {
+    const shots = ['hook', 'solution', 'features', 'steps', 'cta'].map((id, i) => {
+      const base = SHOTS()[i] as Record<string, unknown>;
+      return { ...base, camera: { move: 'push-in' }, cameraReason: 'push in like every shot', transitionOut: i < 4 ? 'cut' : undefined, timing: { duration: 3.2 }, cast: [(base.cast as { id: string }[])[0] && { ...(base.cast as object[])[0], role: 'hero' }] };
+    });
+    return script({}, shots as never);
+  };
+  it('names the habits of a repetitive film; a varied film has none', () => {
+    const h = habitsOf(boring());
+    expect(h.repetitive).toBe(true);
+    expect(h.camera?.value).toBe('push-in');
+    expect(h.duration?.value).toBe(3.2);
+    expect(habitsOf(script()).repetitive).toBe(false);
+    expect(globalVarietyCandidate(script(), {})).toBeNull();
+  });
+  it('the variety candidate breaks the habits without adding camera and keeps the film length', () => {
+    const sc = boring();
+    const c = globalVarietyCandidate(sc, { hook: 0.9, solution: 0.5, features: 0.8, steps: 0.6, cta: 0.6 })!;
+    const shots = c.script.shots as unknown as { camera: unknown; timing: { duration: number }; cast: { enter?: string }[] }[];
+    const moves = shots.map((s) => (typeof s.camera === 'object' ? 'move' : s.camera));
+    expect(moves.filter((m) => m === 'move').length).toBeLessThan(shots.length);
+    expect(moves[0]).toBe('move');
+    expect(moves[moves.length - 1]).toBe('move');
+    const total = shots.reduce((a, s) => a + s.timing.duration, 0);
+    expect(total).toBeCloseTo(16, 1);
+    expect(new Set(shots.map((s) => s.timing.duration)).size).toBeGreaterThan(2);
+    const ent = shots.map((s) => s.cast[0].enter);
+    for (let i = 1; i < ent.length; i++) expect(ent[i]).not.toBe(ent[i - 1]);
+    expect(() => plain()(c.script)).not.toThrow();
+    // a voice film keeps its durations (the voice is the clock)
+    const v = globalVarietyCandidate(sc, {}, { voice: true })!;
+    expect((v.script.shots as unknown as { timing: { duration: number } }[]).every((s) => s.timing.duration === 3.2)).toBe(true);
   });
 });

@@ -204,11 +204,12 @@ export async function artDirectorPass(spec: VideoSpec, projectDir: string, opts:
     return true;
   });
   // key visuals first (D): a problem on a key-visual shot is solved before the others
-  if (ab.keyVisual) {
-    const kv = new Set(d.keyVisuals.map((k) => k.shot));
-    const lv = { local: 0, sequence: 1, global: 2 } as const;
-    problems = [...problems].sort((a, b) => lv[a.level] - lv[b.level] || Number(b.shots.some((s) => kv.has(s))) - Number(a.shots.some((s) => kv.has(s))));
-  }
+  // then by what the viewer feels most: the hook, the subjects / information of a shot, the camera-free
+  // equivalents, flat choreography — the cuts last (the P3 film director has already repaired them)
+  const lv = { local: 0, sequence: 1, global: 2 } as const;
+  const KIND: Record<string, number> = { hook: 0, cta: 0, climax: 1, subjects: 2, focus: 3, 'camera-free': 4, choreography: 5, boundary: 6, global: 7 };
+  const kv = new Set(ab.keyVisual ? d.keyVisuals.map((k) => k.shot) : []);
+  problems = [...problems].sort((a, b) => lv[a.level] - lv[b.level] || (KIND[a.kind] ?? 9) - (KIND[b.kind] ?? 9) || Number(b.shots.some((s) => kv.has(s))) - Number(a.shots.some((s) => kv.has(s))));
   const { run, deferred } = budgetProblems(problems, budget);
   const memFile = join(projectDir, 'art_memory.json');
   const memory: ArtMemory = readJson<ArtMemory>(memFile) ?? { version: 3, entries: [] };

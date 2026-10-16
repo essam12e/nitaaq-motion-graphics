@@ -12,10 +12,11 @@ import type { FilmPlan } from '../film/film-plan';
 import { buildBoundaries, type Boundary, type SampleSource } from '../film/boundary';
 import { boundaryAtRisk, boundaryCandidates } from '../film/transition-redirector';
 import { choreographyGraph, choreographyCandidates, cameraFreeEquivalent, siblingsOf, type ChoreographyGraph } from './choreography';
-import { buildEnergy, climaxCandidates, hookCandidates, composeRhythm, type ArtCandidate, type EnergyReport } from './energy';
+import { buildEnergy, climaxCandidates, hookCandidates, composeRhythm, internalGaps, wantedEnergy, type ArtCandidate, type EnergyReport } from './energy';
 import { focusCandidates, overloadedShots, subjectsCandidates } from './focus';
 import { ctaTransformCandidates, transformCutCandidates, type FilmCandidate } from './transform';
 import { contributions, type Contributions } from './motion-analysis';
+import { globalVarietyCandidate, habitsOf } from './global';
 import type { ProblemKind } from './judge';
 
 type Ev = { id?: string; element: string; action: string; to?: string; after?: string; style?: string; [k: string]: unknown };
@@ -221,7 +222,15 @@ export function diagnose(script: ScriptObj, plan: StagePlan, o: DiagnoseOptions 
   const camShots = (o.cameraOff ? (o.original ?? script).shots.filter((s) => (s as ShotObj).camera && (s as ShotObj).camera !== 'static').map((s) => s.id) : contrib.cameraCarried).filter((id) => !isFollow(id));
   for (const id of camShots) problems.push({ id: `camfree-${id}`, kind: 'camera-free', code: 'CAMERA_CARRYING_SCENE', shots: [id], range: shotRange(plan, id), why: o.cameraOff ? 'the camera is off: what it did must be done by the element' : `the camera carries ${Math.round((1 - (contrib.shots.find((x) => x.shot === id)?.elementShare ?? 0)) * 100)}% of the motion`, level: 'local' });
   // global (reserved budget): the film's energy and internal rhythm
-  problems.push({ id: 'global-energy', kind: 'global', code: energy.issues.some((x) => x.startsWith('FLAT_FILM')) ? 'FLAT_FILM' : 'RHYTHM_TOO_UNIFORM', shots: ids, range: [0, plan.shots[last].end], why: 'the film-level energy curve and internal rhythm (reserved global budget)', level: 'global' });
+  // (it runs even when the lower levels still have work; its code says what the film-level reading found)
+  const flatFilm = energy.issues.some((x) => x.startsWith('FLAT_FILM'));
+  const gaps = internalGaps(plan);
+  const gm = gaps.reduce((a, b) => a + b, 0) / Math.max(1, gaps.length);
+  const cv = gaps.length > 1 && gm > 0 ? Math.sqrt(gaps.reduce((a, b) => a + (b - gm) ** 2, 0) / gaps.length) / gm : 1;
+  const flatEnergy = Object.keys(energy.wanted).length > 1 && Math.max(...Object.values(energy.measured)) - Math.min(...Object.values(energy.measured)) < 0.25;
+  const habits = habitsOf(script);
+  const gcode = habits.repetitive ? 'REPETITIVE_FILM' : flatFilm ? 'FLAT_FILM' : cv < 0.35 ? 'RHYTHM_TOO_UNIFORM' : flatEnergy ? 'FLAT_ENERGY' : energy.issues.length ? 'ENERGY_OFF_CURVE' : null;
+  if (gcode) problems.push({ id: 'global-energy', kind: 'global', code: gcode, shots: ids, range: [0, plan.shots[last].end], why: `film level: ${gcode === 'REPETITIVE_FILM' ? `the same ${[habits.camera && `camera (${habits.camera.value} ${Math.round(habits.camera.share * 100)}%)`, habits.entrance && `entrance (${habits.entrance.value})`, habits.duration && `duration (${habits.duration.value}s)`].filter(Boolean).join(', ')} shot after shot` : gcode === 'RHYTHM_TOO_UNIFORM' ? `internal gaps CV ${cv.toFixed(2)}` : energy.issues.join('; ') || 'measured energy is flat'} (reserved global budget)`, level: 'global' });
 
   const make = (p: Omit<ArtProblem, 'candidates'>, current: ScriptObj, currentPlan: StagePlan, film?: FilmPlan | null): FilmCandidate[] => {
     const k = ids.indexOf(p.shots[0]);
@@ -254,7 +263,9 @@ export function diagnose(script: ScriptObj, plan: StagePlan, o: DiagnoseOptions 
       case 'global': {
         const e = buildEnergy(current, currentPlan, film?.arcs.energy.curve).candidate;
         const r = composeRhythm(e.script, currentPlan, o.compile).candidate;
-        return [{ ...r, id: 'global-energy-rhythm', label: 'energy phrases + composed rhythm', why: `${e.why}; ${r.why}` }, e];
+        const v = globalVarietyCandidate(current, wantedEnergy(current, film?.arcs.energy.curve), { voice: o.voice });
+        const vr = v ? { ...v, script: composeRhythm(v.script, currentPlan, o.compile).candidate.script } : null;
+        return [...(vr ? [vr] : []), { ...r, id: 'global-energy-rhythm', label: 'energy phrases + composed rhythm', why: `${e.why}; ${r.why}` }, e];
       }
       default:
         return [];
