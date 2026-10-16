@@ -15,6 +15,7 @@
  * neighbours) and scored as a NEIGHBOURHOOD: A tail · A→B · B head · B→C — a fix that repairs one cut
  * by breaking the next is rejected. Pure: the caller passes the compile function.
  */
+import { sampleStage, timesIn } from './sampler';
 import type { StagePlan } from '../stage/plan';
 import { buildBoundary, type Boundary, type SampleSource } from './boundary';
 
@@ -113,11 +114,13 @@ export function boundaryCandidates(script: ScriptObj, plan: StagePlan, b: Bounda
   const carried = tr?.element;
   // A tail: what leaves A stays until the cut (it fades over the cut instead of before it)
   const leaving = castA.filter((id) => !castB.has(id) && id !== carried && kinds.get(id) !== 'cursor');
+  // (a leaving text clears its place a little earlier when B brings a text of its own: two lines never fight)
+  const bText = [...castB].some((id) => kinds.get(id) === 'text' && !castA.includes(id));
   const crossHold = (s: ScriptObj) => {
     const a = s.shots[i];
     for (const id of leaving) {
       const ev = a.motionChain.find((e) => e.element === id && e.action === 'exit');
-      const at = Math.round((dA - 0.14) * 100) / 100;
+      const at = Math.round((dA - (bText && kinds.get(id) === 'text' ? 0.4 : 0.14)) * 100) / 100;
       if (ev) {
         ev.at = at;
         delete ev.after;
@@ -206,6 +209,30 @@ export function boundaryCandidates(script: ScriptObj, plan: StagePlan, b: Bounda
   return out;
 }
 
+/** Seconds around cut i during which a text of A and a text of B (both readable) overlap by more than 20%. */
+export function textClash(plan: StagePlan, i: number): number {
+  const A = plan.shots[i];
+  const B = plan.shots[i + 1];
+  const kind = new Map(plan.elements.map((e) => [e.id, e.kind]));
+  const inA = new Set((A.cast ?? []).map((c) => c.id));
+  const inB = new Set((B.cast ?? []).map((c) => c.id));
+  let sec = 0;
+  for (const t of timesIn(A.end - 0.5, B.start + 0.7, 0.05)) {
+    const els = sampleStage(plan, t).sampled.filter((e) => kind.get(e.id) === 'text' && e.opacity > 0.5);
+    const a = els.filter((e) => inA.has(e.id) && !inB.has(e.id));
+    const b = els.filter((e) => inB.has(e.id) && !inA.has(e.id));
+    const hit = a.some((x) =>
+      b.some((y) => {
+        const ix = Math.max(0, Math.min(x.rect.x + x.rect.width, y.rect.x + y.rect.width) - Math.max(x.rect.x, y.rect.x));
+        const iy = Math.max(0, Math.min(x.rect.y + x.rect.height, y.rect.y + y.rect.height) - Math.max(x.rect.y, y.rect.y));
+        return (ix * iy) / Math.max(1, Math.min(x.rect.width * x.rect.height, y.rect.width * y.rect.height)) > 0.2;
+      }),
+    );
+    if (hit) sec += 0.05;
+  }
+  return Math.round(sec * 100) / 100;
+}
+
 /**
  * Re-directs boundary i: predicts every candidate on the neighbourhood (i-1, i, i+1) and keeps the one
  * with the best value = Δ(local boundary scores) − cost, if it is a real gain. `compile` recompiles the
@@ -234,8 +261,12 @@ export function redirectBoundary(script: ScriptObj, plan: StagePlan, i: number, 
       const d = n.after - n.before;
       return a + (n.id === b.id ? 2 * d : d < 0 ? 2 * d : 0.5 * d);
     }, 0);
-    const value = Math.round((gain - c.cost * 2) * 100) / 100;
-    c.predicted = { boundary: Math.round(me.score * 100) / 100, quality: me.quality.score, min: me.quality.min, dip: me.quality.dip, neighbours, eyeTravel: me.eye.travel, guided: me.eye.guided, value, issues: me.issues.map((x) => x.code) };
+    // two readable lines fighting for one place around the cut is worse than a thin frame
+    const clash = textClash(p, i);
+    const value = Math.round((gain - c.cost * 2 - (clash >= 0.1 ? 3 : 0)) * 100) / 100;
+    const issues = me.issues.map((x) => x.code as string);
+    if (clash >= 0.1 && !issues.includes('OVERLAP_TRANSITION')) issues.push('OVERLAP_TRANSITION');
+    c.predicted = { boundary: Math.round(me.score * 100) / 100, quality: me.quality.score, min: me.quality.min, dip: me.quality.dip, neighbours, eyeTravel: me.eye.travel, guided: me.eye.guided, value, issues };
   }
   const ranked = cands.filter((c) => c.predicted && c.predicted.value > (opts.minGain ?? 0.6)).sort((a, b2) => b2.predicted!.value - a.predicted!.value);
   const best = ranked[0] ?? null;

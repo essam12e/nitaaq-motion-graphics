@@ -217,6 +217,24 @@ export function buildBoundary(plan: StagePlan, i: number, src: SampleSource = {}
     else if (x.code === 'VISUAL_VOID') issues.push({ code: 'BOUNDARY_VOID', severity: x.severity, evidence: x.evidence });
     else if (x.code === 'OVERLAP_TRANSITION' || x.code === 'BROKEN_CONTINUITY') issues.push({ code: x.code, severity: x.severity, evidence: x.evidence });
   }
+  // a side of the cut left empty for long (A leaves early / B arrives late): the cut window alone cannot see it,
+  // so the frame is followed from A's settle to B's settle against the lighter of the two settled frames
+  const sBfull = settleTimeOf(plan, B.id);
+  const ref = Math.min(massOf(plan, sampleStage(plan, sA)), massOf(plan, sampleStage(plan, sBfull)));
+  let gap = 0;
+  let run = 0;
+  let prevT = sA;
+  for (const t of timesIn(sA, sBfull, 0.06)) {
+    run = massOf(plan, sampleStage(plan, t)) < ref * 0.3 ? run + (t - prevT) : 0;
+    gap = Math.max(gap, run);
+    prevT = t;
+  }
+  gap = r3(gap);
+  let gapPen = 0;
+  if (ref > 0.01 && gap >= 0.3 && !intentional && !issues.some((x) => x.code === 'BOUNDARY_VOID')) {
+    issues.push({ code: 'BOUNDARY_VOID', severity: gap >= 0.6 ? 'major' : 'minor', evidence: `between ${A.id}'s settle and ${B.id}'s the frame holds under a third of its settled content for ${gap.toFixed(2)}s (${A.id} leaves early or ${B.id} arrives late)` });
+    gapPen = gap >= 0.6 ? 2.5 : 1.2;
+  }
   if (!guided && travel >= 0.28 && !intentional) issues.push({ code: 'EYE_JUMP', severity: travel >= 0.45 ? 'major' : 'minor', evidence: `the eye leaves ${A.id} on ${exit.id ?? '—'} (${exit.x}, ${exit.y}) and must find ${entry.id ?? '—'} at (${entry.x}, ${entry.y}) in ${B.id}: ${Math.round(travel * 100)}% of the diagonal with a blind jump of ${Math.round(maxJump * 100)}%` });
   if (worldReset) issues.push({ code: 'WORLD_RESET', severity: 'major', evidence: `nothing from ${A.id} persists, transforms or hands over into ${B.id}: everything disappears and everything new appears` });
   if (carrier && tr?.status === 'object' && tr.kind !== 'text-mask' && exit.id && carrier !== exit.id && !path.some((p) => p.id === carrier)) issues.push({ code: 'CARRIER_NOT_SEEN', severity: 'minor', evidence: `${tr.kind} is carried by ${carrier}, but the eye is on ${exit.id} when ${A.id} lets go: the transition happens where nobody looks` });
@@ -228,7 +246,7 @@ export function buildBoundary(plan: StagePlan, i: number, src: SampleSource = {}
   if (shared.length) req.push(`shared: ${shared.join(', ')} continue (no re-entrance)`);
   if (worldReset) req.push('hand something forward (an element, a shape, a colour, a direction) — or declare the reset');
   const pen = issues.filter((x) => !['EMPTY_BOUNDARY', 'BOUNDARY_VOID', 'OVERLAP_TRANSITION', 'BROKEN_CONTINUITY'].includes(x.code)).reduce((a, x) => a + (x.severity === 'critical' ? 2.5 : x.severity === 'major' ? 1.4 : 0.6), 0);
-  const score = r3(Math.max(0, Math.min(10, q.score + (guided ? 0.6 : 0) + (persisted.length || transformed ? 0.4 : 0) - pen)));
+  const score = r3(Math.max(0, Math.min(10, q.score + (guided ? 0.6 : 0) + (persisted.length || transformed ? 0.4 : 0) - pen - gapPen)));
   const word = src.words?.find((w) => w.start >= cut - 0.6 && w.start <= cut + 0.6);
   const camAt = (t: number) => sample(t).cam;
   const stOf = (id: string | null, t: number) => {
