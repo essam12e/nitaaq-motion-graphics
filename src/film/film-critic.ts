@@ -118,7 +118,7 @@ export function repetitions(mem: FilmMemory, film?: FilmPlan | null): Repetition
   ];
   for (const [what, k] of keys) {
     const vals = mem.shots.filter((d) => !(k === 'transitionOut' && d.transitionOut === 'end')).map((d) => String(d[k]));
-    if (vals.length < 3) continue;
+    if (vals.length < 4) continue; // three shots are too few to call a habit
     const counts = new Map<string, number>();
     for (const v of vals) counts.set(v, (counts.get(v) ?? 0) + 1);
     const [value, c] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
