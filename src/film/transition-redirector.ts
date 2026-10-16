@@ -120,7 +120,7 @@ export function boundaryCandidates(script: ScriptObj, plan: StagePlan, b: Bounda
     const a = s.shots[i];
     for (const id of leaving) {
       const ev = a.motionChain.find((e) => e.element === id && e.action === 'exit');
-      const at = Math.round((dA - (bText && kinds.get(id) === 'text' ? 0.4 : 0.14)) * 100) / 100;
+      const at = Math.round((dA - (bText && READABLE.has(kinds.get(id) ?? '') ? 0.4 : 0.14)) * 100) / 100;
       if (ev) {
         ev.at = at;
         delete ev.after;
@@ -210,6 +210,9 @@ export function boundaryCandidates(script: ScriptObj, plan: StagePlan, b: Bounda
 }
 
 /** Seconds around cut i during which a text of A and a text of B (both readable) overlap by more than 20%. */
+/** What a viewer reads: a line of text, a number, or the label on a card / button / chip. */
+const READABLE = new Set(['text', 'number', 'card', 'button', 'chip']);
+
 export function textClash(plan: StagePlan, i: number): number {
   const A = plan.shots[i];
   const B = plan.shots[i + 1];
@@ -218,9 +221,10 @@ export function textClash(plan: StagePlan, i: number): number {
   const inB = new Set((B.cast ?? []).map((c) => c.id));
   let sec = 0;
   for (const t of timesIn(A.end - 0.5, B.start + 0.7, 0.05)) {
-    const els = sampleStage(plan, t).sampled.filter((e) => kind.get(e.id) === 'text' && e.opacity > 0.5);
+    const els = sampleStage(plan, t).sampled.filter((e) => READABLE.has(kind.get(e.id) ?? '') && e.opacity > 0.5);
+    // a leaving line or label under an arriving line of text (B's text is what must be read)
     const a = els.filter((e) => inA.has(e.id) && !inB.has(e.id));
-    const b = els.filter((e) => inB.has(e.id) && !inA.has(e.id));
+    const b = els.filter((e) => inB.has(e.id) && !inA.has(e.id) && (kind.get(e.id) === 'text' || kind.get(e.id) === 'number'));
     const hit = a.some((x) =>
       b.some((y) => {
         const ix = Math.max(0, Math.min(x.rect.x + x.rect.width, y.rect.x + y.rect.width) - Math.max(x.rect.x, y.rect.x));
@@ -253,6 +257,7 @@ export function redirectBoundary(script: ScriptObj, plan: StagePlan, i: number, 
   // the shots' own choreography, camera left out: a move may not buy a carried cut by turning A's tail or
   // B's body into one long still (it reads fine with a camera and like a slide without one, P3-S)
   const stillBefore = [i, i + 1].map((k) => elementStillRun(plan, k));
+  const clashBefore = textClash(plan, i);
   for (const c of cands) {
     let p: StagePlan;
     try {
@@ -273,7 +278,7 @@ export function redirectBoundary(script: ScriptObj, plan: StagePlan, i: number, 
     const clash = textClash(p, i);
     const stillAfter = [i, i + 1].map((k) => elementStillRun(p, k));
     const stilled = stillAfter.reduce((a, s2, j) => a + Math.max(0, s2 - Math.max(stillBefore[j], 1.2)), 0);
-    const value = Math.round((gain - c.cost * 2 - (clash >= 0.1 ? 3 : 0) - stilled * 2) * 100) / 100;
+    const value = Math.round((gain - c.cost * 2 - (clash >= 0.1 ? 3 : 0) + (clashBefore >= 0.1 && clash < 0.1 ? 3 : 0) - stilled * 2) * 100) / 100;
     const issues = me.issues.map((x) => x.code as string);
     if (stilled > 0.05) issues.push('CHOREOGRAPHY_COLLAPSED');
     // past the dead-hold line (P0: > 1.6 s with nothing moving) it is not a cost, it is a veto

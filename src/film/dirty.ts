@@ -13,7 +13,7 @@
 import type { StagePlan } from '../stage/plan';
 import { sampleStage } from './sampler';
 import { buildBoundaries, buildBoundary, boundarySignature, type Boundary, type SampleSource } from './boundary';
-import { boundaryAtRisk, redirectBoundary, type RedirectResult, type ScriptObj } from './transition-redirector';
+import { boundaryAtRisk, redirectBoundary, textClash, type RedirectResult, type ScriptObj } from './transition-redirector';
 
 const r2 = (x: number) => Math.round(x * 100) / 100;
 
@@ -116,7 +116,7 @@ export function neighborhoodRepair(inp: { script: ScriptObj; plan: StagePlan; co
     // worst first: at risk, or dropped against the reference (a repair broke it)
     const todo = bs
       .map((b) => ({ b, drop: refScore.has(b.id) ? refScore.get(b.id)! - b.score : 0 }))
-      .filter(({ b, drop }) => (boundaryAtRisk(b) || drop > 0.5) && (visits.get(b.id) ?? 0) < 2)
+      .filter(({ b, drop }) => (boundaryAtRisk(b) || drop > 0.5 || textClash(plan, b.index) >= 0.1) && (visits.get(b.id) ?? 0) < 2)
       .sort((x, y) => x.b.score - x.drop - (y.b.score - y.drop));
     if (!todo.length) break;
     const { b } = todo[0];
