@@ -233,8 +233,11 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
         out[c.id] = { x: 0.5, y: 0.5, w: 0.3, h: heightOfBox(0.3, aspectOf(decls.get(c.id)!)) };
         continue;
       }
-      const w = Math.min(1.4, (c.w ?? tb.w * (c.scale ?? 1.6)));
-      out[c.id] = { x: tb.x, y: tb.y, w, h: heightOfBox(w, aspectOf(decls.get(c.id)!)) };
+      // a ground behind its target, never a wall: its height stays under 42% of the frame (a circle behind a
+      // wide pill button would otherwise cover the frame) unless the script gives an explicit width
+      const asp = aspectOf(decls.get(c.id)!);
+      const w = c.w ?? Math.min(1.4, tb.w * (c.scale ?? 1.6), (0.42 * H * Math.max(0.05, asp)) / W);
+      out[c.id] = { x: tb.x, y: tb.y, w, h: heightOfBox(w, asp) };
     }
     // children inside their parent's box
     const parents = new Set(cast.map((c) => decls.get(c.id)!.parent).filter((p): p is string => Boolean(p)));

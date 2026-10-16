@@ -163,7 +163,7 @@ describe('P3-A Film Plan', () => {
     expect(ph.beats.find((b) => b.beat === 'build')!.present).toBe(false);
     expect(ph.beats.find((b) => b.beat === 'release')!.added).toBe('handoff exit');
   });
-  it('the halo is placed centred behind its target, larger than it, and drawn behind it', () => {
+  it('the halo is placed centred behind its target, taller than it but capped, and drawn behind it', () => {
     const plan = compiler(filmPlan())(script());
     const t = plan.shots[4].end - 0.3;
     const s = sampleStage(plan, t);
@@ -171,7 +171,9 @@ describe('P3-A Film Plan', () => {
     const btn = s.sampled.find((e) => e.id === 'button.cta')!;
     const c = (r: { x: number; y: number; width: number; height: number }) => [r.x + r.width / 2, r.y + r.height / 2];
     expect(Math.abs(c(hub.rect)[0] - c(btn.rect)[0])).toBeLessThan(W * 0.02);
-    expect(hub.rect.width).toBeGreaterThan(btn.rect.width);
+    expect(hub.rect.height).toBeGreaterThan(btn.rect.height);
+    // a ground, not a wall: the halo never covers more than ~42% of the frame height
+    expect(hub.rect.height).toBeLessThanOrEqual(H * 0.43);
     const z = (id: string) => plan.elements.find((e) => e.id === id)!.z;
     expect(z('shape.hub')).toBeLessThan(z('button.cta'));
   });
