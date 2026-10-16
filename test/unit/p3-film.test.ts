@@ -15,7 +15,7 @@ import { critique, type CriticReport } from '../../src/qc/critic';
 import { applyFilmPlan, deriveFilmPlan, validateFilmPlan, FilmPlanSchema, type FilmPlan } from '../../src/film/film-plan';
 import { sampleStage, massOf, KIND_MASS, timesIn, elementStillRun } from '../../src/film/sampler';
 import { buildBoundaries, buildBoundary, boundarySignature } from '../../src/film/boundary';
-import { boundaryAtRisk, boundaryCandidates, redirectBoundary, transitionDecision, MOVE_COST, type ScriptObj } from '../../src/film/transition-redirector';
+import { boundaryAtRisk, boundaryCandidates, redirectBoundary, transitionDecision, textClash, MOVE_COST, type ScriptObj } from '../../src/film/transition-redirector';
 import { dirtyOf, neighborhoodRepair } from '../../src/film/dirty';
 import { filmCritic, filmMemory, repetitions, sequenceCritic, ctaPayoff, versionScore, localSequenceScore, FILM_DIMENSIONS } from '../../src/film/film-critic';
 import { informationFlow, directRhythm } from '../../src/film/rhythm';
@@ -350,6 +350,26 @@ describe('P3-D Transition Re-Director and P3-E eye flow', () => {
     expect(fh!.predicted!.issues).toContain('CHOREOGRAPHY_COLLAPSED');
     for (const c of r.candidates) if (c.predicted!.issues.includes('CREATES_DEAD_HOLD')) expect(c.predicted!.value).toBeLessThan(0);
     expect(r.chosen?.move).not.toBe('full-head');
+  });
+  it('a card label still on screen under the next shot\'s text is a clash: the cut is re-directed and the clash-free moves are weighed', () => {
+    const BIG = [
+      { id: 'card.f1', role: 'hero', at: { x: 0.8, y: 0.5 }, w: 0.28 },
+      { id: 'card.f2', role: 'secondary', at: { x: 0.5, y: 0.5 }, w: 0.28 },
+      { id: 'card.f3', role: 'secondary', at: { x: 0.2, y: 0.5 }, w: 0.28 },
+    ];
+    const shots = SHOTS({ features: { cast: BIG, transitionOut: { type: 'morph', element: 'card.f2', into: 'button.cta' }, transitionReason: 'the feature becomes the action', motionChain: [{ element: 'card.f1', action: 'exit', at: 2.98, style: 'fade', reason: 'held to the cut' }, { element: 'card.f3', action: 'exit', at: 2.98, style: 'fade', reason: 'held to the cut' }] }, cta: { motionChain: [{ element: 'text.cta', action: 'enter', at: 0, reason: 'on the cut' }] } }).filter((x) => x.id !== 'steps');
+    const sc = script({}, shots);
+    const plan = compiler()(sc);
+    const k = plan.shots.findIndex((x) => x.id === 'features');
+    const before = textClash(plan, k);
+    expect(before).toBeGreaterThanOrEqual(0.1);
+    const r = neighborhoodRepair({ script: sc, plan, compile: compiler(), only: [`features->cta`] });
+    // the clash alone sends the cut to the re-director (its score is high: 9.2)
+    expect(r.report.steps.some((x) => x.boundary === 'features->cta')).toBe(true);
+    const cands = r.report.redirects.find((x) => x.boundary === 'features->cta')!.candidates;
+    expect(cands.some((c) => !c.predicted!.issues.includes('OVERLAP_TRANSITION'))).toBe(true);
+    // a move is taken only if it does not empty the cut more than the clash costs; never a worse clash
+    expect(textClash(r.plan, k)).toBeLessThanOrEqual(before);
   });
   it('a hard cut ({type:"cut", hard:true}) keeps A on screen to the cut and B there on it; a plain "cut" keeps the P2 timing', () => {
     const plain = compiler()(script());
