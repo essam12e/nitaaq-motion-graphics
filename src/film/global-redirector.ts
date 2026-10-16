@@ -53,10 +53,13 @@ export function payoffCandidate(plan: StagePlan, script: ScriptObj, film: FilmPl
   for (const m of film.motifs) if (script.stage?.elements.some((e) => e.id === m.element)) return { element: m.element, why: `motif ${m.id} (${m.meaning})` };
   const kinds = new Map((script.stage?.elements ?? []).map((e) => [e.id, e.kind]));
   const half = Math.ceil(plan.shots.length / 2);
-  for (const tr of plan.transitions) {
-    const k = plan.shots.findIndex((s) => s.id === tr.from);
-    if (k < half && tr.element && ['shape', 'line', 'chip'].includes(kinds.get(tr.element) ?? '')) return { element: tr.element, why: `${tr.element} carried the cut ${tr.from}→${tr.to} (${tr.kind}) early in the film` };
-  }
+  // a shape that carried an early cut first (it is a form, not a message); a chip last — a chip often names
+  // the problem (it would bring the problem back onto the answer)
+  for (const kind of ['shape', 'line', 'chip'])
+    for (const tr of plan.transitions) {
+      const k = plan.shots.findIndex((s) => s.id === tr.from);
+      if (k < half && tr.element && kinds.get(tr.element) === kind) return { element: tr.element, why: `${tr.element} carried the cut ${tr.from}→${tr.to} (${tr.kind}) early in the film` };
+    }
   for (const e of plan.elements) if (e.shots.length >= 2 && ['shape', 'line'].includes(e.kind) && plan.shots.findIndex((s) => s.id === e.shots[0]) < half) return { element: e.id, why: `${e.id} persisted through ${e.shots.join(', ')}` };
   return null;
 }

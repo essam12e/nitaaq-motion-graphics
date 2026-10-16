@@ -177,6 +177,15 @@ describe('P3-A Film Plan', () => {
     const z = (id: string) => plan.elements.find((e) => e.id === id)!.z;
     expect(z('shape.hub')).toBeLessThan(z('button.cta'));
   });
+  it('an accent (scale < 1) sits beside its target, never over its label', () => {
+    const sc = script({ cta: { cast: [{ id: 'text.cta', role: 'hero' }, { id: 'button.cta', role: 'secondary' }, { id: 'shape.hub', role: 'background', behind: 'button.cta', scale: 0.5 }] } });
+    const plan = compileRaw(sc).plan;
+    const s = sampleStage(plan, plan.shots[4].end - 0.3);
+    const a = s.sampled.find((e) => e.id === 'shape.hub')!.rect;
+    const b = s.sampled.find((e) => e.id === 'button.cta')!.rect;
+    const ix = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x));
+    expect(ix).toBeLessThan(a.width * 0.1);
+  });
   it('a "behind" whose target is not on screen is reported (never silently placed)', () => {
     const sc = script({ cta: { cast: [{ id: 'text.cta', role: 'hero' }, { id: 'button.cta', role: 'secondary' }, { id: 'shape.hub', role: 'background', behind: 'card.f1' }] } });
     const { report } = compileRaw(sc);
