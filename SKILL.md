@@ -79,6 +79,8 @@ Write `shots.json` yourself (`docs/SHOT_SCRIPT.md`): per shot the purpose, messa
 
 **Stage Mode** (P1 — one connected world instead of a row of scenes): write `direction.json` first (languages, camera budget, metaphors, style frames), then `shots.json` with `stage.elements` (global ids that persist across shots) and `stage-shot` shots (cast, causal motion chain, camera target + reason + effect, object transitions). `npx tsx cli/nitaaq.ts create brief.json --shots shots.json --direction direction.json`. Read `critic.json` (v2: technical layer + 14 visual dimensions with bands and evidence) and `dom_motion.json`. A style-frame gate re-composes weak shots before the animatic; the Re-Director / repair planner loop runs 2 passes (3rd only if both improved) and keeps the best. To re-direct a shot yourself: `nitaaq redirect request <project>` → write `redirection.json` → `nitaaq redirect apply <project> redirection.json`. Docs: `docs/STAGE.md`.
 
+**Film Director** (P3 — the film, not the shot): write `film_plan.json` before `shots.json` — the Film Question (feel / understand / look at), energy and camera arcs, 1–3 motifs and where they return, motion phrases across shots, sequences with contracts, the CTA payoff and *why* the ending is the conclusion. Pass `--film film_plan.json`. The pipeline then re-directs weak cuts with their neighbourhood, judges sequences and the film (`boundary_plan.json`, `film_critic.json`), and repairs film-level problems last. Never invent a motif the brief does not support. `NITAAQ_NO_FILM_DIRECTOR=1` = P2 exactly. Docs: `docs/FILM_DIRECTOR.md`.
+
 **Ad variants** (one brief → strategies × formats, each recomposed, not cropped):
 
 ```bash
