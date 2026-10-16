@@ -133,6 +133,22 @@ export async function produce(opts: ProduceOptions): Promise<ProduceResult> {
     spec = g.spec;
     if (!g.passed) log.stage('GATE', 'a style frame is still rejected after re-direction: the animatic proceeds, the critic will judge it (see style_frame_gate.json)', 'warn');
   }
+  // 0b. P3 Film Director: boundaries, sequences and the film are directed before any motion is rendered
+  if (isFullDirector(spec) && spec.stage && existsSync(join(opts.projectDir, 'stage_source.json')) && process.env.NITAAQ_NO_CRITIC !== '1') {
+    const { filmOn, filmPrepass } = await import('./film-director');
+    if (filmOn()) {
+      const pre = await perf.stage('film-director', async () => filmPrepass(spec, opts.projectDir));
+      if (pre.script) {
+        const src = JSON.parse(readFileSync(join(opts.projectDir, 'stage_source.json'), 'utf8')) as { brief: unknown; baseDir: string };
+        const direction = JSON.parse(readFileSync(join(opts.projectDir, 'direction.json'), 'utf8')) as unknown;
+        copyFileSync(join(opts.projectDir, 'shots.json'), join(opts.projectDir, 'shots.before-film.json'));
+        const { direct } = await import('./direct');
+        const r = await direct({ brief: src.brief, baseDir: src.baseDir, projectDir: opts.projectDir, shots: pre.script, direction });
+        spec = r.spec!;
+        log.stage('FILM', `film pre-pass applied (${pre.neighborhood?.steps.filter((x) => x.move).length ?? 0} boundary move(s), ${pre.subjects.filter((x) => x.choice !== 'all-at-once').length} sequence change(s), ${pre.global?.actions.length ?? 0} global action(s))`);
+      }
+    }
+  }
 
   // 1. validation + deterministic repair
   const rep = await perf.stage('validation', () => {

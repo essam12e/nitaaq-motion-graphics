@@ -4,6 +4,7 @@
  *   nitaaq create   <brief.json> [--shots shots.json] [--profile production] [--no-logo] [--out dir] [--name file] [--clean-voice]
  *   nitaaq direct   <brief.json> [--shots shots.json] [--project dir] [--no-logo]   → plan.json, storyboard.json, video.json
  *                   --direction direction.json: Stage mode (P1) — required when shots.json has a "stage"
+ *                   --film film_plan.json: P3 Film Director — the film plan (motifs, phrases, sequences, arcs); without it a plan is derived for analysis only
  *                   --shots: Full Director Mode (Claude-authored shot script → voice map → animatic → motion metrics → final)
  *   nitaaq produce  <projectDir|video.json> [--profile …] [--animatic]  → staged QC + repair + render + final QC
  *   nitaaq animatic <projectDir|video.json>                            → structural QC + sheets + half-size 15 fps animatic
@@ -155,7 +156,8 @@ async function main(): Promise<number> {
       const perf = new Perf();
       const shots = flag('shots') ? JSON.parse(readFileSync(resolve(flag('shots')!), 'utf8')) : undefined;
       const direction = flag('direction') ? JSON.parse(readFileSync(resolve(flag('direction')!), 'utf8')) : undefined;
-      const r = await direct({ brief, baseDir: dirname(resolve(file)), projectDir: flag('project') ? resolve(flag('project')!) : undefined, assumeNoLogo: flag('no-logo') === 'true', cleanVoice: flag('clean-voice') === 'true', perf, shots, direction });
+      const film = flag('film') ? JSON.parse(readFileSync(resolve(flag('film')!), 'utf8')) : undefined;
+      const r = await direct({ brief, baseDir: dirname(resolve(file)), projectDir: flag('project') ? resolve(flag('project')!) : undefined, assumeNoLogo: flag('no-logo') === 'true', cleanVoice: flag('clean-voice') === 'true', perf, shots, direction, film });
       if (r.status === 'needs-input') {
         out({ status: 'needs-input', questions: r.questions });
         return 2;

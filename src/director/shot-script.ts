@@ -52,6 +52,8 @@ export const ShotTransitionSchema = z.union([
     into: z.string().optional(),
     /** text-mask / depth-pass: seconds the carrying element keeps its ink while the transition opens (the frame never empties). */
     hold: z.number().min(0).max(0.8).optional(),
+    /** P3 cut (type "cut"): a deliberate hard cut — everything leaving holds to the cut frame, everything arriving is on it. A plain "cut" keeps the P1/P2 timing. */
+    hard: z.boolean().optional(),
   }),
 ]);
 
@@ -123,6 +125,9 @@ export const CastSchema = z
     /** How it leaves when it is not in the next shot. */
     exit: z.enum(['handoff', 'lift', 'fade', 'scale-down', 'fall', 'none']).optional(),
     sustain: z.enum(['still', 'drift', 'breathe', 'float']).optional(),
+    /** P3 motif: sits centred BEHIND another element of the shot (a halo / ground), `scale` × its width — placed after the composition, never moving it. */
+    behind: StageId.optional(),
+    scale: z.number().min(0.3).max(4).optional(),
   })
   .strict();
 export type CastEntry = z.infer<typeof CastSchema>;

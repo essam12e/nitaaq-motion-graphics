@@ -53,6 +53,7 @@ import { rhythmPlan, motionLanguage } from '../director/rhythm';
 import { loadHistory, recordHistory } from './film-history';
 import { validateShotScript, type ShotScript } from '../director/shot-script';
 import { compileStage } from '../stage/compiler';
+import { filmOn, filmScript, loadFilm } from './film-director';
 import { validateDirection, type Direction } from '../stage/direction';
 import { makeCanvasProfile } from '../layout/canvas';
 import { compileShots, plannedScenes, reapplyShotDecisions, applyShotSpec, type ResolvedShot, type CompileReport } from '../director/shot-compiler';
@@ -87,6 +88,8 @@ export async function direct(opts: {
   shots?: unknown;
   /** P1 Stage mode: the Creative Direction (direction.json content), written before the shot script. Required when shots.json has a `stage`. */
   direction?: unknown;
+  /** P3: the Film Plan (film_plan.json content). Without it a re-run reads the project's film_plan.json; none → P2 behaviour (a derived plan is used for analysis only). */
+  film?: unknown;
 }): Promise<DirectResult> {
   // Full Director Mode: validate the shot script before any work (a decision without a reason is an error)
   let script: ShotScript | null = null;
@@ -501,8 +504,7 @@ export async function direct(opts: {
       const H = spec.canvas.height;
       const stageAssets: Record<string, { kind: string; aspect?: number }> = {};
       for (const [id, a] of Object.entries(spec.assets)) stageAssets[id] = { kind: a.kind, ...(a.width && a.height ? { aspect: a.width / a.height } : {}) };
-      const st = compileStage({
-        script,
+      const stageInput = {
         timing: shotPlan.resolved.map((r) => ({ id: r.shot.id, start: r.start, duration: r.duration, transition: r.transition && r.transition.type !== 'cut' ? r.transition : null, beat: r.beat })),
         voice: voiceMapData,
         W,
@@ -512,7 +514,22 @@ export async function direct(opts: {
         assets: stageAssets,
         cta: brief.content.cta ? { text: brief.content.cta.text, button: brief.content.cta.button, url: brief.content.cta.url } : undefined,
         direction,
-      });
+      };
+      // P3: the Film Director re-compiles candidate boundaries / sequences from this (same timing, voice, canvas)
+      writeFileSync(join(projectDir, 'stage_compile_input.json'), JSON.stringify(stageInput));
+      // P3: the film plan shapes the script before it is compiled (energy, camera arc, motifs, phrases, contracts)
+      let stageScript = script;
+      if (filmOn()) {
+        const lf = loadFilm(projectDir, script as never, opts.film, { title: brief.title, cta: brief.content.cta?.text });
+        if (opts.film !== undefined) writeFileSync(join(projectDir, 'film_plan.json'), JSON.stringify(lf.film, null, 2));
+        if (!lf.authored) writeFileSync(join(projectDir, 'film_plan.derived.json'), JSON.stringify(lf.film, null, 2));
+        const fs = filmScript(script as never, lf.authored ? lf.film : null);
+        stageScript = fs.script as never;
+        if (fs.report) writeFileSync(join(projectDir, 'film_plan_report.json'), JSON.stringify({ ...fs.report, warnings: lf.warnings }, null, 2));
+        for (const w of lf.warnings) log.stage('FILM', w, 'warn');
+        if (fs.report) log.stage('FILM', `film plan (${lf.film.source}): ${fs.report.applied.length} change(s), ${fs.report.contracts.filter((c) => !c.kept).length} broken contract(s), ${fs.report.phrases.filter((p) => !p.complete).length} incomplete phrase(s)`);
+      }
+      const st = compileStage({ script: stageScript, ...stageInput });
       spec.stage = st.plan as unknown as VideoSpec['stage'];
       for (const sc of spec.scenes) if (sc.type === 'stage-shot') delete sc.motion.cameraPlan;
       writeFileSync(join(projectDir, 'direction.json'), JSON.stringify(opts.direction, null, 2));

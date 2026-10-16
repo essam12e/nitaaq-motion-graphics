@@ -137,6 +137,7 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
   const shots = script.shots;
   const T = timing;
   const shotEnd = (i: number) => T[i].start + T[i].duration;
+  const heightOfBox = (w: number, aspect: number) => (w * W) / Math.max(0.05, aspect) / H;
   // CTA enforcement (P1-H): the closing CTA shot shows the brief's CTA, unless the script says why not
   let ctaReport: StageReport['cta'] = { status: 'none', note: 'no CTA in the brief' };
   const synthetic: StageElementDecl[] = [];
@@ -209,7 +210,7 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
       const d = decls.get(c.id)!;
       return { id: c.id, kind: d.kind, role: c.role as CastRole, aspect: aspectOf(d), assetKind: d.asset ? input.assets[d.asset]?.kind : undefined, at: c.at, w: c.w ?? d.size?.w, chars: (d.text ?? d.title ?? '').length };
     };
-    const top = cast.filter((c) => !decls.get(c.id)!.parent);
+    const top = cast.filter((c) => !decls.get(c.id)!.parent && !c.behind);
     const reg = regionBox(regions[i], i);
     const safe = reg ? { x: reg.x + reg.w * 0.06, y: reg.y + reg.h * 0.08, w: reg.w * 0.88, h: reg.h * 0.84 } : input.safe;
     // composing inside a region: the region is the "canvas" (its own pixel size)
@@ -224,6 +225,17 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
     const out: Record<string, Box> = {};
     for (const [id, b] of Object.entries(comp.boxes)) out[id] = reg ? { x: reg.x + b.x * reg.w, y: reg.y + b.y * reg.h, w: b.w * reg.w, h: b.h * reg.h } : b;
     void safe;
+    // P3 motifs: an element BEHIND another (a halo, a ground) takes that element's centre after the composition
+    for (const c of cast.filter((x) => x.behind && !decls.get(x.id)!.parent)) {
+      const tb = out[c.behind!];
+      if (!tb) {
+        warn('BEHIND_TARGET_MISSING', `"${c.id}" is cast behind "${c.behind}", which is not composed in this shot`, s.id);
+        out[c.id] = { x: 0.5, y: 0.5, w: 0.3, h: heightOfBox(0.3, aspectOf(decls.get(c.id)!)) };
+        continue;
+      }
+      const w = Math.min(1.4, (c.w ?? tb.w * (c.scale ?? 1.6)));
+      out[c.id] = { x: tb.x, y: tb.y, w, h: heightOfBox(w, aspectOf(decls.get(c.id)!)) };
+    }
     // children inside their parent's box
     const parents = new Set(cast.map((c) => decls.get(c.id)!.parent).filter((p): p is string => Boolean(p)));
     for (const p of parents) {
@@ -337,6 +349,12 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
   const enterIds = new Map<string, string>(); // `${id}@${shot}` → choreo id of its entrance
   const exitIds = new Map<string, string>();
   const boundary = (i: number) => (T[i].transition ? shotEnd(i) - T[i].transition.duration / 2 : shotEnd(i));
+  // P3-D: a deliberate hard cut ({ type: 'cut', hard: true }; a plain "cut" keeps the P2 timing) — everything leaving is on screen until the cut frame, everything arriving is
+  // already there on it (a cut never passes through an empty frame; "a good cut beats a bad morph")
+  const cutAfter = (i: number) => {
+    const tr = shots[i]?.transitionOut;
+    return i < shots.length - 1 && typeof tr === 'object' && tr !== null && (tr as { type?: string }).type === 'cut' && (tr as { hard?: boolean }).hard === true;
+  };
 
   // motion-chain overrides per shot: enter / exit per element
   const evOf = (i: number, el: string, action: string) => shots[i].motionChain.find((e) => e.element === el && e.action === action);
@@ -391,13 +409,18 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
       const s0 = scaleIn(id, i);
       const order = compReports[i].readingOrder.indexOf(id);
       const ev = evOf(i, id, 'enter');
-      const enterAt = i === 0 ? 0.25 + Math.max(0, order) * 0.16 : T[i].start + 0.05 + Math.max(0, order) * 0.14;
+      const enterAt = i === 0 ? 0.25 + Math.max(0, order) * 0.16 : cutAfter(i - 1) ? boundary(i - 1) - 0.02 : T[i].start + 0.05 + Math.max(0, order) * 0.14;
       const at = ev ? placeOf(i, ev, enterAt, `enter ${id}`) : enterAt;
       const style = (ev?.style as CastEntry['enter']) ?? cast.enter ?? (d.kind === 'line' ? 'draw' : d.kind === 'text' ? 'rise' : cast.role === 'background' ? 'fade' : 'scale');
       const oT = tgtOpacity(id, i);
       const eid = uid(`in_${k}_${i}`);
       enterIds.set(`${id}@${i}`, eid);
-      if (broughtByMorph) {
+      const onCut = i > 0 && cutAfter(i - 1) && !ev;
+      if (onCut) {
+        // arrives ON the cut: visible at the cut frame, a short settle (no fade from nothing)
+        act({ id: eid, target: k, at: r3(boundary(i - 1) - 0.02), dur: 0.42, spring: { bounce: 0.12, visualDuration: 0.42 }, props: { x: b0.x, y: b0.y, s: s0 }, from: { x: b0.x, y: b0.y, s: s0 * 0.965 } });
+        act({ id: uid(`fade_${k}_${i}`), target: k, at: r3(boundary(i - 1) - 0.02), dur: 0.02, ease: 'linear', props: { o: oT }, from: { o: 0 } });
+      } else if (broughtByMorph) {
         // appears exactly where the morphing element arrives (the source hides at the same instant)
         act({ id: eid, target: k, at: r3(boundary(i - 1) + 0.42), dur: 0.08, ease: 'linear', props: { o: oT }, from: { o: 0 } });
       } else if (style === 'none') {
@@ -452,7 +475,8 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
         const vel = xev?.velocity ?? 0.6;
         const bj = boxes[j][id];
         const lead = 0.5 + 0.06 * Math.max(0, compReports[j].readingOrder.length - 1 - compReports[j].readingOrder.indexOf(id));
-        const xAt = xev ? placeOf(j, xev, boundary(j) - lead, `exit ${id}`) : boundary(j) - lead;
+        const cutOut = cutAfter(j) && !xev;
+        const xAt = cutOut ? r3(boundary(j) - 0.03) : xev ? placeOf(j, xev, boundary(j) - lead, `exit ${id}`) : boundary(j) - lead;
         const xid = uid(`out_${k}_${j}`);
         exitIds.set(`${id}@${j}`, xid);
         const props: Record<string, number> = { o: 0 };
@@ -468,7 +492,8 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
         } else if (xs === 'none') {
           ease = 'linear';
         } else ease = 'ease-in-out-cubic';
-        act({ id: xid, target: k, ...(typeof xAt === 'number' ? { at: xAt } : { trigger: xAt }), dur: xs === 'none' ? 0.01 : 0.5, ease, props } as Omit<Act, 'type'>);
+        if (cutOut) act({ id: xid, target: k, at: xAt as number, dur: 0.01, ease: 'linear', props: { o: 0 } } as Omit<Act, 'type'>);
+        else act({ id: xid, target: k, ...(typeof xAt === 'number' ? { at: xAt } : { trigger: xAt }), dur: xs === 'none' ? 0.01 : 0.5, ease, props } as Omit<Act, 'type'>);
       }
       i = j + 1;
     }
@@ -476,7 +501,7 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
 
   // ── energy handoffs between shots: an exiting element hands its energy to the next shot's hero
   shots.forEach((s, i) => {
-    if (i === shots.length - 1) return;
+    if (i === shots.length - 1 || cutAfter(i)) return;
     const outs = (s.cast ?? []).filter((c) => exitIds.has(`${c.id}@${i}`) && !on(c.id, i + 1));
     const xev = s.motionChain.find((e) => e.action === 'exit' && (!e.style || e.style === 'handoff'));
     const src = outs.find((c) => c.role === 'hero') ?? outs[0];
@@ -524,7 +549,8 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
     const b = boundary(i);
     const next = shots[i + 1].id;
     if (!bp) {
-      if (type) transitions.push({ from: s.id, to: next, requested: type, status: 'legacy', kind: type, t0: r3(b - (T[i].transition?.duration ?? 0) / 2), t1: r3(b + (T[i].transition?.duration ?? 0) / 2), reason });
+      if (type === 'cut') transitions.push({ from: s.id, to: next, requested: 'cut', status: 'object', kind: 'cut', t0: r3(b - 0.12), t1: r3(b + 0.12), reason });
+      else if (type) transitions.push({ from: s.id, to: next, requested: type, status: 'legacy', kind: type, t0: r3(b - (T[i].transition?.duration ?? 0) / 2), t1: r3(b + (T[i].transition?.duration ?? 0) / 2), reason });
       return;
     }
     if (!bp.ok) {

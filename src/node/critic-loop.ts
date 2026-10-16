@@ -18,6 +18,7 @@ import { critique, type CriticReport } from '../qc/critic';
 import { buildTimeline } from '../core/timeline';
 import { planRepairs, sideEffects, repairRanges, type RepairPatch, type RepairMemory, type RepairAttempt } from '../stage/repair-planner';
 import { applyRedirection } from '../stage/redirection';
+import { filmAblations, filmEvaluate, filmOn, globalInLoop, measuredBoundaryRepairs, neighborhoodAfterRepair } from './film-director';
 import { runStageProbes } from './stage-probes';
 import { runTransitionQuality } from './transition-quality';
 import type { StageProbeSample } from '../qc/stage-probes';
@@ -129,10 +130,17 @@ export async function criticLoop(opts: {
   let critic = await evaluateStage(spec, projectDir, '.pass0');
   snapshot(projectDir, 0, opts.video);
   const passes: RepairPass[] = [{ pass: 0, verdict: critic.verdict.status, overall: critic.overall, scores: critic.scores, issues: critic.issues.length, patches: [] }];
+  // P3: the film is judged with the shots (boundaries, sequences, film critic); the best version is chosen on it
+  const filmP3 = filmOn();
+  let filmEval = filmEvaluate(spec, projectDir, critic, '.pass0');
+  const vscore = (c: CriticReport, f: typeof filmEval) => (filmP3 && f ? f.versionScore : c.overall);
+  const filmTried = new Set<string>();
+  const globalDone = new Set<string>();
+  const filmLog: { pass: number; boundaryMoves: { boundary: string; move: string; why: string }[]; global: string[]; versionScore: number | null; film: number | null }[] = [{ pass: 0, boundaryMoves: [], global: [], versionScore: filmEval?.versionScore ?? null, film: filmEval?.critic?.overall ?? null }];
   log.stage('CRITIC', `pass 0: ${critic.verdict.status} · visual ${critic.overall}/10 (${critic.visual.band}) · technical ${critic.technical.pass ? 'pass' : 'FAIL'} · ${critic.issues.length} issue(s)`);
   const memFile = join(projectDir, 'repair_memory.json');
   const memory: RepairMemory = readJson<RepairMemory>(memFile) ?? { version: 1, attempts: [] };
-  let best = { pass: 0, critic, reason: 'the first evaluation' };
+  let best = { pass: 0, critic, reason: 'the first evaluation', v: vscore(critic, filmEval) };
   let stopReason = repairOn ? '' : 'repair disabled (NITAAQ_NO_REPAIR)';
   const gains: number[] = [];
   // per-shot undo (P2-M): a repair that made ITS shot worse is taken back on the next pass, while the
@@ -170,14 +178,37 @@ export async function criticLoop(opts: {
     undo = [];
     const plan0 = spec.stage as unknown as StagePlan;
     const rp = consolidate ? { redirection: { version: 1, source: 'deterministic', pass, shots: [] } as never, selected: [] as ReturnType<typeof planRepairs>['selected'], considered: [], untreated: [] } : planRepairs({ plan: plan0, script: script as never, critic: planCritic, memory, pass, redirector: redirectorOn });
-    writeFileSync(join(projectDir, `repair_plan.pass${pass}.json`), JSON.stringify({ undone, considered: rp.considered, untreated: rp.untreated, selected: rp.selected.map((c) => ({ id: c.id, label: c.label, cost: c.cost, gain: c.gain, expected: c.directive.expected, risk: c.risk })) }, null, 2));
-    if (!rp.selected.length && !undone.length) {
+    // P3: a failing cut is the Transition Re-Director's (the boundary and its neighbourhood), not a P2 hold / overlap patch
+    if (filmP3 && filmAblations().transitionRedirector) rp.selected = rp.selected.filter((c) => !/:(hold:|overlap:|shorten$)/.test(c.id));
+    if (rp.selected.length) rp.redirection = { ...rp.redirection, shots: rp.selected.map((c) => c.directive) };
+    let boundaryMoves: { boundary: string; move: string; why: string }[] = [];
+    let globalActions: string[] = [];
+    let filmScriptNext: Record<string, unknown> | null = null;
+    if (filmP3 && !consolidate) {
+      const mb = measuredBoundaryRepairs(projectDir, plan0, script as never, rp.selected.map((c) => c.shot), filmTried);
+      if (mb.script) {
+        filmScriptNext = mb.script as never;
+        boundaryMoves = mb.moves;
+      } else if (!rp.selected.length && !undone.length) {
+        // hierarchical repair: the film level only when technical, shot and boundary levels have nothing left
+        const g = globalInLoop(projectDir, plan0, script as never, critic, globalDone);
+        if (g.script) {
+          filmScriptNext = g.script as never;
+          globalActions = g.actions.map((a) => `${a.code} [${a.shots.join(', ')}]: ${a.change}`);
+        }
+      }
+    }
+    writeFileSync(join(projectDir, `repair_plan.pass${pass}.json`), JSON.stringify({ undone, considered: rp.considered, untreated: rp.untreated, selected: rp.selected.map((c) => ({ id: c.id, label: c.label, cost: c.cost, gain: c.gain, expected: c.directive.expected, risk: c.risk })), boundaryMoves, globalActions }, null, 2));
+    if (!rp.selected.length && !undone.length && !filmScriptNext) {
       stopReason = `no untried repair for the remaining issues (${rp.untreated.join(', ') || 'minor only'}) — left for Claude / the user`;
       log.stage('CRITIC', `pass ${pass}: ${stopReason}`);
       break;
     }
     writeFileSync(join(projectDir, `redirection.pass${pass}.json`), JSON.stringify(rp.redirection, null, 2));
-    const { script: next, report: applied } = rp.selected.length ? applyRedirection(script as never, rp.redirection) : { script, report: { applied: [], mapped: [], rejected: [], intent: [], timing: false } as unknown as ReturnType<typeof applyRedirection>['report'] };
+    const base0 = filmScriptNext ?? script;
+    let { script: next, report: applied } = rp.selected.length ? applyRedirection(base0 as never, rp.redirection) : { script: base0, report: { applied: [], mapped: [], rejected: [], intent: [], timing: false } as unknown as ReturnType<typeof applyRedirection>['report'] };
+    // P3: the shots a repair changed make their boundaries dirty — the neighbourhood is re-directed before render
+    if (filmP3 && rp.selected.length) next = neighborhoodAfterRepair(projectDir, spec.stage as unknown as StagePlan, next as never, rp.selected.map((c) => c.shot), `.pass${pass}`) as never;
     writeFileSync(join(projectDir, `redirection_apply.pass${pass}.json`), JSON.stringify(applied, null, 2));
     for (const c of rp.selected) log.stage('REPAIR', `[${c.shot}] ${c.label} (${c.cost}) — ${c.directive.expected ?? c.directive.diagnosis}`);
     for (const r of applied.rejected) log.stage('REPAIR', `rejected [${r.shot}] ${r.asked}: ${r.why}`);
@@ -188,6 +219,10 @@ export async function criticLoop(opts: {
     const r = await direct({ brief: opts.brief, baseDir: opts.baseDir, projectDir, shots: next, direction: direction ?? undefined });
     spec = r.spec!;
     const patches: RepairPatch[] = [...rp.selected.map((c) => ({ shot: c.shot, code: c.directive.issues.join('+'), change: c.label, timing: Boolean(c.directive.timing) })), ...undone.map((u) => ({ shot: u.shot, code: 'UNDO', change: `undo: ${u.why}`, timing: false }))];
+    for (const m of boundaryMoves) for (const sh of m.boundary.split('->')) patches.push({ shot: sh, code: 'BOUNDARY', change: `${m.boundary}: ${m.move}`, timing: false });
+    for (const a of globalActions) patches.push({ shot: a.slice(a.indexOf('[') + 1, a.indexOf(']')).split(', ')[0], code: 'FILM', change: a, timing: false });
+    for (const m of boundaryMoves) log.stage('FILM', `${m.boundary}: ${m.move} — ${m.why}`);
+    for (const a of globalActions) log.stage('FILM', `global ${a}`);
     let render: RepairPass['render'] = { mode: 'none', ranges: [], framesRendered: 0, framesTotal: 0, ms: 0 };
     if (opts.video && existsSync(opts.video)) {
       const profile = opts.profile ?? 'animatic';
@@ -219,6 +254,8 @@ export async function criticLoop(opts: {
     }
     const prev = critic;
     critic = await evaluateStage(spec, projectDir, `.pass${pass}`);
+    filmEval = filmEvaluate(spec, projectDir, critic, `.pass${pass}`);
+    filmLog.push({ pass, boundaryMoves, global: globalActions, versionScore: filmEval?.versionScore ?? null, film: filmEval?.critic?.overall ?? null });
     snapshot(projectDir, pass, opts.video);
     const fx = sideEffects(prev, critic, [...rp.selected.map((c) => c.shot), ...undone.map((u) => u.shot)]);
     for (const c of rp.selected) {
@@ -239,12 +276,15 @@ export async function criticLoop(opts: {
     log.stage('CRITIC', `pass ${pass}: ${critic.verdict.status} · visual ${critic.overall}/10 (${fx.gained >= 0 ? '+' : ''}${fx.gained}) · resolved ${fx.resolved.length}, new ${fx.introduced.length}${fx.sideEffects.length ? ` · side effects: ${fx.sideEffects.join('; ')}` : ''}`);
     gains.push(fx.gained);
     // a version that passes the technical layer beats one that fails it (unless it is clearly worse to look at)
+    // (P3: the version score — shots, sequences, boundaries, the weakest cut and the film — replaces the shot average)
+    const v = vscore(critic, filmEval);
+    const label = filmP3 && filmEval ? `version ${v} (visual ${critic.overall}, film ${filmEval.critic?.overall ?? '—'})` : `visual ${critic.overall}`;
     const techWin = critic.technical.pass && !best.critic.technical.pass && critic.overall >= best.critic.overall - 0.5;
-    if (techWin) best = { pass, critic, reason: `fixes the technical layer (visual ${critic.overall})` };
-    else if (critic.overall > best.critic.overall + 0.001 && (critic.technical.pass || !best.critic.technical.pass)) best = { pass, critic, reason: `highest visual score (${critic.overall}) with technical ${critic.technical.pass ? 'pass' : 'fail'}` };
+    if (techWin) best = { pass, critic, reason: `fixes the technical layer (${label})`, v };
+    else if (v > best.v + 0.001 && (critic.technical.pass || !best.critic.technical.pass)) best = { pass, critic, reason: `highest ${filmP3 && filmEval ? 'version' : 'visual'} score (${label}) with technical ${critic.technical.pass ? 'pass' : 'fail'}`, v };
     // a tie on the (rounded, capped) overall is broken by what the viewer is shown: fewer visible problems
-    else if (Math.abs(critic.overall - best.critic.overall) <= 0.05 && (critic.technical.pass || !best.critic.technical.pass) && issueWeight(critic) <= issueWeight(best.critic) - 0.5)
-      best = { pass, critic, reason: `same visual score (${critic.overall}), fewer problems on screen (${issueWeight(best.critic)} → ${issueWeight(critic)})` };
+    else if (Math.abs(v - best.v) <= 0.05 && (critic.technical.pass || !best.critic.technical.pass) && issueWeight(critic) <= issueWeight(best.critic) - 0.5)
+      best = { pass, critic, reason: `same score (${label}), fewer problems on screen (${issueWeight(best.critic)} → ${issueWeight(critic)})`, v };
     // a technical failure still open keeps the loop going within the pass budget (the next candidate is tried)
     const techOpen = !critic.technical.pass && pass < base;
     // a shot to take back keeps the loop going for one more pass (within the budget, or the consolidation pass)
@@ -274,6 +314,9 @@ export async function criticLoop(opts: {
     writeFileSync(join(projectDir, 'critic.json'), JSON.stringify(critic, null, 2));
     log.stage('CRITIC', `kept pass ${best.pass} (${best.reason}); pass ${lastPass} was not better`);
   }
-  writeFileSync(join(projectDir, 'repair_log.json'), JSON.stringify({ version: 2, maxPasses: base, passes, best: { pass: best.pass, reason: best.reason }, stop: stopReason, redirector: redirectorOn, repair: repairOn }, null, 2));
+  writeFileSync(join(projectDir, 'repair_log.json'), JSON.stringify({ version: 2, maxPasses: base, passes, best: { pass: best.pass, reason: best.reason }, stop: stopReason, redirector: redirectorOn, repair: repairOn, film: filmP3 ? filmLog : null }, null, 2));
+  if (filmP3 && best.pass !== lastPass) {
+    for (const f of ['boundary_plan', 'film_critic']) if (existsSync(join(projectDir, `${f}.pass${best.pass}.json`))) copyFileSync(join(projectDir, `${f}.pass${best.pass}.json`), join(projectDir, `${f}.json`));
+  }
   return { passes, critic, best: { pass: best.pass, reason: best.reason } };
 }
