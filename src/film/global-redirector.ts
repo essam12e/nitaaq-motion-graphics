@@ -73,6 +73,7 @@ export function globalRedirect(inp: { plan: StagePlan; script: ScriptObj; film: 
   const codes = new Set(report.issues.map((i) => i.code));
   const want = (c: string) => codes.has(c as never) && (!inp.only || inp.only.includes(c));
   const last = script.shots[script.shots.length - 1];
+  const kinds = new Map((script.stage?.elements ?? []).map((e) => [e.id, e.kind]));
 
   // ── CTA payoff: the end receives something that began the film
   if (want('WEAK_PAYOFF') && budget() > 0) {
@@ -110,7 +111,10 @@ export function globalRedirect(inp: { plan: StagePlan; script: ScriptObj; film: 
   // ── repetition: layouts, transitions, camera
   if (want('REPETITIVE_FILM') && budget() > 0) {
     const mem = filmMemory(plan, film);
-    const reps = repetitions(mem, film).filter((r) => !r.intentional);
+    const prio: Record<string, number> = { layout: 0, camera: 1, transition: 2 };
+    const reps = repetitions(mem, film)
+      .filter((r) => !r.intentional)
+      .sort((a, b) => (prio[a.what] ?? 9) - (prio[b.what] ?? 9));
     for (const r of reps) {
       if (budget() <= 0) break;
       if (r.what === 'layout' && inp.critic) {
@@ -133,21 +137,41 @@ export function globalRedirect(inp: { plan: StagePlan; script: ScriptObj; film: 
         let n = 0;
         for (const { s, i } of idx.slice(1)) {
           if (n >= 2 || budget() <= 0) break;
+          // another language from what is on screen: an element both shots share continues; else A's hero
+          // carries the cut by its kind (a line of type opens like a mask, a product / card passes the lens,
+          // a shape becomes the world); a hard cut only when the habit is not already a cut
           const shared = (s.cast ?? []).map((c) => c.id).find((id) => (script.shots[i + 1].cast ?? []).some((c) => c.id === id) && !/cursor|logo/.test(id));
-          s.transitionOut = shared ? { type: 'shared', element: shared } : { type: 'cut', hard: true };
+          const hero = (s.cast ?? []).find((c) => c.role === 'hero')?.id;
+          const hk = hero ? kinds.get(hero) : undefined;
+          const byKind = hero && hk === 'text' ? 'text-mask' : hero && (hk === 'ui' || hk === 'image' || hk === 'card') ? 'depth-pass' : hero && hk === 'shape' ? 'expand-to-background' : null;
+          const next: { type: string; element?: string; hard?: boolean } | null = shared && r.value !== 'shared' ? { type: 'shared', element: shared } : byKind && byKind !== r.value ? { type: byKind, element: hero } : r.value !== 'cut' ? { type: 'cut', hard: true } : null;
+          if (!next) continue;
+          s.transitionOut = next;
+          s.transitionReason = `film level: ${r.value} on every cut reads as a habit; ${next.type}${next.element ? ` (${next.element})` : ''} carries this one`;
           touched.add(s.id);
           n++;
-          actions.push({ code: 'REPETITIVE_FILM', level: 'film', shots: [s.id], change: `transition ${r.value} → ${shared ? `shared (${shared})` : 'cut'}`, why: `${r.value} is ${Math.round(r.share * 100)}% of the cuts: the language becomes a habit`, cost: 'high', intentChanges: [{ what: 'transition', why: 'varied at film level (repetition)' }] });
+          actions.push({ code: 'REPETITIVE_FILM', level: 'film', shots: [s.id], change: `transition ${r.value} → ${next.type}${next.element ? ` (${next.element})` : ''}`, why: `${r.value} is ${Math.round(r.share * 100)}% of the cuts: the language becomes a habit`, cost: 'high', intentChanges: [{ what: 'transition', why: 'varied at film level (repetition)' }] });
         }
       } else if (r.what === 'camera') {
-        const moves = (inp.critic?.measures.cameraMoves ?? []).filter((m) => !touched.has(m.shot)).sort((a, b) => a.score - b.score);
-        const m = moves[0];
-        if (!m) continue;
-        const s = script.shots.find((x) => x.id === m.shot);
-        if (!s) continue;
-        s.camera = 'static';
-        touched.add(m.shot);
-        actions.push({ code: 'REPETITIVE_FILM', level: 'film', shots: [m.shot], change: `camera ${r.value} → still in ${m.shot} (its move scored ${m.score}: ${m.note})`, why: `the same move (${r.value}) in ${Math.round(r.share * 100)}% of the film`, cost: 'very-high', intentChanges: [{ what: 'camera reason', why: `${m.shot}'s move was the least justified; the camera arc keeps the others` }] });
+        let moves = (inp.critic?.measures.cameraMoves ?? []).filter((m) => !touched.has(m.shot)).sort((a, b) => a.score - b.score);
+        if (!moves.length) {
+          // no measurement yet (before the animatic): the camera arc decides — keep the move on the planned
+          // peak, still the others where the arc says "still", else every other moving shot
+          const curve = film.arcs.energy.curve;
+          const peak = Object.entries(curve).sort((a, b) => b[1] - a[1])[0]?.[0];
+          const stillByArc = new Set(film.arcs.camera.stages.filter((st) => /still|static/i.test(st.behavior)).flatMap((st) => st.shots));
+          const moving = script.shots.filter((x) => x.camera && x.camera !== 'static' && x.id !== peak && !touched.has(x.id));
+          const pick = moving.filter((x) => stillByArc.has(x.id));
+          moves = (pick.length ? pick : moving.filter((_, k) => k % 2 === 1)).slice(0, 2).map((x) => ({ shot: x.id, score: 0, note: stillByArc.has(x.id) ? 'the camera arc says still here' : 'one of a run of identical moves', replaceable: true, visible: true }) as never);
+        }
+        for (const m of moves.slice(0, 2)) {
+          if (budget() <= 0) break;
+          const s = script.shots.find((x) => x.id === m.shot);
+          if (!s) continue;
+          s.camera = 'static';
+          touched.add(m.shot);
+          actions.push({ code: 'REPETITIVE_FILM', level: 'film', shots: [m.shot], change: `camera ${r.value} → still in ${m.shot} (${m.score ? `its move scored ${m.score}: ` : ''}${m.note})`, why: `the same move (${r.value}) in ${Math.round(r.share * 100)}% of the film`, cost: 'very-high', intentChanges: [{ what: 'camera reason', why: `${m.shot}'s move was the least justified; the camera arc keeps the others` }] });
+        }
       } else skipped.push({ code: 'REPETITIVE_FILM', why: `${r.what} "${r.value}" repeated — no film-level answer for ${r.what} (left to the shot level)` });
     }
   }
