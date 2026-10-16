@@ -183,10 +183,35 @@ function TextMaskWindow({ mask, el, c, cam, t, byId, plan }: { mask: StagePlan['
   const fontPx = (el.content.fontU ?? 8) * v.canvas.u * st.s * pm.a;
   const id = `stage-mask-${el.key}`;
   const words = (el.content.text ?? '').split(/\s+/).filter(Boolean);
-  const lines = words.length > 3 ? [words.slice(0, Math.ceil(words.length / 2)).join(' '), words.slice(Math.ceil(words.length / 2)).join(' ')] : [words.join(' ')];
+  // the window keeps the lines the text had on screen (same box, ≈ 0.5 em per Arabic character, as the
+  // compiler sizes it): the ink becomes the window without re-flowing or jumping out of the frame
+  const boxPx = el.box.w * W * st.s * pm.a;
+  const perLine = Math.max(4, Math.floor(boxPx / Math.max(1, fontPx * 0.5)));
+  const lines: string[] = [];
+  for (const w of words) {
+    const last = lines[lines.length - 1];
+    if (last !== undefined && (last + ' ' + w).length <= perLine) lines[lines.length - 1] = `${last} ${w}`;
+    else lines.push(w);
+  }
   const reveals = mask.reveals.map((r) => byId.get(r)).filter((x): x is StageElement => Boolean(x && !x.parent)).sort((a, b) => a.z - b.z);
+  // P2-G: outside the glyphs the frame takes the letters' colour (a brand colour that reads against the
+  // next shot), so the growing window is always a shape on a full frame — never a pale frame with pale
+  // glyphs over it (the P1 visual void)
+  const pal = v.tokens.palette as unknown as Record<string, string>;
+  const bg = pal.background;
+  const plate = [pal.primary, pal.text, '#0B0B0F'].find((col) => col && /^#/.test(col) && /^#/.test(bg) && contrastRatio(col, bg) >= 2.5) ?? '#0B0B0F';
+  const plateO = Math.max(0, Math.min(1, (t - mask.from) / 0.22, (mask.to - t) / 0.16));
   return (
     <>
+      <AbsoluteFill data-qc="stage-mask-plate" style={{ background: plate, opacity: plateO }} />
+      {/* as the plate lifts, the next shot is already whole underneath (the window opens, nothing pops) */}
+      {t > mask.to - 0.16 ? (
+        <AbsoluteFill style={{ opacity: 1 - plateO }}>
+          {reveals.map((e) => (
+            <StageEl key={e.id} el={e} c={c} cam={cam} byId={byId} plan={plan} />
+          ))}
+        </AbsoluteFill>
+      ) : null}
       <svg width={W} height={H} style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }} aria-hidden>
         <defs>
           <clipPath id={id} clipPathUnits="userSpaceOnUse">

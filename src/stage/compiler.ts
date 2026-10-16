@@ -571,8 +571,11 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
       // the world is this element until the end of the next shot (it leaves with that shot unless cast again)
       const nxt = i + 1;
       if (!on(el, nxt)) {
-        const endAt = nxt < shots.length - 1 ? boundary(nxt) - 0.3 : null;
-        if (endAt !== null) act({ id: uid(`world_out_${k}`), target: k, at: endAt, dur: 0.6, ease: 'ease-in-out-cubic', props: { o: 0 } });
+        // when that shot leaves through a text-mask, this world is the OUTSIDE of the glyph window: it stays
+        // until the glyphs have opened the frame (leaving earlier empties the frame mid-cut — the P1 void)
+        const masked = bplan[nxt]?.kind === 'text-mask' && bplan[nxt]?.ok;
+        const endAt = nxt < shots.length - 1 ? (masked ? boundary(nxt) + 0.6 : boundary(nxt) - 0.3) : null;
+        if (endAt !== null) act({ id: uid(`world_out_${k}`), target: k, at: endAt, dur: masked ? 0.28 : 0.6, ease: 'ease-in-out-cubic', props: { o: 0 } });
       }
     } else if (bp.kind === 'text-mask') {
       // the text stops being ink and becomes the window: it grows until its glyphs open the whole frame

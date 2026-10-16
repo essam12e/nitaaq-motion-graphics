@@ -132,27 +132,49 @@ export async function criticLoop(opts: {
   let best = { pass: 0, critic, reason: 'the first evaluation' };
   let stopReason = repairOn ? '' : 'repair disabled (NITAAQ_NO_REPAIR)';
   const gains: number[] = [];
+  // per-shot undo (P2-M): a repair that made ITS shot worse is taken back on the next pass, while the
+  // repairs of the other shots in the same pass are kept (a pass is not all-or-nothing)
+  type ShotScript = { shots: { id: string }[] } & Record<string, unknown>;
+  let undo: { shot: string; why: string }[] = [];
+  let undoFrom: { script: ShotScript; critic: CriticReport } | null = null;
   for (let pass = 1; repairOn; pass++) {
     const allowed = pass <= base || (pass === base + 1 && gains.length >= 2 && gains.every((g) => g >= 0.3));
-    if (!allowed) {
+    // past the budget, one last pass may only take back the repairs that hurt their shot (nothing new is tried)
+    const consolidate = !allowed && undo.length > 0 && pass === base + 1;
+    if (!allowed && !consolidate) {
       stopReason ||= `pass limit (${base}${gains.length ? `; gains ${gains.join(', ')}` : ''})`;
       break;
     }
-    if (critic.verdict.status === 'accept') {
+    if (critic.verdict.status === 'accept' && !undo.length) {
       stopReason = 'the critic accepts the film';
       break;
     }
-    const script = readJson<{ shots: never[] } & Record<string, unknown>>(join(projectDir, 'shots.json'))!;
+    const script = readJson<ShotScript>(join(projectDir, 'shots.json'))!;
+    // the critic the planner reads: for an undone shot, the issues it had BEFORE the failed repair
+    let planCritic = critic;
+    if (undo.length && undoFrom) {
+      const ids = new Set(undo.map((u) => u.shot));
+      for (const u of undo) {
+        const k = script.shots.findIndex((s) => s.id === u.shot);
+        const was = undoFrom.script.shots.find((s) => s.id === u.shot);
+        if (k >= 0 && was) script.shots[k] = was;
+        log.stage('REPAIR', `undo [${u.shot}] ${u.why}`);
+      }
+      const from = undoFrom.critic;
+      planCritic = { ...critic, issues: [...critic.issues.filter((i) => !i.shot || !ids.has(i.shot)), ...from.issues.filter((i) => i.shot && ids.has(i.shot))], shots: critic.shots.map((s) => (ids.has(s.shot) ? from.shots.find((x) => x.shot === s.shot) ?? s : s)) };
+    }
+    const undone = undo;
+    undo = [];
     const plan0 = spec.stage as unknown as StagePlan;
-    const rp = planRepairs({ plan: plan0, script: script as never, critic, memory, pass, redirector: redirectorOn });
-    writeFileSync(join(projectDir, `repair_plan.pass${pass}.json`), JSON.stringify({ considered: rp.considered, untreated: rp.untreated, selected: rp.selected.map((c) => ({ id: c.id, label: c.label, cost: c.cost, gain: c.gain, expected: c.directive.expected, risk: c.risk })) }, null, 2));
-    if (!rp.selected.length) {
+    const rp = consolidate ? { redirection: { version: 1, source: 'deterministic', pass, shots: [] } as never, selected: [] as ReturnType<typeof planRepairs>['selected'], considered: [], untreated: [] } : planRepairs({ plan: plan0, script: script as never, critic: planCritic, memory, pass, redirector: redirectorOn });
+    writeFileSync(join(projectDir, `repair_plan.pass${pass}.json`), JSON.stringify({ undone, considered: rp.considered, untreated: rp.untreated, selected: rp.selected.map((c) => ({ id: c.id, label: c.label, cost: c.cost, gain: c.gain, expected: c.directive.expected, risk: c.risk })) }, null, 2));
+    if (!rp.selected.length && !undone.length) {
       stopReason = `no untried repair for the remaining issues (${rp.untreated.join(', ') || 'minor only'}) — left for Claude / the user`;
       log.stage('CRITIC', `pass ${pass}: ${stopReason}`);
       break;
     }
     writeFileSync(join(projectDir, `redirection.pass${pass}.json`), JSON.stringify(rp.redirection, null, 2));
-    const { script: next, report: applied } = applyRedirection(script as never, rp.redirection);
+    const { script: next, report: applied } = rp.selected.length ? applyRedirection(script as never, rp.redirection) : { script, report: { applied: [], mapped: [], rejected: [], intent: [], timing: false } as unknown as ReturnType<typeof applyRedirection>['report'] };
     writeFileSync(join(projectDir, `redirection_apply.pass${pass}.json`), JSON.stringify(applied, null, 2));
     for (const c of rp.selected) log.stage('REPAIR', `[${c.shot}] ${c.label} (${c.cost}) — ${c.directive.expected ?? c.directive.diagnosis}`);
     for (const r of applied.rejected) log.stage('REPAIR', `rejected [${r.shot}] ${r.asked}: ${r.why}`);
@@ -162,7 +184,7 @@ export async function criticLoop(opts: {
     const direction = readJson<unknown>(join(projectDir, 'direction.json'));
     const r = await direct({ brief: opts.brief, baseDir: opts.baseDir, projectDir, shots: next, direction: direction ?? undefined });
     spec = r.spec!;
-    const patches: RepairPatch[] = rp.selected.map((c) => ({ shot: c.shot, code: c.directive.issues.join('+'), change: c.label, timing: Boolean(c.directive.timing) }));
+    const patches: RepairPatch[] = [...rp.selected.map((c) => ({ shot: c.shot, code: c.directive.issues.join('+'), change: c.label, timing: Boolean(c.directive.timing) })), ...undone.map((u) => ({ shot: u.shot, code: 'UNDO', change: `undo: ${u.why}`, timing: false }))];
     let render: RepairPass['render'] = { mode: 'none', ranges: [], framesRendered: 0, framesTotal: 0, ms: 0 };
     if (opts.video && existsSync(opts.video)) {
       const profile = opts.profile ?? 'animatic';
@@ -195,15 +217,20 @@ export async function criticLoop(opts: {
     const prev = critic;
     critic = await evaluateStage(spec, projectDir, `.pass${pass}`);
     snapshot(projectDir, pass, opts.video);
-    const fx = sideEffects(prev, critic, rp.selected.map((c) => c.shot));
+    const fx = sideEffects(prev, critic, [...rp.selected.map((c) => c.shot), ...undone.map((u) => u.shot)]);
     for (const c of rp.selected) {
-      const sb = prev.shots.find((x) => x.shot === c.shot)?.overall;
+      const sb = planCritic.shots.find((x) => x.shot === c.shot)?.overall;
       const sa = critic.shots.find((x) => x.shot === c.shot)?.overall;
       const own = c.directive.issues.filter((code) => critic.issues.some((i) => i.code === code && i.shot === c.shot && i.severity !== 'minor')).length;
       const fixed = own < c.directive.issues.length;
-      const result: RepairAttempt['result'] = fx.gained < -0.1 ? 'regressed' : (sa !== undefined && sb !== undefined && sa >= sb + 0.3) || fixed || fx.gained >= 0.1 ? 'improved' : 'no-change';
+      // its own shot: worse to look at, or a technical failure that was not there before
+      const brokeTech = critic.issues.filter((i) => i.layer === 'technical' && i.shot === c.shot && i.severity !== 'minor' && !planCritic.issues.some((j) => j.code === i.code && j.shot === c.shot));
+      const hurt = (sa !== undefined && sb !== undefined && sa < sb - 0.2) || brokeTech.length > 0;
+      if (hurt) undo.push({ shot: c.shot, why: `${c.label} made the shot worse (${sb ?? '?'} → ${sa ?? '?'}${brokeTech.length ? `; new ${brokeTech.map((i) => i.code).join(', ')}` : ''})` });
+      const result: RepairAttempt['result'] = hurt || fx.gained < -0.1 ? 'regressed' : (sa !== undefined && sb !== undefined && sa >= sb + 0.3) || fixed || fx.gained >= 0.1 ? 'improved' : 'no-change';
       memory.attempts.push({ pass, shot: c.shot, candidate: c.id, label: c.label, issues: c.directive.issues, cost: c.cost, before: { overall: prev.overall, shot: sb }, after: { overall: critic.overall, shot: sa }, sideEffects: fx.sideEffects, result });
     }
+    if (undo.length) undoFrom = { script: script as ShotScript, critic: planCritic };
     writeFileSync(memFile, JSON.stringify(memory, null, 2));
     passes.push({ pass, verdict: critic.verdict.status, overall: critic.overall, scores: critic.scores, issues: critic.issues.length, patches, render, redirection: rp.redirection, applied, sideEffects: fx } as RepairPass);
     log.stage('CRITIC', `pass ${pass}: ${critic.verdict.status} · visual ${critic.overall}/10 (${fx.gained >= 0 ? '+' : ''}${fx.gained}) · resolved ${fx.resolved.length}, new ${fx.introduced.length}${fx.sideEffects.length ? ` · side effects: ${fx.sideEffects.join('; ')}` : ''}`);
@@ -214,6 +241,12 @@ export async function criticLoop(opts: {
     else if (critic.overall > best.critic.overall + 0.001 && (critic.technical.pass || !best.critic.technical.pass)) best = { pass, critic, reason: `highest visual score (${critic.overall}) with technical ${critic.technical.pass ? 'pass' : 'fail'}` };
     // a technical failure still open keeps the loop going within the pass budget (the next candidate is tried)
     const techOpen = !critic.technical.pass && pass < base;
+    // a shot to take back keeps the loop going for one more pass (within the budget, or the consolidation pass)
+    if (undo.length && !consolidate) continue;
+    if (consolidate) {
+      stopReason = `pass limit (${base}); consolidation pass took back ${undone.map((u) => u.shot).join(', ')}`;
+      break;
+    }
     if (fx.gained < -0.1) {
       stopReason = `regression (${fx.gained})`;
       break;

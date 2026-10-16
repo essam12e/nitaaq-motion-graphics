@@ -212,6 +212,14 @@ describe('Object-driven transitions', () => {
     expect(m.reveals).toContain('dashboard.main');
     expect(at(plan, 'text.solution', 's', m.to)).toBeGreaterThan(10);
   });
+  it('P2-G: the world the hub became stays outside the glyph window until the mask has opened (no empty frame mid-cut)', () => {
+    const { plan } = compile();
+    const m = plan.masks.find((x) => x.element === 'text.solution')!;
+    // halfway through the mask the outgoing world is still fully there …
+    expect(at(plan, 'shape.hub', 'o', (m.from + m.to) / 2)).toBeGreaterThan(0.95);
+    // … and it is gone when the window closes over the next shot
+    expect(at(plan, 'shape.hub', 'o', m.to + 0.01)).toBeLessThan(0.05);
+  });
   it('validates the element and falls back clearly (recorded) when it cannot perform the transition', () => {
     const { plan, report } = compile();
     const tr = plan.transitions.find((t) => t.from === 'demo')!;
