@@ -730,6 +730,14 @@ describe('P2 a displacement written for another layout (found on the SaaS featur
     const cs = issueCandidates(plan, sc as never, iss);
     const drop = cs.find((x) => x.id.includes(':drop:'))!;
     expect(drop.directive.dropMotion!.sort()).toEqual(['nudge', 'nudge2']);
+    // preferred: the relay stays, in place — same ids (the chain after it still fires), no travel
+    const relay = cs.find((x) => x.id.includes(':relay:'))!;
+    expect(relay.gain).toBeGreaterThan(drop.gain);
+    expect(relay.directive.addMotion!.map((e) => [e.id, e.element, e.action])).toEqual([['nudge', 'card.f2', 'impact'], ['nudge2', 'card.f3', 'impact']]);
+    const { script: out } = applyRedirection(sc, RedirectionSchema.parse({ shots: [relay.directive] }));
+    const chain = (out.shots[1] as { motionChain: { id?: string; action: string; after?: string }[] }).motionChain;
+    expect(chain.filter((e) => e.action === 'push')).toHaveLength(0);
+    expect(chain.find((e) => e.id === 'nudge2')!.after).toBe('nudge.contact');
   });
 });
 

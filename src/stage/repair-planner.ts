@@ -145,11 +145,19 @@ export function issueCandidates(plan: StagePlan, script: ScriptObj, issue: Criti
       break;
     }
     case 'ITEMS_OVERLAP': {
-      // a displacement written for the old layout (a push along a row) now drives one item into another:
-      // the displacement goes (with whatever was chained after it); otherwise the group is re-composed
+      // a displacement written for the old layout (a push along a row) now drives one item into another.
+      // First choice: keep the causal relay but in place — each push becomes a kick on the item it pushed,
+      // with the same event id, so everything chained after it still fires (energy kept, nothing collides).
+      // Second choice: drop the displacement (and what was chained after it), the pusher breathes instead.
       const els = new Set(issue.elements ?? []);
-      const chain = ((s as { motionChain?: { id?: string; element: string; action: string; to?: string; after?: string }[] }).motionChain ?? []);
-      const drop = new Set(chain.filter((e) => e.id && ['push', 'attract', 'move'].includes(e.action) && (els.has(e.element) || (e.to && els.has(e.to)))).map((e) => e.id!));
+      const chain = ((s as { motionChain?: { id?: string; element: string; action: string; to?: string; at?: unknown; after?: string; reason?: string }[] }).motionChain ?? []);
+      const pushes = chain.filter((e) => e.id && ['push', 'attract', 'move'].includes(e.action) && (els.has(e.element) || (e.to && els.has(e.to))));
+      const relay = pushes.filter((e) => e.to && plan.elements.some((x) => x.id === e.to));
+      if (relay.length) {
+        const addMotion = relay.map((e) => ({ id: e.id!, element: e.to!, action: 'impact' as const, ...(e.at !== undefined ? { at: e.at as number } : {}), ...(e.after ? { after: e.after } : {}), reason: `${e.reason ?? 'the relay along the row'} — in place: the layout no longer leaves room to travel` }));
+        out.push(local(sid!, `relay:${relay.map((e) => e.id).join('+')}`, `${relay.map((e) => e.id).join(', ')}: the push along the row becomes an in-place relay (each item kicks in turn)`, { dropMotion: relay.map((e) => e.id!), addMotion: addMotion as never }, issue, 'low', 0.8, 'the travel goes; the causal chain and its energy stay'));
+      }
+      const drop = new Set(pushes.map((e) => e.id!));
       for (let grew = true; grew; ) {
         grew = false;
         for (const e of chain) if (e.id && !drop.has(e.id) && e.after && drop.has(e.after.split('.')[0])) (drop.add(e.id), (grew = true));
@@ -157,7 +165,7 @@ export function issueCandidates(plan: StagePlan, script: ScriptObj, issue: Criti
       // the energy the push carried is kept as a living hold on the item that pushed (no dead frame left behind)
       const pusher = chain.find((e) => e.id && drop.has(e.id))?.element;
       const keep = pusher && !(s.cast ?? []).find((c) => c.id === pusher)?.sustain ? { sustain: { [pusher]: 'breathe' as const } } : {};
-      if (drop.size) out.push(local(sid!, `drop:${[...drop].join('+')}`, `drop ${[...drop].join(', ')} (a displacement that now drives one item into another)${pusher ? `; ${pusher} breathes instead` : ''}`, { dropMotion: [...drop], ...keep }, issue, 'low', 0.75, 'less motion in the shot'));
+      if (drop.size) out.push(local(sid!, `drop:${[...drop].join('+')}`, `drop ${[...drop].join(', ')} (a displacement that now drives one item into another)${pusher ? `; ${pusher} breathes instead` : ''}`, { dropMotion: [...drop], ...keep }, issue, 'low', 0.6, 'less motion in the shot'));
       break;
     }
     case 'DEAD_HOLD': {
