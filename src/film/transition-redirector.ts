@@ -15,7 +15,7 @@
  * neighbours) and scored as a NEIGHBOURHOOD: A tail · A→B · B head · B→C — a fix that repairs one cut
  * by breaking the next is rejected. Pure: the caller passes the compile function.
  */
-import { sampleStage, timesIn } from './sampler';
+import { elementStillRun, sampleStage, timesIn } from './sampler';
 import type { StagePlan } from '../stage/plan';
 import { buildBoundary, type Boundary, type SampleSource } from './boundary';
 
@@ -250,6 +250,9 @@ export function redirectBoundary(script: ScriptObj, plan: StagePlan, i: number, 
   const cands = boundaryCandidates(script, plan, b).filter((c) => !opts.tried?.has(`${b.id}:${c.move}`) && !(promise && ['cut', 'carrier-swap', 'shared-bridge'].includes(c.move)));
   if (promise) decision.answer += ` · the film plan protects this cut (${promise}): its carrier stays`;
 
+  // the shots' own choreography, camera left out: a move may not buy a carried cut by turning A's tail or
+  // B's body into one long still (it reads fine with a camera and like a slide without one, P3-S)
+  const stillBefore = [i, i + 1].map((k) => elementStillRun(plan, k));
   for (const c of cands) {
     let p: StagePlan;
     try {
@@ -268,8 +271,11 @@ export function redirectBoundary(script: ScriptObj, plan: StagePlan, i: number, 
     }, 0);
     // two readable lines fighting for one place around the cut is worse than a thin frame
     const clash = textClash(p, i);
-    const value = Math.round((gain - c.cost * 2 - (clash >= 0.1 ? 3 : 0)) * 100) / 100;
+    const stillAfter = [i, i + 1].map((k) => elementStillRun(p, k));
+    const stilled = stillAfter.reduce((a, s2, j) => a + Math.max(0, s2 - Math.max(stillBefore[j], 1.2)), 0);
+    const value = Math.round((gain - c.cost * 2 - (clash >= 0.1 ? 3 : 0) - stilled * 2) * 100) / 100;
     const issues = me.issues.map((x) => x.code as string);
+    if (stilled > 0.05) issues.push('CHOREOGRAPHY_COLLAPSED');
     if (clash >= 0.1 && !issues.includes('OVERLAP_TRANSITION')) issues.push('OVERLAP_TRANSITION');
     c.predicted = { boundary: Math.round(me.score * 100) / 100, quality: me.quality.score, min: me.quality.min, dip: me.quality.dip, neighbours, eyeTravel: me.eye.travel, guided: me.eye.guided, value, issues };
   }

@@ -110,3 +110,34 @@ export function timesIn(t0: number, t1: number, step = 0.06): number[] {
   for (let t = t0; t <= t1 + 1e-6; t += step) out.push(Math.round(t * 1000) / 1000);
   return out;
 }
+
+/**
+ * The longest stretch (s) inside shot `k` where no element moves, fades, scales or draws: the camera is
+ * left out on purpose. It is what the shot looks like without a camera (P3-S), so a boundary repair can
+ * see when it buys a carried cut by collapsing the shot's own choreography into one arrival.
+ */
+export function elementStillRun(plan: StagePlan, k: number, step = 0.1): number {
+  const shot = plan.shots[k];
+  if (!shot) return 0;
+  const c = compiledOf(plan);
+  const props = ['x', 'y', 's', 'sx', 'sy', 'o', 'z', 'draw', 'clip'];
+  const dflt: Record<string, number> = { s: 1, sx: 1, sy: 1, o: 1, draw: 1, clip: 1 };
+  // a thin line drawing or a cursor gliding is not what a viewer reads as the frame moving (the pixel
+  // judge agrees: a drawn path alone leaves the frame "still")
+  const state = (t: number) => plan.elements.filter((e) => !e.parent && e.kind !== 'line' && e.kind !== 'cursor' && t >= e.life.from && t <= e.life.to).map((e) => [e.id, ...props.map((p) => valueAt(c, `${e.key}.${p}`, t, dflt[p] ?? (p === 'x' || p === 'y' ? 0.5 : 0)))] as [string, ...number[]]);
+  let best = 0;
+  let run = 0;
+  let prev = state(shot.start + 0.2);
+  for (let t = shot.start + 0.2 + step; t <= shot.end - 0.2 + 1e-6; t += step) {
+    const cur = state(t);
+    const pm = new Map(prev.map((r) => [r[0], r]));
+    const moved = cur.length !== prev.length || cur.some((r) => {
+      const p = pm.get(r[0]);
+      return !p || r.slice(1).some((v, j) => Math.abs((v as number) - (p[j + 1] as number)) > 0.004);
+    });
+    run = moved ? 0 : run + step;
+    best = Math.max(best, run);
+    prev = cur;
+  }
+  return Math.round(best * 100) / 100;
+}

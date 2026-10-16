@@ -13,7 +13,7 @@ import { compiledStage, elementState } from '../../src/stage/StageLayer';
 import { settleTimeOf, type StageProbeSample } from '../../src/qc/stage-probes';
 import { critique, type CriticReport } from '../../src/qc/critic';
 import { applyFilmPlan, deriveFilmPlan, validateFilmPlan, FilmPlanSchema, type FilmPlan } from '../../src/film/film-plan';
-import { sampleStage, massOf, KIND_MASS, timesIn } from '../../src/film/sampler';
+import { sampleStage, massOf, KIND_MASS, timesIn, elementStillRun } from '../../src/film/sampler';
 import { buildBoundaries, buildBoundary, boundarySignature } from '../../src/film/boundary';
 import { boundaryAtRisk, boundaryCandidates, redirectBoundary, transitionDecision, MOVE_COST, type ScriptObj } from '../../src/film/transition-redirector';
 import { dirtyOf, neighborhoodRepair } from '../../src/film/dirty';
@@ -331,6 +331,24 @@ describe('P3-D Transition Re-Director and P3-E eye flow', () => {
     const r = redirectBoundary(sc, plan, 0, compiler(), { contracts: { 'hook->solution': 'sequence open delivers shape.hub' } });
     for (const c of r.candidates) expect(['cut', 'carrier-swap', 'shared-bridge']).not.toContain(c.move);
     expect(r.decision.answer).toMatch(/protects this cut/);
+  });
+  it('P3-S: a boundary move may not collapse a shot\'s own choreography into one long still (camera left out)', () => {
+    const BIG = ROW.map((c) => ({ ...c, w: 0.27 }));
+    const stagger = [
+      { element: 'card.f1', action: 'enter', at: 0.2, name: 'f1', reason: 'the first step' },
+      { element: 'card.f2', action: 'enter', at: 1.0, name: 'f2', reason: 'the second, a beat later' },
+      { element: 'card.f3', action: 'enter', after: 'f2.settle', reason: 'the third follows the second' },
+    ];
+    const allAtOnce = stagger.map((e, n) => ({ element: e.element, action: 'enter', at: 0.12 * n, reason: 'together' }));
+    const one = compiler()(script({ features: { cast: BIG, motionChain: stagger } }));
+    const two = compiler()(script({ features: { cast: BIG, motionChain: allAtOnce } }));
+    expect(elementStillRun(two, 2)).toBeGreaterThan(elementStillRun(one, 2) + 0.3);
+    const sc = script({ solution: { transitionOut: { type: 'cut', hard: true } }, features: { cast: BIG, motionChain: stagger } });
+    const plan = compiler()(sc);
+    const r = redirectBoundary(sc, plan, 1, compiler());
+    const fh = r.candidates.find((c) => c.move === 'full-head');
+    expect(fh!.predicted!.issues).toContain('CHOREOGRAPHY_COLLAPSED');
+    expect(r.chosen?.move).not.toBe('full-head');
   });
   it('a hard cut ({type:"cut", hard:true}) keeps A on screen to the cut and B there on it; a plain "cut" keeps the P2 timing', () => {
     const plain = compiler()(script());
