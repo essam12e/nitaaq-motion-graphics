@@ -155,8 +155,8 @@ export interface ArtPassResult {
 
 /** Spoken word for each element whose title / text is said in the voice (focus on the word). */
 function spokenWords(script: ScriptObj, projectDir: string): Record<string, string> {
-  const vm = readJson<{ words?: { word: string }[] }>(join(projectDir, 'voice_map.json'));
-  const said = new Set((vm?.words ?? []).map((w) => normWord(w.word)));
+  const vm = readJson<{ words?: { text?: string; norm?: string; word?: string }[] }>(join(projectDir, 'voice_map.json'));
+  const said = new Set((vm?.words ?? []).map((w) => w.norm ?? normWord(w.text ?? w.word ?? '')).filter(Boolean));
   const out: Record<string, string> = {};
   for (const e of (script.stage?.elements ?? []) as { id: string; text?: string; title?: string }[]) {
     const words = (e.title ?? e.text ?? '').split(/\s+/).filter(Boolean);
