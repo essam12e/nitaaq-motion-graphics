@@ -42,7 +42,8 @@ export interface PreviewFrame {
 export interface PreviewMeasure {
   frames: number;
   range: [number, number];
-  motion: { mean: number; peak: number; stillShare: number; longestStill: number; early: number; contrast: number };
+  /** tailStill: the still run that ends the range (the closing hold when the range ends the film). */
+  motion: { mean: number; peak: number; stillShare: number; longestStill: number; early: number; contrast: number; tailStill: number };
   clash: { worst: number; at: number | null; pair: string | null; frames: number };
   offCanvas: { frames: number; worst: string | null };
   /** an element (not a world / background) grown over most of the frame — a mid-motion blow-up. */
@@ -88,7 +89,9 @@ export function measurePreview(frames: PreviewFrame[], W: number, H: number, opt
   const wm = [...win.values()].map((a) => a.reduce((p, q) => p + q, 0) / a.length);
   const wmean = wm.length ? wm.reduce((a, b) => a + b, 0) / wm.length : 0;
   const contrast = wm.length > 1 && wmean > 1e-6 ? Math.sqrt(wm.reduce((a, b) => a + (b - wmean) ** 2, 0) / wm.length) / wmean : 0;
-  const motion = { contrast: r3(contrast), mean: r3(diffs.length ? diffs.reduce((a, b) => a + b, 0) / diffs.length : 0), peak: r3(Math.max(0, ...diffs)), stillShare: r3(diffs.length ? still / diffs.length : 0), longestStill: r3(longest), early: r3(early.length ? early.reduce((a, b) => a + b, 0) / early.length : 0) };
+  let tail = 0;
+  for (let k = diffs.length - 1; k >= 0 && diffs[k] < stillThr; k--) tail += dt;
+  const motion = { tailStill: r3(tail), contrast: r3(contrast), mean: r3(diffs.length ? diffs.reduce((a, b) => a + b, 0) / diffs.length : 0), peak: r3(Math.max(0, ...diffs)), stillShare: r3(diffs.length ? still / diffs.length : 0), longestStill: r3(longest), early: r3(early.length ? early.reduce((a, b) => a + b, 0) / early.length : 0) };
   // clash: readable texts of two different elements over each other, both visible
   let worst = 0;
   let at: number | null = null;
@@ -246,6 +249,8 @@ export function judgeCandidate(kind: ProblemKind, m: PreviewMeasure, base: Previ
       // the payoff is an event: the film's element becomes the action (measured hand-over on the DOM)
       parts.payoff = m.handover?.ok ? 1.2 : 0;
       parts.boundary = m.boundary !== undefined && base?.boundary !== undefined ? (m.boundary - base.boundary) * 0.6 : 0;
+      // the closing hold is part of the payoff: the action must be at rest long enough to be read
+      parts.hold = base && m.motion.tailStill < Math.min(1.0, base.motion.tailStill) - 0.15 ? -2 * (Math.min(1.0, base.motion.tailStill) - m.motion.tailStill) : 0;
       break;
     case 'global':
       // a film-wide change is judged on its contrast (peaks and rests) and its voids, not on more motion

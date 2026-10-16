@@ -78,8 +78,11 @@ export function ctaTransformCandidates(script: ScriptObj, film?: FilmPlan | null
   };
   const cursorAfter = (sh: ShotObj, ref: string) => {
     for (const e of sh.motionChain) if (kindOf(script, e.element) === 'cursor' && e.action === 'move' && !e.after) {
+      // the cursor sets off while the circle is still becoming the button (overlap, not a queue): the press
+      // and the closing hold keep their time
       delete e.at;
-      e.after = ref;
+      e.after = ref.replace(/\.end$/, '.peak');
+      e.dur = Math.min(e.dur ?? 0.6, 0.45);
     }
   };
   // G1: the circle comes back behind the button's place and becomes it (no travel: a pure change of shape)
@@ -140,7 +143,7 @@ export function transformCutCandidates(script: ScriptObj, plan: StagePlan, i: nu
       // it arrives by the morph: the circle keeps the button's place (behind), the become starts once it is there
       hub.scale = 1.25;
       const be = nx.motionChain.find((e) => e.id === 'circle-becomes')!;
-      be.at = 0.62;
+      be.at = 0.5;
       out.push({ id: `cut-card-circle-button-${s.id}`, label: 'card → circle → button', script: sc, film: cta.film, why: `${carrier} morphs into ${src.element} at the cut, which then becomes ${tr.into}` });
     }
   }
