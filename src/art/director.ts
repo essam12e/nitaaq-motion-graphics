@@ -18,6 +18,8 @@ import { ctaTransformCandidates, transformCutCandidates, type FilmCandidate } fr
 import { contributions, type Contributions } from './motion-analysis';
 import { globalVarietyCandidate, habitsOf } from './global';
 import type { ProblemKind } from './judge';
+import { resultEventCandidates } from './result-event';
+import { geometryCheck } from './shot-redesigner';
 
 type Ev = { id?: string; element: string; action: string; to?: string; after?: string; style?: string; [k: string]: unknown };
 type ShotObj = { id: string; purpose?: string; metaphor?: string; subject?: string; cast?: { id: string; role?: string }[]; motionChain: Ev[]; transitionOut?: unknown; camera?: unknown; [k: string]: unknown };
@@ -167,6 +169,11 @@ export interface DiagnoseOptions {
   compile?: (s: ScriptObj) => StagePlan;
   /** measured boundaries (pixels) when an animatic exists. */
   boundaries?: Boundary[];
+  /** P4.5: a climax with a number also tries the result as a visual event (gather / grow / rise into it). */
+  resultEvents?: boolean;
+  /** P4.5: shots whose composition fails them (hero one of a row, too dense, too small for its action, text off
+   *  the safe area — typical of a layout carried to another aspect) become 'layout' problems. */
+  layoutProblems?: boolean;
 }
 
 /** The Art Director's reading of the film: intents, key visuals, graph, energy, problems (in repair order). */
@@ -221,6 +228,25 @@ export function diagnose(script: ScriptObj, plan: StagePlan, o: DiagnoseOptions 
   const isFollow = (id: string) => /follow/.test(((((o.original ?? script).shots.find((s) => s.id === id) as ShotObj | undefined)?.camera ?? {}) as { move?: string }).move ?? '');
   const camShots = (o.cameraOff ? (o.original ?? script).shots.filter((s) => (s as ShotObj).camera && (s as ShotObj).camera !== 'static').map((s) => s.id) : contrib.cameraCarried).filter((id) => !isFollow(id));
   for (const id of camShots) problems.push({ id: `camfree-${id}`, kind: 'camera-free', code: 'CAMERA_CARRYING_SCENE', shots: [id], range: shotRange(plan, id), why: o.cameraOff ? 'the camera is off: what it did must be done by the element' : `the camera carries ${Math.round((1 - (contrib.shots.find((x) => x.shot === id)?.elementShare ?? 0)) * 100)}% of the motion`, level: 'local' });
+  // P4.5 local: the composition itself fails the shot (only where a strong signal says so: good shots are not touched)
+  if (o.layoutProblems) {
+    script.shots.forEach((s0, k) => {
+      const s = s0 as ShotObj;
+      if (problems.some((p) => p.shots.includes(s.id) && ['hook', 'focus', 'subjects', 'climax', 'cta'].includes(p.kind))) return;
+      let g: ReturnType<typeof geometryCheck>;
+      try {
+        g = geometryCheck(script, plan, k, { plan });
+      } catch {
+        return;
+      }
+      // an equal row is the point of a process (steps); for features / benefits it hides the hero
+      const rowOk = /process|step/.test(s.purpose ?? '');
+      const codes = g.diagnosis.codes.filter((c) => ['LAYOUT_TOO_DENSE', 'HERO_TOO_SMALL_FOR_ACTION'].includes(c) || (c === 'SUPPORTING_ELEMENTS_DOMINATE' && !rowOk));
+      if (g.offSafe.length) codes.push('LAYOUT_TOO_DENSE');
+      if (!codes.length) return;
+      problems.push({ id: `layout-${s.id}`, kind: 'layout', code: codes[0], shots: [s.id], range: shotRange(plan, s.id), items: siblingsOf(script, k).length >= 2 ? siblingsOf(script, k) : undefined, why: `composition: ${[...new Set(codes)].join(', ')} — ${g.diagnosis.why}${g.offSafe.length ? `; outside the safe area: ${g.offSafe.join(', ')}` : ''}`, level: 'local' });
+    });
+  }
   // global (reserved budget): the film's energy and internal rhythm
   // (it runs even when the lower levels still have work; its code says what the film-level reading found)
   const flatFilm = energy.issues.some((x) => x.startsWith('FLAT_FILM'));
@@ -251,8 +277,13 @@ export function diagnose(script: ScriptObj, plan: StagePlan, o: DiagnoseOptions 
         return focusCandidates(current, currentPlan, k, { voice: o.voice, spoken: o.spoken });
       case 'subjects':
         return [...subjectsCandidates(current, currentPlan, k), ...focusCandidates(current, currentPlan, k).filter((c) => c.id.startsWith('focus-relay'))].slice(0, 4);
-      case 'climax':
-        return climaxCandidates(current, p.shots[0]);
+      case 'climax': {
+        const base = climaxCandidates(current, p.shots[0]);
+        if (!o.resultEvents) return base;
+        // a result (a number) is the climax: it should be the END of an event, not text that appears
+        const ev = resultEventCandidates(current, ids.indexOf(p.shots[0]));
+        return ev.length ? [...ev, ...base].slice(0, 4) : base;
+      }
       case 'choreography':
         return choreographyCandidates(current, k).map((c) => ({ id: `choreo-${c.pattern}-${p.shots[0]}`, label: c.pattern, script: c.script, why: c.why }));
       case 'camera-free': {

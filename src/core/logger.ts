@@ -6,6 +6,7 @@ export type Stage =
   | 'STAGE'
   | 'CRITIC'
   | 'ART'
+  | 'REDESIGN'
   | 'GATE'
   | 'FILM'
   | 'FONTS'

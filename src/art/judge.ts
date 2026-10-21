@@ -195,7 +195,7 @@ export function measurePreview(frames: PreviewFrame[], W: number, H: number, opt
   return { ...(handover ? { handover } : {}), frames: f.length, range: [f[0]?.t ?? 0, f[f.length - 1]?.t ?? 0], motion, clash: { worst: r3(worst), at, pair, frames: clashFrames }, offCanvas: { frames: offFrames, worst: offWorst }, flood: { frames: floodFrames, worst: floodWorst }, void: v, midMotion: { frames: fails.length, failures: failures.slice(0, 8) }, presence: { allTogetherAt: together, items }, readability: { minTextPx: minPx === null ? null : Math.round(minPx), headlineRestAt: rest } };
 }
 
-export type ProblemKind = 'hook' | 'climax' | 'energy' | 'boundary' | 'focus' | 'subjects' | 'cta' | 'choreography' | 'camera-free' | 'global';
+export type ProblemKind = 'hook' | 'climax' | 'energy' | 'boundary' | 'focus' | 'subjects' | 'cta' | 'choreography' | 'camera-free' | 'global' | 'layout';
 
 export interface Verdict {
   score: number;
@@ -251,6 +251,12 @@ export function judgeCandidate(kind: ProblemKind, m: PreviewMeasure, base: Previ
       parts.boundary = m.boundary !== undefined && base?.boundary !== undefined ? (m.boundary - base.boundary) * 0.6 : 0;
       // the closing hold is part of the payoff: the action must be at rest long enough to be read
       parts.hold = base && m.motion.tailStill < Math.min(1.0, base.motion.tailStill) - 0.15 ? -2 * (Math.min(1.0, base.motion.tailStill) - m.motion.tailStill) : 0;
+      break;
+    case 'layout':
+      // P4.5: a re-composed shot keeps its motion and its information; the composition is judged by the gate
+      parts.motion = rel(m.motion.mean, base?.motion.mean, 0.5);
+      parts.together = m.presence.items.length ? (m.presence.allTogetherAt !== null ? 0.3 : -2) : 0;
+      parts.read = m.readability.minTextPx !== null && base?.readability.minTextPx ? Math.max(-2, Math.min(1, (m.readability.minTextPx / base.readability.minTextPx - 1) * 2)) : 0;
       break;
     case 'global':
       // a film-wide change is judged on its contrast (peaks and rests) and its voids, not on more motion

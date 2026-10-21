@@ -469,7 +469,11 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
         const arr = cast.arriveAt;
         const props: Record<string, number> = arr ? { x: arr.x, y: arr.y, s: r3(s0 * arr.scale) } : { x: b0.x, y: b0.y, s: s0 };
         const a = ph.amplitude;
-        if (style === 'rise') fromXY.y = props.y + amp(0.05, a);
+        // P4.5: an entry lane / drop corridor chosen by the layout (the entrance travels it)
+        if (cast.enterFrom && ['drop', 'slide', 'scale', 'rise'].includes(style)) {
+          fromXY.x = cast.enterFrom.x;
+          fromXY.y = cast.enterFrom.y;
+        } else if (style === 'rise') fromXY.y = props.y + amp(0.05, a);
         else if (style === 'drop') fromXY.y = props.y - amp(0.12, a);
         else if (style === 'slide') fromXY.x = props.x - flow[0] * amp(0.09, a);
         else if (style === 'scale') fromXY.s = props.s * (a === 1 ? 0.78 : clamp(1 - 0.22 * a, 0.3, 0.95));

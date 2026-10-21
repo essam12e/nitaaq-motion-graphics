@@ -130,6 +130,8 @@ export const CastSchema = z
     scale: z.number().min(0.3).max(4).optional(),
     /** P4 progressive hero: the entrance arrives here first (canvas fractions, × its own size); a later "settle" event takes it to its composed place. */
     arriveAt: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), scale: z.number().min(0.3).max(4).default(1) }).optional(),
+    /** P4.5 motion-aware composition: the entrance starts from this point (canvas fractions) — an entry lane / drop corridor the layout keeps free. */
+    enterFrom: z.object({ x: z.number().min(-0.2).max(1.2), y: z.number().min(-0.2).max(1.2) }).optional(),
   })
   .strict();
 export type CastEntry = z.infer<typeof CastSchema>;

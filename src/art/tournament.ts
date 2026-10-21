@@ -78,6 +78,8 @@ export function selectWinner<T extends { id: string; preview: Verdict | null }>(
 export interface ArtMemory {
   version: 3;
   entries: { signature: string; problem: string; candidate: string; outcome: 'won' | 'lost' | 'vetoed'; why: string; predicted: number | null; preview: number | null; at: string }[];
+  /** P4.5 Re-Layout Memory: motion candidate × layout strategy × spatial failure × brand / shot type / aspect. */
+  layouts?: import('./shot-redesigner').LayoutMemoryEntry[];
 }
 
 /** Repair Memory v3: a candidate that lost / was vetoed for this exact problem signature is not rendered again. */

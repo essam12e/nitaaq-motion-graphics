@@ -44,6 +44,7 @@ import { artGate, type ArtGate } from '../art/gate';
 import { shotIntents, keyVisuals } from '../art/director';
 import { overloadedShots } from '../art/focus';
 import { audioSync as audioSync, typographyMotion, motionCharacter } from '../art/polish';
+import { redesignOn, redesignProblem, type RedesignLog } from './shot-redesign';
 
 const env = (k: string) => process.env[k] === '1';
 export const artOn = () => filmOn() && !env('NITAAQ_NO_ART_DIRECTOR');
@@ -100,6 +101,8 @@ export interface PreviewResult {
   cached: number;
   ms: number;
   stills: { t: number; file: string }[];
+  /** P4.5: the measured frames (DOM rects + pixel motion) for hero dominance / attention on the render. */
+  pf: PreviewFrame[];
 }
 
 /** Renders a range of a candidate plan (stills + DOM, half resolution) and measures it. */
@@ -143,7 +146,7 @@ export async function previewRender(spec: VideoSpec, projectDir: string, plan: S
   }
   const measure = measurePreview(out, spec.canvas.width, spec.canvas.height, { items: o.items, headline: o.headline, handover: o.handover });
   if (o.transition) measure.boundary = judgeTransition(o.transition, curve, dom).score;
-  return { measure, frames: frames.length, rendered: run.rendered, cached: run.cached, ms: Date.now() - t0, stills };
+  return { measure, frames: frames.length, rendered: run.rendered, cached: run.cached, ms: Date.now() - t0, stills, pf: out };
 }
 
 export interface ArtPassResult {
@@ -193,7 +196,7 @@ export async function artDirectorPass(spec: VideoSpec, projectDir: string, opts:
   const voice = Boolean(spec.audio.voice);
   const spoken = spokenWords(cur, projectDir);
   const tq = readJson<{ transitions?: unknown[] }>(join(projectDir, 'transition_quality.json'));
-  const d = diagnose(cur, curPlan, { film: ctx.film, src: ctx.src, cameraOff: !ab.camera, original, voice, spoken, compile: (s) => compile(s, curFilm), boundaries: tq ? buildBoundaries(curPlan, ctx.src) : undefined });
+  const d = diagnose(cur, curPlan, { film: ctx.film, src: ctx.src, cameraOff: !ab.camera, original, voice, spoken, compile: (s) => compile(s, curFilm), boundaries: tq ? buildBoundaries(curPlan, ctx.src) : undefined, resultEvents: redesignOn(), layoutProblems: redesignOn() });
   // ablations remove whole families of problems
   let problems = d.problems.filter((p) => {
     if (!ab.energy && ['hook', 'climax'].includes(p.kind)) return false;
@@ -207,7 +210,7 @@ export async function artDirectorPass(spec: VideoSpec, projectDir: string, opts:
   // then by what the viewer feels most: the hook, the subjects / information of a shot, the camera-free
   // equivalents, flat choreography — the cuts last (the P3 film director has already repaired them)
   const lv = { local: 0, sequence: 1, global: 2 } as const;
-  const KIND: Record<string, number> = { hook: 0, cta: 0, climax: 1, subjects: 2, focus: 3, 'camera-free': 4, choreography: 5, boundary: 6, global: 7 };
+  const KIND: Record<string, number> = { hook: 0, cta: 0, climax: 1, subjects: 2, focus: 3, layout: 3, 'camera-free': 4, choreography: 5, boundary: 6, global: 7 };
   const kv = new Set(ab.keyVisual ? d.keyVisuals.map((k) => k.shot) : []);
   problems = [...problems].sort((a, b) => lv[a.level] - lv[b.level] || (KIND[a.kind] ?? 9) - (KIND[b.kind] ?? 9) || Number(b.shots.some((s) => kv.has(s))) - Number(a.shots.some((s) => kv.has(s))));
   const { run, deferred } = budgetProblems(problems, budget);
@@ -217,6 +220,7 @@ export async function artDirectorPass(spec: VideoSpec, projectDir: string, opts:
   const changed: string[] = [];
   let frameBudget = budget.frames;
   const tot = { candidates: 0, rendered: 0, accepted: 0, rejected: 0, filtered: 0, previewFrames: 0, previewMs: 0, cacheHits: 0 };
+  const redesignLog: RedesignLog = { version: 1, problems: [], memory: [], totals: { motionSources: 0, eligible: 0, layoutCandidates: 0, geometryPassed: 0, previewed: 0, accepted: 0, rescued: 0, geometryMs: 0, previewMs: 0, previewFrames: 0, cacheHits: 0 } };
   for (const p of run) {
     const tp = Date.now();
     const sig = sigOf(p, cur);
@@ -225,7 +229,8 @@ export async function artDirectorPass(spec: VideoSpec, projectDir: string, opts:
     if (!ab.phrase) cands = cands.map((c) => ({ ...c, script: stripPhrases(c.script) }));
     const rec: ProblemRecord = { problem: p.id, kind: p.kind, code: p.code, level: p.level, shots: p.shots, range: p.range, why: p.why, base: { predicted: null, preview: null }, winner: null, candidates: [], ms: 0 };
     records.push(rec);
-    if (!cands.length) {
+    // (a P4.5 layout problem has no motion candidates: the kept version is rendered and re-composed)
+    if (!cands.length && p.kind !== 'layout') {
       rec.ms = Date.now() - tp;
       continue;
     }
@@ -247,7 +252,8 @@ export async function artDirectorPass(spec: VideoSpec, projectDir: string, opts:
     const basePred = predOf(curPlan, cur, null);
     const basePredV = judgeCandidate(p.kind, basePred.m, basePred.m);
     rec.base.predicted = basePredV.score;
-    type Live = { id: string; label: string; why: string; script: ScriptObj; film: FilmPlan | null; plan: StagePlan; predicted: Verdict | null; preview: Verdict | null; measure?: PreviewMeasure; rec: CandidateRecord };
+    type Live = { id: string; label: string; why: string; script: ScriptObj; film: FilmPlan | null; plan: StagePlan; predicted: Verdict | null; preview: Verdict | null; measure?: PreviewMeasure; frames?: PreviewFrame[]; rec: CandidateRecord };
+    let baseRes: PreviewResult | null = null;
     const live: Live[] = [];
     for (const c of cands) {
       tot.candidates++;
@@ -291,6 +297,7 @@ export async function artDirectorPass(spec: VideoSpec, projectDir: string, opts:
       const stepOf = p.level === 'global' ? 0.25 : 0.1;
       const tag = (x: string) => `${p.id}-${x}`.replace(/[^a-z0-9-]/gi, '_');
       const base = await previewRender(spec, projectDir, curPlan, p.range, { tag: tag('kept'), step: stepOf, transition: trOf(curPlan), items: p.items, headline: p.headline, handover: baseHand });
+      baseRes = base;
       frameBudget -= base.rendered;
       tot.previewFrames += base.frames;
       tot.previewMs += base.ms;
@@ -305,6 +312,7 @@ export async function artDirectorPass(spec: VideoSpec, projectDir: string, opts:
         tot.previewMs += pr.ms;
         tot.cacheHits += pr.cached;
         l.measure = pr.measure;
+        l.frames = pr.pf;
         l.preview = judgeCandidate(p.kind, pr.measure, base.measure);
         l.rec.preview = { score: l.preview.score, veto: l.preview.veto, parts: l.preview.parts, measure: { motion: pr.measure.motion, clash: pr.measure.clash, void: pr.measure.void, midMotion: pr.measure.midMotion, presence: pr.measure.presence, boundary: pr.measure.boundary } };
         l.rec.cost = { frames: pr.frames, renderMs: pr.ms, cached: pr.cached };
@@ -326,6 +334,26 @@ export async function artDirectorPass(spec: VideoSpec, projectDir: string, opts:
       }
       remember(memory, sig, l.rec, new Date(0).toISOString());
     }
+    // P4.5 — Dynamic Shot Re-Design: a good motion idea that failed because of the composition is not thrown
+    // away — the shot is re-laid out for it (geometry first, then 1–2 previews), and the gate keeps P4 otherwise
+    if (redesignOn() && ab.candidateRender && baseRes && frameBudget > 0) {
+      const rd = await redesignProblem({ spec, projectDir, problem: p, rec, live, winner, base: baseRes, baseScore: rec.base.preview ?? 6, basePredicted: basePredV.score, cur, curPlan, curFilm, compile, src: ctx.src, memory: memory as never, trOf, handoverOf, stepOf: p.level === 'global' ? 0.25 : 0.1, log: redesignLog });
+      frameBudget -= rd.rendered;
+      tot.previewFrames += rd.frames;
+      tot.previewMs += rd.ms;
+      tot.cacheHits += rd.cached;
+      if (rd.winner) {
+        if (winner) {
+          winner.rec.status = 'rejected';
+          winner.rec.reason = `beaten by the re-layout ${rd.winner.id} (${rd.winner.preview?.score})`;
+          tot.accepted--;
+          tot.rejected++;
+        }
+        tot.accepted++;
+        winner = rd.winner as Live;
+        why = rd.why;
+      }
+    }
     if (winner) {
       rec.winner = winner.id;
       cur = winner.script;
@@ -340,6 +368,7 @@ export async function artDirectorPass(spec: VideoSpec, projectDir: string, opts:
   const tournament: Tournament = { version: 1, problems: records, totals: tot };
   writeFileSync(join(projectDir, 'candidate_tournament.json'), JSON.stringify(tournament, null, 2));
   writeFileSync(memFile, JSON.stringify(memory, null, 2));
+  if (redesignOn()) writeFileSync(join(projectDir, 'shot_redesign.json'), JSON.stringify(redesignLog, null, 2));
   // the reports of the chosen film
   const fin = curPlan;
   const { make: _m, ...diag } = d;
