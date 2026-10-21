@@ -299,6 +299,8 @@ describe('P4.5 Shot Re-Design Gate (10 checks)', () => {
   it('composition mode: same motion, better hierarchy and fit, no motion loss', () => {
     expect(redesignGate(ev({ score: 6.95, fit: 8.5, dominance: dom(0.6) }), ev(), { mode: 'composition' }).accept).toBe(true);
     expect(redesignGate(ev({ score: 6.95, fit: 8.5, dominance: dom(0.5) }), ev(), { mode: 'composition' }).accept).toBe(false);
+    // Test C: the supporting cards stop covering the hero (occlusion gone) — a composition gain without a share change
+    expect(redesignGate(ev({ score: 7.2, fit: 9, dominance: dom(0.5), clash: 0 }), ev({ clash: 0.12 }), { mode: 'composition' }).accept).toBe(true);
   });
 });
 

@@ -1296,7 +1296,7 @@ export function redesignGate(cand: RedesignEvidence, kept: RedesignEvidence, o: 
     { name: 'technical pass', ok: !cand.veto, detail: cand.veto ?? 'no veto' },
     // a rescued motion must beat the kept version; a re-composed shot must not lose motion and must gain hierarchy
     comp
-      ? { name: 'motion candidate works', ok: cand.score >= kept.score - 0.15 && dm(cand.dominance) >= dm(kept.dominance) + 0.04 && cand.fit >= kept.fit + 0.2, detail: `same motion re-composed: ${cand.score} vs ${kept.score}, dominance ${r3(dm(cand.dominance))} vs ${r3(dm(kept.dominance))}, fit ${cand.fit} vs ${kept.fit}` }
+      ? { name: 'motion candidate works', ok: cand.score >= kept.score - 0.15 && (dm(cand.dominance) >= dm(kept.dominance) + 0.04 || cand.clash <= kept.clash - 0.05) && cand.fit >= kept.fit + 0.2, detail: `same motion re-composed: ${cand.score} vs ${kept.score}, dominance ${r3(dm(cand.dominance))} vs ${r3(dm(kept.dominance))} or occlusion ${cand.clash} vs ${kept.clash}, fit ${cand.fit} vs ${kept.fit}` }
       : { name: 'motion candidate works', ok: cand.score >= kept.score + m, detail: `${cand.score} vs kept ${kept.score} (margin ${m})` },
     { name: 'layout better or equal', ok: cand.fit >= kept.fit - 0.05, detail: `motionCompositionFit ${cand.fit} vs ${kept.fit}` },
     { name: 'text readable', ok: (o.minTextScale ?? 1) >= 0.92 && (cand.minTextPx === null || kept.minTextPx === null || cand.minTextPx >= kept.minTextPx * 0.9), detail: `font ×${o.minTextScale ?? 1}, smallest text ${cand.minTextPx}px vs ${kept.minTextPx}px` },
