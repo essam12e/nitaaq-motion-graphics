@@ -208,7 +208,7 @@ npx tsx cli/nitaaq.ts cache summary | cache clear
 
 - **المسارات:** `MOTION_WORKSPACE`، `MOTION_UPLOADS`، `MOTION_OUTPUT`، `MOTION_CACHE`.
 - **الأداء:** `NITAAQ_CACHE_DIR` (مكان الكاش، الافتراضي `.cache/nitaaq-motion/`)، `NITAAQ_NO_CACHE=1` (بدون كاش)، `NITAAQ_CONCURRENCY` (عدد عمّال الرندر).
-- **طبقات الإخراج:** `NITAAQ_NO_ART_DIRECTOR=1` (بدون المدير الفني)، `NITAAQ_NO_FILM_DIRECTOR=1` (بدون مخرج الفيلم)، `NITAAQ_NO_CAMERA=1` (بدون كاميرا)، `NITAAQ_MOTION_LANGUAGE` (لغة الحركة: premium-saas أو playful أو editorial أو energetic-tech).
+- **طبقات الإخراج:** `NITAAQ_NO_ART_DIRECTOR=1` (بدون المدير الفني)، `NITAAQ_NO_SHOT_REDESIGN=1` (بدون إعادة تصميم اللقطة، أي P4)، `NITAAQ_NO_FILM_DIRECTOR=1` (بدون مخرج الفيلم)، `NITAAQ_NO_CAMERA=1` (بدون كاميرا)، `NITAAQ_MOTION_LANGUAGE` (لغة الحركة: premium-saas أو playful أو editorial أو energetic-tech).
 - **مفاتيح الصوت الاختيارية:** تُقرأ من البيئة فقط. ما تنحفظ في المشاريع ولا في السجلات، ولا ترفعها على Git أبداً.
 
 ## هيكل المستودع

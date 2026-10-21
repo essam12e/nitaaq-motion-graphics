@@ -75,3 +75,18 @@ judgment. Never use judgment to override a technical failure.
 
 Preview renders cost about 0.3 s per half-resolution frame. A 25 s SaaS film spends 6–7 minutes in the art pass
 (about 1.7× the P3 production time). The final render time is unchanged.
+
+## Shot Re-Design (P4.5)
+
+When a motion candidate loses only for a spatial reason (text in its path, no impact space, a hero too small for
+the action, an attention break), the art pass no longer just rejects it. `src/art/shot-redesigner.ts` computes
+the candidate's motion envelope and reserved space, picks up to 3 of 15 re-layout strategies that fit that motion
+(hero-left/text-right, focus-stage, asymmetric-focus, top-copy/bottom-action, …), and checks every layout by
+geometry first (no render). Only the best 1–2 are preview-rendered. A 10-check gate keeps a re-layout only if it
+beats the current version without dropping content, shrinking text or the hero, or breaking RTL first read.
+Otherwise it logs `NO_REDESIGN_IMPROVEMENT` and keeps the P4 version. A shot whose failure is the motion itself
+is never re-laid out. Result events (`src/art/result-event.ts`) give a solution number gather / expand / rise
+candidates.
+
+Outputs: `shot_redesign.json` (each source, layout, verdict and timing) and `art_memory.json → layouts[]`.
+`NITAAQ_NO_SHOT_REDESIGN=1` = P4 exactly. Cost: geometry under 1 s per film, plus one preview per accepted layout.
