@@ -746,7 +746,7 @@ function zonesFor(s: LayoutStrategy, n: ActionNeeds, safe: FRect, need: { w: num
         const h = band(0.16);
         return ok({ copy: top(h), action: { x: sx, y: sy + h + gap, w: sw, h: (sh - h) * 0.6 }, side: bottom((sh - h) * 0.4 - gap * 2) });
       }
-      const w = sw * 0.6;
+      const w = sw * 0.64;
       const h = need.h ? band(0.16) : 0;
       return ok({ copy: { ...startCol(w), h: Math.max(h, 0.001) }, action: { ...startCol(w), y: sy + h + (h ? gap : 0), h: sh - h - (h ? gap : 0) }, side: endCol(sw - w - gap) });
     }
@@ -928,7 +928,8 @@ export function planLayout(script: ScriptObj, plan: StagePlan, i: number, s: Lay
     const b = sizeOf(needs.hero);
     const k = heroBoost[s] ?? 1;
     const asp = (b.w * W) / (b.h * H);
-    const room = needs.expansion || needs.corridor === 'radial' ? 0.8 : 0.96;
+    // the rest box already holds a hero's grown size: only a gather (pieces land on it) needs extra room
+    const room = needs.peers.length ? 0.97 : needs.expansion || needs.corridor === 'radial' ? 0.8 : 0.96;
     // the staged hero gets a share of the frame (not a multiple of a size authored for another aspect)
     const area = Math.max(b.w * b.h * k * k, HERO_AREA[s] ?? 0);
     let w = Math.min(Math.sqrt((area * asp * H) / W), z.action.w * room);
