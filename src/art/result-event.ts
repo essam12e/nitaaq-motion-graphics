@@ -70,11 +70,11 @@ export function resultEventCandidates(script: ScriptObj, i: number): ArtCandidat
     // drop the old landing so the last contact is the landing
     sh.motionChain = sh.motionChain.filter((e) => !(e.element === r.carrier && e.action === 'impact'));
     pieces.forEach((id, k) => {
-      sh.cast!.push({ id, role: 'support', enter: 'scale' });
+      sh.cast!.push({ id, role: 'support', enter: 'scale', w: 0.09 });
       sh.motionChain.push({ id: `piece-${k + 1}`, element: id, action: 'enter', at: 0.12 + k * 0.1, reason: k === 0 ? 'the pieces the film gathered before are here' : 'and the next piece' });
       sh.motionChain.push({ id: `feed-${k + 1}`, element: id, action: 'attract', to: r.carrier, ...(k === 0 ? { after: `${cid}.start` } : { after: `feed-${k}.contact` }), dur: 0.38, reason: k === 0 ? 'the first piece flies into the result as it starts to count' : 'each piece adds to the value' });
     });
-    sh.motionChain.push({ id: 'resolve', element: r.carrier, action: 'impact', after: `feed-${pieces.length}.contact`, amount: 0.12, reason: `the count resolves on the last contact: the value is the result of what came together` });
+    sh.motionChain.push({ id: 'resolve', element: r.carrier, action: 'impact', after: `feed-${pieces.length}.contact`, amount: 0.16, reason: `the count resolves on the last contact: the value is the result of what came together` });
     setPhrase(sh, 'punch');
     out.push({ id: `number-gather-${sh0.id}`, label: 'gather-into-result', script: sc, why: `${pieces.length} motif piece(s) fly into ${r.carrier} while ${r.number} counts; the count resolves on the last contact` });
   }
@@ -89,13 +89,13 @@ export function resultEventCandidates(script: ScriptObj, i: number): ArtCandidat
       if (!enter) sh.motionChain.unshift({ id: 'small', element: r.carrier, action: 'enter', at: 0.05, reason: 'the result starts small' });
       else enter.id ??= 'small';
       // it arrives small at its own place (or the centre) and grows into it with the count
-      c.arriveAt = { x: c.at && typeof c.at === 'object' ? (c.at as { x: number }).x : 0.5, y: c.at && typeof c.at === 'object' ? (c.at as { y: number }).y : 0.5, scale: 0.55 };
+      c.arriveAt = { x: c.at && typeof c.at === 'object' ? (c.at as { x: number }).x : 0.5, y: c.at && typeof c.at === 'object' ? (c.at as { y: number }).y : 0.5, scale: 0.4 };
       sh.motionChain.push({ id: 'fill', element: r.carrier, action: 'settle', after: `${cid}.start`, dur: countDur, reason: 'the value fills its card: it grows with the count' });
       sh.motionChain = sh.motionChain.filter((e) => !(e.element === r.carrier && e.action === 'impact'));
-      sh.motionChain.push({ id: 'land', element: r.carrier, action: 'impact', after: `${cid}.end`, amount: 0.1, reason: 'the full value lands' });
+      sh.motionChain.push({ id: 'land', element: r.carrier, action: 'impact', after: `${cid}.end`, amount: 0.16, reason: 'the full value lands' });
       for (const o of (sh.cast ?? []).filter((x) => x.id !== r.carrier && x.id !== r.number && decls(sc).find((d) => d.id === x.id)?.kind === 'text')) sh.motionChain.push({ element: o.id, action: 'respond', style: 'recoil', to: r.carrier, after: 'land.peak', amount: 0.03, reason: 'the line answers the landing' });
       setPhrase(sh, 'punch');
-      out.push({ id: `number-expand-${sh0.id}`, label: 'expand-into-result', script: sc, why: `${r.carrier} arrives at 55% and grows while ${r.number} counts, then lands` });
+      out.push({ id: `number-expand-${sh0.id}`, label: 'expand-into-result', script: sc, why: `${r.carrier} arrives at 40% and grows while ${r.number} counts, then lands` });
     }
   }
   // 3 rise-to-result: the card rises along a lane while the value counts up to it
@@ -112,7 +112,7 @@ export function resultEventCandidates(script: ScriptObj, i: number): ArtCandidat
       sh.motionChain = sh.motionChain.filter((e) => !(e.element === r.carrier && e.action === 'enter'));
       sh.motionChain.unshift({ id: 'rise', element: r.carrier, action: 'enter', at: typeof countAt === 'number' ? Math.max(0.05, countAt - 0.15) : countAt, style: 'rise', reason: 'the value rises' });
       sh.motionChain = sh.motionChain.filter((e) => !(e.element === r.carrier && e.action === 'impact'));
-      sh.motionChain.push({ id: 'top', element: r.carrier, action: 'impact', after: `${cid}.end`, amount: 0.1, reason: 'and lands at the top when the count resolves' });
+      sh.motionChain.push({ id: 'top', element: r.carrier, action: 'impact', after: `${cid}.end`, amount: 0.16, reason: 'and lands at the top when the count resolves' });
       setPhrase(sh, 'punch');
       out.push({ id: `number-rise-${sh0.id}`, label: 'rise-to-result', script: sc, why: `${r.carrier} rises along a lane while ${r.number} counts up, landing as it resolves` });
     }

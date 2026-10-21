@@ -19,6 +19,8 @@
 export interface PreviewText {
   el: string;
   id: string;
+  /** P4.5: the element this text's element belongs to (a number inside its card) — never "covered" by it. */
+  owner?: string;
   px: number;
   rect: { x: number; y: number; width: number; height: number };
   opacity: number;
@@ -139,7 +141,7 @@ export function measurePreview(frames: PreviewFrame[], W: number, H: number, opt
       if (cut.length) fails.push({ t: fr.t, what: `text cut by the frame mid-motion (${cut[0].id})` });
       // a solid element over readable text (not its own)
       for (const e of fr.els.filter((x) => x.opacity > 0.6 && ['shape', 'button', 'card', 'image', 'ui'].includes(x.kind)))
-        for (const x of vis.filter((y) => y.opacity > 0.6 && y.el !== e.id)) {
+        for (const x of vis.filter((y) => y.opacity > 0.6 && y.el !== e.id && y.owner !== e.id)) {
           const o = overlapRatio(e.rect, x.rect);
           const textBelow = fr.els.findIndex((y) => y.id === x.el) < fr.els.findIndex((y) => y.id === e.id);
           if (o > 0.5 && textBelow && area(e.rect) < W * H * 0.9) fails.push({ t: fr.t, what: `${e.id} covers ${x.id} mid-motion` });

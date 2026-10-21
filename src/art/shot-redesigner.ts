@@ -999,7 +999,8 @@ export function planLayout(script: ScriptObj, plan: StagePlan, i: number, s: Lay
     // When the copy is the hero, the movers carry the event: they get a legible action size (never smaller)
     const b0 = sizeOf(id);
     const actionMin = H > W ? 0.42 : 0.26;
-    const grow = textHeroTarget ? Math.min(2.2, Math.max(1, actionMin / Math.max(1e-3, b0.w)), (z.action.w * 0.6) / Math.max(1e-3, b0.w)) : 1;
+    const textHero = !!needs.hero && needs.copy.includes(needs.hero);
+    const grow = textHero ? Math.min(2.2, Math.max(1, actionMin / Math.max(1e-3, b0.w)), (z.action.w * 0.6) / Math.max(1e-3, b0.w)) : 1;
     const b = grow > 1.05 ? { ...b0, w: b0.w * grow, h: b0.h * grow } : b0;
     const aim = chain.find((e) => e.element === id && ['push', 'attract', 'become'].includes(e.action) && e.to);
     const enter = chain.find((e) => e.element === id && e.action === 'enter');

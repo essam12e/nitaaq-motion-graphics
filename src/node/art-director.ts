@@ -121,6 +121,8 @@ export async function previewRender(spec: VideoSpec, projectDir: string, plan: S
   const curve: { t: number; occ: number; lum: number }[] = [];
   let prevGrey: Buffer | null = null;
   const stills: PreviewResult['stills'] = [];
+  // P4.5: a child (a number inside its card) is never covered by its own parent (off with the P4 fail-safe)
+  const owners = new Map<string, string>(redesignOn() ? plan.elements.filter((e) => e.parent).map((e) => [e.id, e.parent!] as [string, string]) : []);
   for (const f of frames) {
     const file = run.stills.get(f);
     const p = run.probes.get(f);
@@ -139,7 +141,7 @@ export async function previewRender(spec: VideoSpec, projectDir: string, plan: S
     prevGrey = grey;
     const W = p.canvas.width;
     void W;
-    out.push({ t, occ: po.occ, diff, texts: (p.stage.texts ?? []).map((x) => ({ el: x.el, id: x.id, px: x.px, rect: x.rect, opacity: x.opacity })), els: p.stage.els.filter((e) => !e.parent).map((e) => ({ id: e.id, kind: e.kind, rect: e.rect, opacity: e.opacity })) });
+    out.push({ t, occ: po.occ, diff, texts: (p.stage.texts ?? []).map((x) => ({ el: x.el, id: x.id, px: x.px, rect: x.rect, opacity: x.opacity, ...(owners.has(x.el) ? { owner: owners.get(x.el) } : {}) })), els: p.stage.els.filter((e) => !e.parent).map((e) => ({ id: e.id, kind: e.kind, rect: e.rect, opacity: e.opacity })) });
     dom.push({ t, cam: { x: 0, y: 0, dolly: 0, zoom: 1 }, els: p.stage.els, words: p.stage.words, texts: p.stage.texts, mask: p.stage.mask });
     curve.push({ t, occ: po.occ, lum: po.lum });
     stills.push({ t, file });
