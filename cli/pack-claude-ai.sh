@@ -35,7 +35,7 @@ merge() {
   && merge ILLUSTRATION WHITEBOARD MAP_ANIMATION DATA_ANIMATION GSAP \
   && merge QUALITY MOTION_METRICS PERFORMANCE TROUBLESHOOTING \
   && merge ARCHITECTURE THIRD_PARTY \
-  && merge SCENE_LIBRARY STYLE_LIBRARY)
+  && merge SCENE_LIBRARY STYLE_LIBRARY STYLE_LIBRARY_V2)
 N=$(find "$TMP/nitaaq-motion-graphics" -type f | wc -l)
 [ "$N" -le 200 ] || { echo "too many files for claude.ai: $N" >&2; exit 1; }
 mkdir -p "$ROOT/dist"
