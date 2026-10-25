@@ -84,7 +84,12 @@ export const BriefSchema = z.object({
   duration: z.number().min(5).max(600).optional(),
   tone: z.array(z.string()).default([]),
   pace: z.enum(['slow', 'medium', 'fast']).optional(),
+  /** Visual style: a Style Library v2 style (swiss-motion, isometric …, or an Arabic / English alias) or a legacy preset. */
   style: z.string().optional(),
+  /** Style Library v2 mixing: axis → style (composition, shape, material, typography, color, depth, motion, transitions, camera, rhythm, sound, decor). */
+  styleMix: z.record(z.string()).optional(),
+  /** Style Library v2: a specific signature move of the style. */
+  signatureMove: z.string().optional(),
   quality: z.enum(['preview', 'animatic', 'draft', 'production']).default('production'),
   /** Motion personality for the whole film (otherwise picked from tone/style/reference). */
   motion: z.enum(['premium', 'energetic', 'playful', 'corporate', 'cinematic', 'tech', 'sport']).optional(),

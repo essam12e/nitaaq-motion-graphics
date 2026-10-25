@@ -75,6 +75,8 @@ export const StyleRefSchema = z.object({
   preset: z.string().min(1),
   /** Partial token overrides (validated against the token shape during resolution). */
   overrides: z.record(z.unknown()).default({}),
+  /** Style Library v2: the visual style (style_recipe.json) — its brand-adapted palette is applied after the brand. */
+  look: z.object({ style: z.string(), recipe: z.string().optional(), palette: z.record(z.string()).optional() }).optional(),
 });
 
 export const DirectionSchema = z.object({

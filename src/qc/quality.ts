@@ -559,7 +559,7 @@ function motionPass(spec: VideoSpec, tl: ReturnType<typeof buildTimeline>, sampl
   const poseCuts = spec.character && spec.scenes.every((s) => SceneRegistry.get(s.type)?.manifest.category === 'character');
   // a Stage film's scene cuts are always "cut": its transitions are performed by elements (stage_report.json)
   if (!spec.stage && !poseCuts && trans.length >= 4 && new Set(trans).size === 1 && trans[0] !== 'auto') add({ severity: 'warning', code: 'TRANSITION_MONOTONY', message: `every cut uses "${trans[0]}"` });
-  const style = resolveStyle(spec.style.preset, spec.brand, spec.style.overrides);
+  const style = resolveStyle(spec.style.preset, spec.brand, spec.style.overrides, spec.style.look?.palette);
   const filmP = spec.motion?.personality as MotionPersonalityId | undefined;
   const styleP = (style.motion.personality ?? STYLE_PERSONALITY[style.id]) as MotionPersonalityId | undefined;
   if (filmP && styleP && !compatiblePersonalities(filmP, styleP)) add({ severity: 'warning', code: 'PERSONALITY_MISMATCH', message: `motion personality "${filmP}" fights the ${style.id} style (${styleP})` });

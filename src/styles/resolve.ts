@@ -8,7 +8,11 @@ import type { BrandProfile } from '../schema/video';
 import { bestTextOn, contrastRatio, ensureContrast, alpha, mix, isDark } from '../brand/color';
 import { getFont } from '../typography/registry';
 
-export function resolveStyle(presetId: string, brand: BrandProfile | null, overrides: Record<string, unknown> = {}): StyleTokens {
+/**
+ * `lookPalette` (Style Library v2): the style's brand-adapted palette (src/style-system/brand.ts), applied
+ * after the brand — the brand colours already fed it; the style decides where they go (ground, signal, faces).
+ */
+export function resolveStyle(presetId: string, brand: BrandProfile | null, overrides: Record<string, unknown> = {}, lookPalette?: Record<string, string>): StyleTokens {
   const id = findStyleId(presetId) ?? 'saudi-modern';
   let t = mergeTokens(STYLE_PRESETS[id], overrides);
   if (brand) {
@@ -40,6 +44,9 @@ export function resolveStyle(presetId: string, brand: BrandProfile | null, overr
     if (brand.latinFont && getFont(brand.latinFont)) t = { ...t, typography: { ...t.typography, latin: getFont(brand.latinFont)!.id } };
     // A light brand on a style built for glow: tone down glow.
     if (!bgDark) t = { ...t, glow: Math.min(t.glow, 0.15) };
+  }
+  if (lookPalette && Object.keys(lookPalette).length) {
+    t = { ...t, palette: { ...t.palette, ...(lookPalette as Partial<StyleTokens['palette']>) }, mode: isDark(lookPalette.background ?? t.palette.background) ? 'dark' : 'light' };
   }
   return enforceContrast(t);
 }

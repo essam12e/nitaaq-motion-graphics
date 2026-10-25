@@ -189,7 +189,9 @@ export async function artDirectorPass(spec: VideoSpec, projectDir: string, opts:
   const lang = languageFor({ personality: `${direction?.personality ?? ''} ${brief?.brief?.personality ?? ''}`, motionLanguage: direction?.motionLanguage, requested: process.env.NITAAQ_MOTION_LANGUAGE ?? brief?.brief?.motionLanguage });
   let cur = clone(ctx.script);
   const { description: _d, ...ml } = lang.language;
-  if (ab.phrase) cur.motionLanguage = ml as never;
+  // Style Library v2: a style's motion language is the film's (the brand language would flatten it back to 4 presets)
+  const styleLang = (cur as { motionLanguage?: { style?: string } }).motionLanguage?.style;
+  if (ab.phrase && !styleLang) cur.motionLanguage = ml as never;
   let curFilm: FilmPlan | null = ctx.authored ? ctx.film : null;
   const compile = (s: ScriptObj, f: FilmPlan | null) => ctx.compile(ab.phrase ? s : stripPhrases(s), f);
   let curPlan = compile(cur, curFilm);

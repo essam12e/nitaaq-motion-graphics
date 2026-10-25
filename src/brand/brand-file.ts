@@ -33,7 +33,7 @@ export interface BrandFile {
 
 export function brandFile(spec: VideoSpec): BrandFile {
   const b: BrandProfile | null = spec.brand;
-  const t = resolveStyle(spec.style.preset, b, spec.style.overrides);
+  const t = resolveStyle(spec.style.preset, b, spec.style.overrides, spec.style.look?.palette);
   const p = t.palette;
   const named = { primary: p.primary, secondary: p.secondary, accent: p.accent, textPrimary: p.textPrimary, textSecondary: p.textSecondary, white: '#FFFFFF', ink: '#0B0B0F' };
   const safe = (bg: string) => {

@@ -58,6 +58,8 @@ import { validateDirection, type Direction } from '../stage/direction';
 import { makeCanvasProfile } from '../layout/canvas';
 import { compileShots, plannedScenes, reapplyShotDecisions, applyShotSpec, type ResolvedShot, type CompileReport } from '../director/shot-compiler';
 import type { VoiceMap } from '../audio/voice-map';
+import { styleV2On, recipeForBrief, styleScript, styleTokenOverrides, compareStyles, RENDERABLE_STYLES } from '../style-system';
+import type { RecipeResult } from '../style-system/recipe';
 
 export interface DirectResult {
   status: 'ready' | 'needs-input';
@@ -253,7 +255,12 @@ export async function direct(opts: {
 
   // ── brand
   const tBrand = Date.now();
-  const styleId = pickStyle(brief, classifyGenre(brief).genre).id;
+  // Style Library v2: the visual style is chosen first (named, mixed, mapped from a legacy preset or selected
+  // from the brief); its token preset is the legacy style id the rest of the pipeline reads
+  const tStyle = Date.now();
+  let styleV2: RecipeResult | null = styleV2On() ? recipeForBrief(brief, { genre: classifyGenre(brief).genre }) : null;
+  const styleId = styleV2 ? styleV2.style.tokens.preset : pickStyle(brief, classifyGenre(brief).genre).id;
+  if (styleV2) log.stage('STYLE', `${styleV2.style.id} (${styleV2.recipe.selection.source}: ${styleV2.recipe.selection.whyThisStyle[0] ?? ''})`);
   let brand: BrandProfile | null;
   if (logoLottie) {
     // a Lottie logo: no raster analysis; its own static colours give the palette unless the brief names colours
@@ -413,6 +420,21 @@ export async function direct(opts: {
   let board: PlannedStoryboard;
   let charFilm: import('./character/film').CharacterFilm | undefined;
   let shotPlan: { resolved: ResolvedShot[]; report: CompileReport } | null = null;
+  if (styleV2) {
+    // the recipe again with the brand's colours (they feed the style's colour and material rules)
+    const identity = Object.entries(assets).filter(([, a]) => ['logo', 'product', 'screenshot'].includes(a.kind)).map(([id]) => id);
+    styleV2 = recipeForBrief(brief, { genre: genre.genre, brand: brand ? { ...brand, source: brand.source } : null, identity });
+    for (const w of styleV2.warnings) log.stage('STYLE', w, 'warn');
+  }
+  let styleScriptReport: ReturnType<typeof styleScript>['report'] | null = null;
+  if (script && styleV2 && script.stage) {
+    const assetKinds = Object.fromEntries(Object.entries(assets).map(([id, a]) => [id, a.kind]));
+    const st = styleScript(script, styleV2.style, { recipe: styleV2.recipe, brand: styleV2.brand, assetKinds });
+    script = st.script;
+    styleScriptReport = st.report;
+    log.stage('STYLE', `${st.report.changes.length} change(s) to the shot script, ${st.report.moments.length} native moment(s), ${st.report.protected.length} identity asset(s) protected`);
+  }
+  if (styleV2) perf.mark('style', Date.now() - tStyle);
   if (script) {
     // Full Director Mode: the shot script IS the storyboard
     shotPlan = compileShots({ script, voice: voiceMapData, recipeCtx: ctx, rtl: brief.language !== 'en', orientation: plan.aspect === '16:9' ? 'landscape' : plan.aspect === '1:1' ? 'square' : 'portrait', voiceOffset: offset });
@@ -493,9 +515,21 @@ export async function direct(opts: {
     writeFileSync(join(projectDir, 'brand-motion.json'), JSON.stringify(updated, null, 2));
   }
   if (charFilm) spec.character = charFilm.spec;
+  if (styleV2) {
+    // the style for the token path (fonts, surfaces, background, motion family) + its brand-adapted palette
+    const tok = styleTokenOverrides(styleV2.style);
+    spec.style = { preset: tok.preset, overrides: { ...tok.overrides, ...spec.style.overrides }, look: { style: styleV2.style.id, recipe: styleV2.recipe.hash, palette: styleV2.brand.palette as unknown as Record<string, string> } };
+    if (styleV2.style.decor.needsPatternAllowance && !spec.design.allowPatterns.includes('grid' as never)) {
+      spec.design = { ...spec.design, allowPatterns: [...spec.design.allowPatterns, 'grid' as never], justification: spec.design.justification ?? `style ${styleV2.style.id}: its measured grid is part of the chosen visual style` };
+    }
+    writeFileSync(join(projectDir, 'style_recipe.json'), JSON.stringify(styleV2.recipe, null, 2));
+    const near = RENDERABLE_STYLES.filter((x) => x.id !== styleV2!.style.id).map((x) => compareStyles(styleV2!.style, x)).sort((a, b) => a.distance - b.distance).slice(0, 3);
+    writeFileSync(join(projectDir, 'style_report.json'), JSON.stringify({ version: 1, style: styleV2.style.id, name: styleV2.style.name, warnings: styleV2.warnings, script: styleScriptReport, nearest: near.map((n) => ({ style: n.b, differentAxes: n.differentAxes, distance: n.distance })) }, null, 2));
+  }
   if (shotPlan) {
     applyShotSpec(spec, shotPlan.resolved, { shotScript: 'shots.json', voiceMap: voiceMapData ? 'voice_map.json' : undefined });
-    writeFileSync(join(projectDir, 'shots.json'), JSON.stringify(opts.shots, null, 2));
+    // Style Library v2: the styled script is the film's script (every later compile starts from it)
+    writeFileSync(join(projectDir, 'shots.json'), JSON.stringify(styleScriptReport ? script : opts.shots, null, 2));
     writeFileSync(join(projectDir, 'shot_compile_report.json'), JSON.stringify(shotPlan.report, null, 2));
     if (script?.stage) {
       // P1 Stage: one continuous stage — global elements, tracks, one camera — that draws the film

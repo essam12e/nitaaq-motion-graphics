@@ -166,9 +166,56 @@ export const MotionLanguageSchema = z
     enter: z.record(z.enum(['rise', 'slide', 'scale', 'fade', 'draw', 'mask', 'drop', 'none'])).default({}),
     /** Degrees of playful tilt allowed on small objects (0 = none). */
     tilt: z.number().min(0).max(12).default(0),
+    /** Style Library v2: the style this language comes from (kept by the Art Director). */
+    style: z.string().optional(),
+    /** Style Library v2: the curve family entrances land on (absent → the P4 springs). */
+    curve: z.enum(['precise', 'spring', 'elastic', 'glide', 'linear', 'stepped']).optional(),
+    /** Style Library v2: opacity ramp of entrances (none = arrives solid, long = slow fade). */
+    fade: z.enum(['none', 'soft', 'long']).optional(),
+    /** Style Library v2: entrances start blurred by this many units and clear. */
+    enterBlur: z.number().min(0).max(20).optional(),
   })
   .strict();
 export type MotionLanguage = z.infer<typeof MotionLanguageSchema>;
+/**
+ * Style Library v2: the visual style applied to this script (src/style-system). The Stage Compiler
+ * enforces its constraints on every compile (camera families and budget, transitions, identity
+ * protection, composition hero scale), and the StageLayer draws its look (material, decor, type) and
+ * its Native Style Moments. Absent → the film compiles exactly as before.
+ */
+export const StyleBlockSchema = z
+  .object({
+    id: z.string().min(2),
+    name: z.string().optional(),
+    recipe: z.string().optional(),
+    composition: z.object({ heroScale: z.number().min(0.5).max(1.6).default(1), snap: z.boolean().default(false) }).default({}),
+    camera: z
+      .object({ allowed: z.array(z.string()).optional(), amplitude: z.number().min(0).max(1.5).optional(), maxMovingShare: z.number().min(0).max(1).optional(), ease: z.string().optional() })
+      .default({}),
+    transitions: z.object({ prefer: z.array(z.string()).default([]), forbid: z.array(z.string()).default([]) }).default({}),
+    /** Stage element ids that are identity assets (product, logo, screenshot): never restyled. */
+    identity: z.array(z.string()).default([]),
+    /** Render look (material, decor, typography, colour roles) — read by the StageLayer. */
+    look: z.record(z.unknown()).default({}),
+    /** Native Style Moments: signature moves performed with the style's own forms. */
+    moments: z
+      .array(
+        z.object({
+          id: z.string(),
+          builder: z.string(),
+          shot: z.string(),
+          element: z.string().optional(),
+          into: z.string().optional(),
+          /** Where in the shot: its start, after the hero settles, or across its outgoing boundary. */
+          at: z.enum(['start', 'settle', 'end']).default('end'),
+          dur: z.number().min(0.2).max(3).default(0.9),
+        }),
+      )
+      .default([]),
+  })
+  .strict();
+export type StyleBlock = z.infer<typeof StyleBlockSchema>;
+
 export const MotionEventSchema = z.object({
   /** Stage mode: a name other events can follow ("after": "hub-impact"). */
   id: z.string().regex(/^[a-z0-9][a-z0-9-]*$/, 'event ids: lowercase letters, digits, dashes').optional(),
@@ -261,6 +308,8 @@ export const ShotScriptSchema = z
     shots: z.array(ShotSchema).min(1),
     /** P4: the brand's motion language (motion_language.json) — film-wide motion parameters. */
     motionLanguage: MotionLanguageSchema.optional(),
+    /** Style Library v2: the visual style (constraints + look + moments). */
+    style: StyleBlockSchema.optional(),
     /** Stage mode (P1): the film's global elements. Present → the Stage Compiler renders the film as one continuous stage. */
     stage: z
       .object({

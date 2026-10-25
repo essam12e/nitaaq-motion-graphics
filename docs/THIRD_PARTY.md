@@ -42,3 +42,7 @@ Only with `NITAAQ_AUDIO_ONLINE=1`, only CC0 (or CC-BY with a recorded attributio
 2. Heavy or experimental tools (CLAP embeddings, Manim, ML models) are optional adapters behind a hook (`setSemanticBackend`) — never required, never installed by default.
 3. No paid API is needed for anything; paid TTS stays optional.
 4. The internet is never required: every online feature has an offline fallback.
+
+## Concepts studied (no code copied)
+
+- **lemo-opuscar** (github.com/lemomo-ai/lemo-opuscar, MIT, Copyright 2026 LemoLab) — studied for Style Library v2: a style as a rules document (essence and "not this", material, colour logic, type, motion quality, a camera table, native moves with "fits content like…", transitions from the medium). These ideas were re-expressed as NITAAQ data (`src/style-system/`) over NITAAQ's own primitives. No file or function was copied, nothing is vendored, and its three.js / WebGL renderers are not used (a style that needs one is marked `REQUIRES_OPTIONAL_RENDERER`).

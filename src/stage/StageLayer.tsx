@@ -24,6 +24,13 @@ import { passOpacity, NEAR } from '../camera/rig';
 import { formatNumber } from '../scenes/kit';
 import { CAMERA_KEY, type StageElement, type StagePlan } from './plan';
 import { pointAlong } from './compiler';
+import { readLook, surfaceCss, shapePaint, isStrokeMaterial, strokeW, cornerRadius, type Look } from '../style-system/render/look';
+import { StyleWorld, StyleFrame } from '../style-system/render/StyleDecor';
+import { StyleMoments, type ScreenBox } from '../style-system/render/StyleMoments';
+
+/** Style Library v2: the style's render look (null → the P4.5 look) and the pose clock (on twos for stepped styles). */
+const LookCtx = createContext<Look | null>(null);
+const PoseCtx = createContext<number | null>(null);
 
 export interface CamState {
   x: number;
@@ -147,7 +154,25 @@ export function StageRoot({ plan, children }: { plan: StagePlan; children?: Reac
   const masked = new Set(activeMask?.reveals ?? []);
   const worldColor = plan.world.color ? colorOf(plan.world.color, v.tokens.palette as unknown as Record<string, string>, v.tokens.palette.background) : null;
   const backdrop = backdropAt(plan, t, v.tokens.palette as unknown as Record<string, string>, v.tokens.palette.background);
+  const look = useMemo(() => readLook(plan.style?.look), [plan]);
+  // stepped styles pose on twos (12 fps poses); the camera stays smooth
+  const tPose = look?.motion.stepped ? (Math.floor(frame / 2) * 2) / fps : t;
+  const u = v.canvas.u;
+  const boxOf = (id: string | undefined, at: number): ScreenBox | null => {
+    const el = id ? byId.get(id) : undefined;
+    if (!el || el.parent) return null;
+    const st = elementState(c, el.key, at);
+    const cm = cameraAtT(c, at);
+    const pm = planeMatrix(st.z, cm, W, H);
+    const k = pm.a * st.s;
+    return { cx: pm.a * st.x * W + pm.tx, cy: pm.a * st.y * H + pm.ty, w: el.box.w * W * st.sx * k, h: el.box.h * H * st.sy * k };
+  };
+  const shotEnd = (sid: string) => plan.shots.find((s) => s.id === sid)?.end ?? t;
+  const moments = plan.style?.moments ?? [];
+  const bgPlane = look ? planeMatrix(0.45, cam, W, H) : null;
   return (
+    <LookCtx.Provider value={look}>
+    <PoseCtx.Provider value={look ? tPose : null}>
     <BackdropCtx.Provider value={backdrop}>
     <AbsoluteFill data-qc="stage" data-qc-stage-cam={`${cam.x.toFixed(2)},${cam.y.toFixed(2)},${cam.dolly.toFixed(4)},${cam.zoom.toFixed(4)}`} style={{ overflow: 'hidden' }}>
       {/* the far world: the style background, overscanned so camera moves never show an edge */}
@@ -157,6 +182,13 @@ export function StageRoot({ plan, children }: { plan: StagePlan; children?: Reac
           {worldColor ? <AbsoluteFill style={{ background: worldColor }} /> : null}
         </AbsoluteFill>
       </AbsoluteFill>
+      {/* Style Library v2: the style's world (rules, floor, light, colour fields) on the background plane */}
+      {look && bgPlane ? (
+        <AbsoluteFill style={{ transformOrigin: '0 0', transform: `matrix(${bgPlane.a},0,0,${bgPlane.a},${bgPlane.tx},${bgPlane.ty})` }}>
+          <StyleWorld look={look} W={W} H={H} u={u} t={t} rtl={v.dir === 'rtl'} reduced={v.effects === 'reduced'} />
+        </AbsoluteFill>
+      ) : null}
+      {look && moments.length ? <StyleMoments look={look} moments={moments} layer="back" t={t} W={W} H={H} u={u} rtl={v.dir === 'rtl'} boxOf={boxOf} shotEnd={shotEnd} reduced={v.effects === 'reduced'} /> : null}
       {/* legacy scene families: the hero plane under the same camera */}
       {children ? <AbsoluteFill style={{ transformOrigin: '0 0', transform: `matrix(${hero.a},0,0,${hero.a},${hero.tx},${hero.ty})` }}>{children}</AbsoluteFill> : null}
       {tops.map((e) => {
@@ -166,8 +198,12 @@ export function StageRoot({ plan, children }: { plan: StagePlan; children?: Reac
         }
         return <StageEl key={e.id} el={e} c={c} cam={cam} byId={byId} plan={plan} />;
       })}
+      {look && moments.length ? <StyleMoments look={look} moments={moments} layer="front" t={t} W={W} H={H} u={u} rtl={v.dir === 'rtl'} boxOf={boxOf} shotEnd={shotEnd} reduced={v.effects === 'reduced'} /> : null}
+      {look ? <StyleFrame look={look} W={W} H={H} u={u} /> : null}
     </AbsoluteFill>
     </BackdropCtx.Provider>
+    </PoseCtx.Provider>
+    </LookCtx.Provider>
   );
 }
 
@@ -241,8 +277,9 @@ function StageEl({ el, c, cam, byId, plan, parentPx }: { el: StageElement; c: Co
   const t = frame / fps;
   const W = v.canvas.width;
   const H = v.canvas.height;
+  const pose = useContext(PoseCtx);
   if (t < el.life.from || t > el.life.to) return null;
-  const st = elementState(c, el.key, t);
+  const st = elementState(c, el.key, pose ?? t);
   if (st.o <= 0.001) return null;
   const refW = parentPx ? parentPx.w : W;
   const refH = parentPx ? parentPx.h : H;
@@ -288,25 +325,36 @@ function ElementBody({ el, st, w, h }: { el: StageElement; st: ElState; w: numbe
   const u = v.canvas.u;
   const ct = el.content;
   const backdrop = useContext(BackdropCtx);
+  const look = useContext(LookCtx);
+  const identity = look ? isIdentityEl(el, v.spec.assets as Record<string, { kind: string }>) : true;
+  if (look && !identity) {
+    const styled = styledBody(look, el, st, w, h, pal, u, v.effects === 'reduced', v.dir);
+    if (styled) return styled;
+  }
   switch (el.kind) {
     case 'text': {
       const role = (ct.role ?? 'headline') as TextRole;
       const ink = inkOn(backdrop, colorOf(ct.color, pal, role === 'caption' || role === 'body' ? p.textSecondary : p.textPrimary), v.hl, pal);
+      // Style Library v2: alignment, reveal unit (word / line / block — never letters) and headline scale contrast
+      const align = look?.type.align === 'start' ? 'start' : 'center';
+      const reveal = look ? ({ word: 'words', line: 'lines', block: 'block', mask: 'lines' } as const)[look.type.reveal] : 'words';
+      // (only a headline with room for it: a small headline box keeps its size, so the type never spills out)
+      const big = look && (role === 'headline' || role === 'title') && el.box.h >= 0.3 ? look.type.sizeContrast : 1;
       return (
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: align === 'start' ? 'flex-start' : 'center', direction: v.dir }}>
           <Text
             text={ct.text ?? ''}
             role={role}
             highlight={ct.highlight}
-            size={ct.fontU}
+            size={ct.fontU !== undefined ? ct.fontU * big : undefined}
             minSize={Math.min(ct.fontU ?? 3, 2.4)}
             maxWidth={w}
             maxHeight={h * 1.05}
             maxLines={ct.maxLines ?? 3}
-            align="center"
+            align={align}
             color={ink.ink}
             hlColor={ink.hl}
-            animate="words"
+            animate={reveal}
             wordTimes={el.wordTimes}
             emphasis={el.emphasis?.map((e) => ({ word: e.word, at: e.at }))}
             qcId={el.id}
@@ -439,6 +487,117 @@ function ElementBody({ el, st, w, h }: { el: StageElement; st: ElState; w: numbe
           <Icon name={ct.icon} size={Math.min(w, h)} color={colorOf(ct.color, pal, p.primary)} />
         </div>
       );
+    default:
+      return null;
+  }
+}
+
+/** Identity assets (logo, product, screenshot, any user image) are drawn as supplied. */
+function isIdentityEl(el: StageElement, assets: Record<string, { kind: string }>): boolean {
+  if (el.kind === 'image' || el.kind === 'ui') return true;
+  return Boolean(el.content.asset && assets[el.content.asset]);
+}
+
+/**
+ * Style Library v2: a generic element (card, chip, button, shape) drawn in the style's material. Returns
+ * null for kinds the style leaves to the default body (text, number, line, cursor, icon).
+ */
+function styledBody(look: Look, el: StageElement, st: ElState, w: number, h: number, pal: Record<string, string>, u: number, reduced: boolean, dir: 'rtl' | 'ltr'): React.ReactElement | null {
+  const ct = el.content;
+  const m = look.material;
+  const stroke = isStrokeMaterial(m);
+  const outline = (r: number, col: string) => {
+    // line-art / blueprint: the outline is drawn with the element's draw track
+    const per = 2 * (w + h);
+    return (
+      <svg width={w} height={h} style={{ position: 'absolute', inset: 0, overflow: 'visible' }} aria-hidden>
+        <rect x={0.5} y={0.5} width={Math.max(1, w - 1)} height={Math.max(1, h - 1)} rx={r} fill="none" stroke={col} strokeWidth={Math.max(1.5, strokeW(m, u))} strokeDasharray={`${per} ${per}`} strokeDashoffset={per * (1 - st.draw)} />
+      </svg>
+    );
+  };
+  switch (el.kind) {
+    case 'card': {
+      if (el.morphShapes && el.morphShapes.length > 1 && st.morph > 0.001) return null; // the morph keeps its own body
+      const tone = ct.color === 'primary' ? pal.primary : ct.color === 'accent' ? pal.accent : pal.surface;
+      const onTone = ct.color === 'primary' || ct.color === 'accent';
+      const fg = stroke ? pal.textPrimary : onTone ? pal.textOnPrimary : pal.textOnSurface ?? pal.textPrimary;
+      const mm = Math.min(w, h);
+      const css = surfaceCss(look, tone, w, h, u, { reduced });
+      return (
+        <div data-qc="style-surface" data-qc-material={m.kind} style={{ position: 'absolute', inset: 0, ...css, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: mm * 0.06 }}>
+          {stroke ? outline(Number(css.borderRadius ?? 0), m.kind === 'blueprint' ? look.roles.keyline : pal.textPrimary) : null}
+          {ct.icon ? <Icon name={ct.icon} size={mm * 0.26} color={onTone && !stroke ? fg : pal.primary} /> : null}
+          {ct.title ? <Text text={ct.title} role="label" size={(mm * 0.12) / u} maxWidth={w * 0.84} maxLines={2} color={fg} animate="none" qcId={`${el.id}.title`} /> : null}
+          {ct.subtitle ? <Text text={ct.subtitle} role="caption" size={(mm * 0.085) / u} maxWidth={w * 0.84} maxLines={2} color={onTone && !stroke ? fg : pal.textSecondary} animate="none" qcId={`${el.id}.subtitle`} /> : null}
+        </div>
+      );
+    }
+    case 'chip': {
+      const fill = colorOf(ct.color, pal, pal.surface);
+      const onTone = ct.color === 'primary' || ct.color === 'accent';
+      const css = surfaceCss(look, fill, w, h, u, { reduced, button: true });
+      const fg = stroke ? pal.textPrimary : onTone ? pal.textOnPrimary : pal.textPrimary;
+      return (
+        <div data-qc="style-surface" data-qc-material={m.kind} style={{ position: 'absolute', inset: 0, ...css, borderRadius: m.corner === 'sharp' ? cornerRadius(m, w, h, u) : h / 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: h * 0.18, direction: dir }}>
+          {stroke ? outline(m.corner === 'sharp' ? cornerRadius(m, w, h, u) : h / 2, pal.textPrimary) : null}
+          {ct.icon ? <Icon name={ct.icon} size={h * 0.46} color={onTone && !stroke ? fg : pal.primary} /> : null}
+          {ct.text ? <Text text={ct.text} role="label" size={(h * 0.36) / u} maxWidth={w * 0.72} maxLines={1} color={fg} animate="none" qcId={el.id} /> : null}
+        </div>
+      );
+    }
+    case 'button': {
+      const k = 1 - 0.06 * st.press;
+      const fill = colorOf(ct.color, pal, pal.primary);
+      const css = surfaceCss(look, fill, w, h, u, { reduced, button: true });
+      const r = m.corner === 'sharp' ? cornerRadius(m, w, h, u) : h / 2;
+      // a stroke / metal button keeps a solid brand fill: the action must read as the strongest thing on screen
+      const solid = stroke || m.kind === 'metallic' || m.kind === 'glass' || m.kind === 'frosted';
+      return (
+        <div data-qc="style-surface" data-qc-material={m.kind} style={{ position: 'absolute', inset: 0, ...css, ...(solid ? { background: fill, border: m.kind === 'metallic' ? `1px solid ${look.roles.metal}` : css.border } : {}), borderRadius: r, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: `scale(${k})` }}>
+          <Text text={ct.text ?? ''} role="cta" size={(h * 0.4) / u} maxWidth={w * 0.82} maxLines={1} color={pal.textOnPrimary} animate="none" qcId={el.id} critical />
+        </div>
+      );
+    }
+    case 'shape': {
+      const fill = colorOf(ct.color, pal, pal.primary);
+      const shapes = el.morphShapes ?? [ct.shape ?? 'circle'];
+      const i0 = Math.max(0, Math.min(shapes.length - 1, Math.floor(st.morph)));
+      const i1 = Math.min(shapes.length - 1, i0 + 1);
+      const k = Math.max(0, Math.min(1, st.morph - i0));
+      const a = stageShapePath(shapes[i0], w, h);
+      const d = k > 0.001 && i1 !== i0 ? morphAt(cachedMorph(a, stageShapePath(shapes[i1], w, h), 96), k) : a;
+      const pt = shapePaint(look, fill);
+      const gid = `sg-${el.key}`;
+      const sw = Math.max(1.5, strokeW(m, u));
+      const len = 2 * (w + h) * 1.2;
+      const ex = Math.max(0.6 * u, m.thickness * Math.min(w, h) * 0.2);
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ position: 'absolute', inset: 0, overflow: 'visible' }} data-qc="morph" data-qc-material={m.kind}>
+          {pt.gradient ? (
+            <defs>
+              <radialGradient id={gid} cx="0.32" cy="0.26" r="0.85">
+                <stop offset="0" stopColor={pt.gradient[0]} />
+                <stop offset="0.55" stopColor={pt.gradient[1]} />
+                <stop offset="1" stopColor={pt.gradient[2]} />
+              </radialGradient>
+            </defs>
+          ) : null}
+          {pt.extrude ? <path d={d} fill={pt.extrude} transform={`translate(${ex * 0.6} ${ex})`} /> : null}
+          {pt.shadow ? <path d={d} fill={pt.shadow} transform={`translate(${0.7 * u} ${0.9 * u})`} /> : null}
+          <path
+            d={d}
+            fill={pt.gradient ? `url(#${gid})` : pt.fill}
+            stroke={pt.stroke ?? pt.border}
+            strokeWidth={pt.stroke ? sw : pt.border ? 0.55 * u : undefined}
+            strokeLinejoin="round"
+            strokeDasharray={pt.stroke ? `${len} ${len}` : undefined}
+            strokeDashoffset={pt.stroke ? len * (1 - st.draw) : undefined}
+            style={pt.glow && !reduced ? { filter: `drop-shadow(0 0 ${0.9 * u}px ${fill})` } : undefined}
+          />
+          {pt.gradient ? <ellipse cx={w * 0.34} cy={h * 0.28} rx={w * 0.12} ry={h * 0.07} fill={alpha('#FFFFFF', 0.45)} /> : null}
+        </svg>
+      );
+    }
     default:
       return null;
   }

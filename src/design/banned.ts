@@ -37,7 +37,7 @@ const bluePurple = (hex: string) => chroma(hex) > 0.06 && hue(hex) >= 235 && hue
 
 export function checkBannedPatterns(spec: VideoSpec): BannedFinding[] {
   const out: BannedFinding[] = [];
-  const t = resolveStyle(spec.style.preset, spec.brand, spec.style.overrides);
+  const t = resolveStyle(spec.style.preset, spec.brand, spec.style.overrides, spec.style.look?.palette);
   const allow = spec.design?.allowPatterns ?? [];
   const justified = Boolean(spec.design?.justification);
   const add = (id: string, message: string, extra: Partial<BannedFinding> = {}, severity?: BannedSeverity) => out.push({ id, severity: severity ?? rule(id).severity, message, ...extra });
@@ -87,6 +87,6 @@ export function checkBannedPatterns(spec: VideoSpec): BannedFinding[] {
 
 /** Background kinds that are pattern kinds anywhere in the spec (resolved or not). */
 export function patternKindsIn(spec: VideoSpec): string[] {
-  const t = resolveStyle(spec.style.preset, spec.brand, spec.style.overrides);
+  const t = resolveStyle(spec.style.preset, spec.brand, spec.style.overrides, spec.style.look?.palette);
   return [t.background.kind, t.background.secondaryKind, ...spec.scenes.map((s) => s.background?.kind)].filter((k): k is string => isPatternKind(k));
 }

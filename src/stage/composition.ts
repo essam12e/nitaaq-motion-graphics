@@ -53,6 +53,8 @@ export interface ComposeInput {
   exitDirection?: 'left' | 'right' | 'up' | 'down' | 'in' | 'out';
   /** Composition strategy (P2-C, shot.composition). Absent / "centered": the P1 layout. */
   strategy?: string;
+  /** Style Library v2: × the hero's linear size (a luxury hero isolated small, a sport hero breaking the frame). Absent → 1. */
+  heroScale?: number;
 }
 
 export interface CompositionReport {
@@ -154,7 +156,8 @@ export function unionArea(boxes: Box[], n = 80): number {
  */
 export function composeShot(input: ComposeInput): { boxes: Record<string, Box>; report: CompositionReport } {
   const strat = input.strategy ? resolveStrategy(input.strategy) : null;
-  if (strat && strat !== 'centered') return composeStrategy(input, strat);
+  if (strat && strat !== 'centered') return scaleHero(input, composeStrategy(input, strat));
+  if (input.heroScale && input.heroScale !== 1) return scaleHero(input, composeShot({ ...input, heroScale: undefined }));
   const { W, H, safe, rtl, shotSize } = input;
   const landscape = W / H > 1.05;
   const notes: string[] = [];
@@ -338,8 +341,12 @@ export const STRATEGY_ALIASES: Record<string, Strategy> = {
   'edge-to-center': 'center-stage',
   'hero-first': 'hero-focus',
 };
-export function resolveStrategy(name: string): Strategy | null {
+/** Style-native strategies (Style Library v2): performed here, chosen by a style's composition grammar (not offered to the Re-Director). */
+export const STYLE_STRATEGIES = ['grid-flush', 'iso-diorama', 'scatter', 'axis-center', 'diagonal'] as const;
+export type StyleStrategy = (typeof STYLE_STRATEGIES)[number];
+export function resolveStrategy(name: string): Strategy | StyleStrategy | null {
   if ((STRATEGIES as readonly string[]).includes(name)) return name as Strategy;
+  if ((STYLE_STRATEGIES as readonly string[]).includes(name)) return name as StyleStrategy;
   return STRATEGY_ALIASES[name] ?? null;
 }
 
@@ -357,7 +364,25 @@ function sizeBox(e: ComposeElement, area: number, maxW: number, maxH: number, W:
   return { w, h };
 }
 
-function composeStrategy(input: ComposeInput, strat: Strategy): { boxes: Record<string, Box>; report: CompositionReport } {
+/** Style Library v2: the style's hero scale (centre kept, clamped to the safe area). */
+function scaleHero(input: ComposeInput, r: { boxes: Record<string, Box>; report: CompositionReport }): { boxes: Record<string, Box>; report: CompositionReport } {
+  const k = input.heroScale;
+  const id = r.report.subject;
+  if (!k || k === 1 || !id || !r.boxes[id]) return r;
+  const b = r.boxes[id];
+  const fit = Math.min(k, (input.safe.w * 1.0) / Math.max(1e-4, b.w), (input.safe.h * 1.0) / Math.max(1e-4, b.h));
+  const f = Math.max(0.5, k > 1 ? Math.max(1, fit) : k);
+  const w = b.w * f;
+  const h = b.h * f;
+  // the scaled hero stays inside the safe area (its centre moves in if an edge would leave it)
+  const cx = Math.min(Math.max(b.x, input.safe.x + w / 2), input.safe.x + input.safe.w - w / 2);
+  const cy = Math.min(Math.max(b.y, input.safe.y + h / 2), input.safe.y + input.safe.h - h / 2);
+  const nb = { ...b, x: r4(w <= input.safe.w ? cx : b.x), y: r4(h <= input.safe.h ? cy : b.y), w: r4(w), h: r4(h) };
+  const boxes = { ...r.boxes, [id]: nb };
+  return { boxes, report: { ...r.report, heroOccupancy: r4(Math.min(1, nb.w) * Math.min(1, nb.h)), notes: [...r.report.notes, `style hero scale ×${r4(f)}`] } };
+}
+
+function composeStrategy(input: ComposeInput, strat: Strategy | StyleStrategy): { boxes: Record<string, Box>; report: CompositionReport } {
   const { W, H, safe, rtl, shotSize } = input;
   const landscape = W / H > 1.05;
   const notes: string[] = [`strategy: ${strat}`];
@@ -602,6 +627,110 @@ function composeStrategy(input: ComposeInput, strat: Strategy): { boxes: Record<
           y += p.s.h + gap;
         }
         layout = `CTA lock-up: ${parts.map((p) => p.e.id).join(' / ')}`;
+        break;
+      }
+      case 'grid-flush': {
+        // Swiss grid: 6 columns, everything flush to the reading-start edge, edges on column lines, a giant hero next to small notes
+        const cols = 6;
+        const gut = 0.012;
+        const cw = (safe.w - gut * (cols - 1)) / cols;
+        const span = (n: number) => n * cw + (n - 1) * gut;
+        const flush = (w: number, offsetCols = 0) => (rtl ? sx1 - (offsetCols ? span(offsetCols) + gut : 0) - w / 2 : sx0 + (offsetCols ? span(offsetCols) + gut : 0) + w / 2);
+        const notes2 = notHero(rest);
+        // landscape keeps at least two free columns for the notes (a text hero takes 4 of 6)
+        const heroCols = !landscape ? 6 : notes2.length ? 4 : 6;
+        const hs = sizeBox(hero, Math.max(hiArea(hero), areaOf(hero, 'close')), span(heroCols), safe.h * (landscape ? 0.78 : 0.5), W, H);
+        const hw = Math.min(hs.w, span(heroCols));
+        place(hero, { x: flush(hw), y: sy0 + hs.h / 2 + safe.h * 0.04, w: hw, h: hs.h });
+        if (landscape) {
+          // the notes run down the remaining columns, baseline-aligned from the bottom
+          const restCols = cols - heroCols;
+          const cwR = span(restCols);
+          let y = sy1;
+          [...notes2].reverse().forEach((e) => {
+            const s = sizeBox(e, areaOf(e) * 0.45, cwR, safe.h * 0.22, W, H);
+            place(e, { x: flush(s.w, heroCols), y: y - s.h / 2, ...s });
+            y -= s.h + 0.03;
+          });
+        } else {
+          // portrait: notes stack under the hero on the start columns, small, a 3-column measure
+          let y = sy0 + hs.h + safe.h * 0.1;
+          notes2.forEach((e, i) => {
+            const n = e.kind === 'text' ? 4 : 3;
+            const s = sizeBox(e, areaOf(e) * 0.5, span(n), safe.h * 0.16, W, H);
+            place(e, { x: flush(s.w, i % 2 && e.kind !== 'text' ? 3 : 0), y: y + s.h / 2, ...s });
+            if (!(i % 2 === 0 && notes2[i + 1] && notes2[i + 1].kind !== 'text' && e.kind !== 'text')) y += s.h + 0.03;
+          });
+        }
+        layout = `grid-flush: 6-column grid, hero ${heroCols} columns flush to the reading start, ${notes2.length} notes on the grid`;
+        break;
+      }
+      case 'iso-diorama': {
+        // an isometric diorama: the hero on the floor centre, the rest on the iso axes around it (30°), labels above
+        const hs = sizeBox(hero, hiArea(hero) * 0.8, safe.w * 0.48, safe.h * 0.4, W, H);
+        const cy = 0.56;
+        place(hero, { x: 0.5, y: cy, ...hs });
+        const list = notHero(things);
+        const c30 = Math.cos(Math.PI / 6);
+        const slots: [number, number][] = [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -2], [-2, 0], [2, 0], [0, 2]];
+        list.forEach((e, i) => {
+          const [a, b] = slots[i % slots.length];
+          const s = sizeBox(e, areaOf(e) * 0.45, safe.w * 0.24, safe.h * 0.18, W, H);
+          const step = Math.max(hs.w, 0.22) * 0.55;
+          const dx = (a - b) * c30 * step * (rtl ? -1 : 1);
+          const dy = ((a + b) / 2) * step * (W / H) * 0.6;
+          place(e, { x: 0.5 + dx, y: cy + dy, ...s });
+        });
+        texts.forEach((t, i) => place(t, { x: 0.5, y: sy0 + 0.06 + i * 0.09, ...sizeBox(t, areaOf(t) * 0.55, safe.w * 0.86, 0.12, W, H) }));
+        layout = `iso diorama: hero on the floor centre, ${list.length} on the iso axes, ${texts.length} label(s) above`;
+        break;
+      }
+      case 'scatter': {
+        // a collage: the hero slightly off-centre, the rest scattered on a golden-angle spiral, overlapping a little
+        const hs = sizeBox(hero, hiArea(hero), safe.w * 0.62, safe.h * 0.5, W, H);
+        const hx = 0.5 + start * 0.05;
+        const hy = 0.5;
+        place(hero, { x: hx, y: hy, ...hs });
+        const list = notHero(rest);
+        list.forEach((e, i) => {
+          const s = sizeBox(e, areaOf(e) * (e.kind === 'text' ? 0.55 : 0.5), safe.w * (e.kind === 'text' ? 0.7 : 0.3), safe.h * 0.2, W, H);
+          const a = i * 2.39996 + (rtl ? 0.6 : 2.5);
+          const r = 0.55 + (i % 3) * 0.12;
+          place(e, { x: hx + Math.cos(a) * (hs.w / 2 + s.w / 2) * r, y: hy + Math.sin(a) * (hs.h / 2 + s.h / 2) * (r + 0.15), ...s });
+        });
+        layout = `scatter: hero off-centre, ${list.length} pieces scattered (golden angle) and overlapping`;
+        break;
+      }
+      case 'axis-center': {
+        // the centre axis: one isolated hero, large negative space, the copy small under it on the same axis
+        const hs = sizeBox(hero, areaOf(hero) * 0.75, safe.w * 0.6, safe.h * 0.42, W, H);
+        place(hero, { x: 0.5, y: texts.length ? 0.45 : 0.5, ...hs });
+        let y = (texts.length ? 0.45 : 0.5) + hs.h / 2 + 0.07;
+        for (const e of notHero(rest)) {
+          const s = sizeBox(e, areaOf(e) * 0.4, safe.w * 0.62, safe.h * 0.1, W, H);
+          place(e, { x: 0.5, y: y + s.h / 2, ...s });
+          y += s.h + 0.035;
+        }
+        layout = 'axis-center: one hero on the centre axis, the rest small under it';
+        break;
+      }
+      case 'diagonal': {
+        // a 15–20° diagonal from the bottom of the reading start to the top of the reading end; the hero breaks it in the middle
+        const hs = sizeBox(hero, hiArea(hero), safe.w * 0.7, safe.h * 0.48, W, H);
+        place(hero, { x: 0.5, y: 0.5, ...hs });
+        const list = notHero(rest);
+        const n = list.length;
+        list.forEach((e, i) => {
+          const s = sizeBox(e, areaOf(e) * 0.5, safe.w * 0.4, safe.h * 0.16, W, H);
+          const f = n === 1 ? 1 : i / (n - 1);
+          const side = i % 2 ? 1 : -1;
+          // start side low, end side high
+          const t = side < 0 ? 0.15 + f * 0.1 : 0.75 + f * 0.1;
+          const x = rtl ? sx1 - t * safe.w : sx0 + t * safe.w;
+          const y = sy1 - t * safe.h * 0.9;
+          place(e, { x, y, ...s });
+        });
+        layout = `diagonal: hero breaks a rising diagonal, ${n} along it`;
         break;
       }
       default:

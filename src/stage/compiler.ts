@@ -22,6 +22,7 @@ import { keyOf, CAMERA_KEY, LAYER_DEPTH, type StageElement, type StagePlan, type
 import { isObjectTransition, type ShotScript, type StageElementDecl, type CastEntry, type Shot } from '../director/shot-script';
 import { moveFamily, type Direction } from './direction';
 import { wordTime, type VoiceWords } from '../director/shot-compiler';
+import { constrainScript } from '../style-system/apply-script';
 
 export interface StageShotTiming {
   id: string;
@@ -69,6 +70,8 @@ export interface StageReport {
   causality: { event: string; after: string; t: number }[];
   /** P4: the art-direction primitives the film uses (focus, settle, respond, become) — absent in a P3 film. */
   art?: Record<string, unknown>[];
+  /** Style Library v2: the style and what its constraints changed on this compile. */
+  style?: { id: string; notes: string[]; moments: { id: string; builder: string; shot: string; t0: number; t1: number }[] };
 }
 
 const r3 = (x: number) => Math.round(x * 1000) / 1000;
@@ -111,7 +114,10 @@ type Cam = { x: number; y: number; dolly: number; zoom: number };
 const REST_CAM: Cam = { x: 0, y: 0, dolly: 0, zoom: 1 };
 
 export function compileStage(input: StageCompileInput): { plan: StagePlan; report: StageReport } {
-  const { script, timing, voice, W, H, rtl } = input;
+  const { timing, voice, W, H, rtl } = input;
+  // Style Library v2: the style's constraints hold on every compile (absent → the script as given)
+  const styled = input.script.style ? constrainScript(input.script) : null;
+  const script = styled ? styled.script : input.script;
   if (!script.stage) throw new Error('compileStage: the shot script has no "stage"');
   const warnings: StageReport['warnings'] = [];
   const warn = (code: string, message: string, shot?: string) => warnings.push({ shot, code, message });
@@ -240,7 +246,7 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
     const room = !reg && group && (fam0 === 'push' || fam0 === 'follow') ? 0.1 * clamp(s.camera === 'static' ? 0 : (s.camera.amplitude ?? 1), 0.3, 1) : 0;
     const roomSafe = room ? { x: safe.x + safe.w * room, y: safe.y + safe.h * room * 0.6, w: safe.w * (1 - 2 * room), h: safe.h * (1 - 1.2 * room) } : safe;
     const compIn = reg ? { W: reg.w * W, H: reg.h * H, safe: { x: 0.06, y: 0.08, w: 0.88, h: 0.84 } } : { W, H, safe: roomSafe };
-    const comp = composeShot({ W: compIn.W, H: compIn.H, safe: compIn.safe, rtl, shotSize: s.shotSize as ShotSize, purpose: s.purpose, elements: top.map(mk), exitDirection: exitTo, strategy: s.composition });
+    const comp = composeShot({ W: compIn.W, H: compIn.H, safe: compIn.safe, rtl, shotSize: s.shotSize as ShotSize, purpose: s.purpose, elements: top.map(mk), exitDirection: exitTo, strategy: s.composition, ...(script.style && script.style.composition.heroScale !== 1 && !reg ? { heroScale: script.style.composition.heroScale } : {}) });
     const out: Record<string, Box> = {};
     for (const [id, b] of Object.entries(comp.boxes)) out[id] = reg ? { x: reg.x + b.x * reg.w, y: reg.y + b.y * reg.h, w: b.w * reg.w, h: b.h * reg.h } : b;
     void safe;
@@ -477,27 +483,42 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
         else if (style === 'drop') fromXY.y = props.y - amp(0.12, a);
         else if (style === 'slide') fromXY.x = props.x - flow[0] * amp(0.09, a);
         else if (style === 'scale') fromXY.s = props.s * (a === 1 ? 0.78 : clamp(1 - 0.22 * a, 0.3, 0.95));
+        // Style Library v2: a styled entrance never starts with a headline's edge off the canvas
+        if (lang?.style && fromXY.x !== undefined) {
+          const half = (d.kind === 'text' ? b0.w : 0) / 2;
+          if (half > 0) fromXY.x = clamp(fromXY.x, Math.min(props.x, half + 0.03), Math.max(props.x, 0.97 - half));
+        }
         const sp0 = style === 'drop' ? { bounce: 0.35, visualDuration: 0.6 } : style === 'scale' ? { bounce: 0.22, visualDuration: 0.55 } : { bounce: 0.12, visualDuration: 0.6 };
         const b = ph.bounce;
         const sp = b === undefined && ph.tempo === 1 ? sp0 : { bounce: b === undefined ? sp0.bounce : r3(clamp(style === 'drop' ? b + 0.2 : style === 'scale' ? b + 0.07 : b * 0.8, 0, 0.7)), visualDuration: r3(sp0.visualDuration * ph.tempo) };
+        // Style Library v2: the style's curve family (precise / glide / linear land on a curve, elastic overshoots more)
+        const curve = lang?.curve;
+        const curveEase = curve === 'precise' ? 'camera-whip' : curve === 'glide' ? 'luxury-glide' : curve === 'linear' ? 'ease-in-out-cubic' : null;
+        const curveDur = curve === 'precise' ? 0.46 : curve === 'glide' ? 0.95 : curve === 'linear' ? 0.8 : sp.visualDuration;
+        if (curve === 'elastic') sp.bounce = r3(clamp(sp.bounce + 0.18, 0, 0.7));
         // P4 motion language: a playful tilt that settles (small objects only, never text)
         if (ph.tilt > 0 && ['chip', 'icon', 'shape', 'card'].includes(d.kind) && (style === 'drop' || style === 'scale')) {
           fromXY.r = (cast.rotation ?? 0) + ph.tilt * (Math.max(0, order) % 2 ? -1 : 1);
           props.r = cast.rotation ?? 0;
         }
-        act({ id: eid, target: k, at, dur: sp.visualDuration, spring: sp, props, from: { x: props.x, y: props.y, s: props.s, ...fromXY } });
-        act({ id: uid(`fade_${k}_${i}`), target: k, at: typeof at === 'number' ? at : undefined, trigger: typeof at === 'string' ? at : undefined, dur: style === 'fade' ? 0.6 : 0.28, ease: 'ease-out-quint', props: { o: oT }, from: { o: 0 } } as Omit<Act, 'type'>);
+        if (curveEase) act({ id: eid, target: k, at, dur: r3(curveDur * ph.tempo), ease: curveEase, props, from: { x: props.x, y: props.y, s: props.s, ...fromXY } });
+        else act({ id: eid, target: k, at, dur: sp.visualDuration, spring: sp, props, from: { x: props.x, y: props.y, s: props.s, ...fromXY } });
+        const fadeDur = lang?.fade === 'none' ? 0.05 : lang?.fade === 'long' ? 0.75 : style === 'fade' ? 0.6 : 0.28;
+        act({ id: uid(`fade_${k}_${i}`), target: k, at: typeof at === 'number' ? at : undefined, trigger: typeof at === 'string' ? at : undefined, dur: fadeDur, ease: 'ease-out-quint', props: { o: oT }, from: { o: 0 } } as Omit<Act, 'type'>);
+        if (lang?.enterBlur && d.kind !== 'image' && d.kind !== 'ui') act({ id: uid(`blur_${k}_${i}`), target: k, at: typeof at === 'number' ? at : undefined, trigger: typeof at === 'string' ? at : undefined, dur: r3(Math.max(0.5, curveDur) * ph.tempo), ease: 'ease-out-quint', props: { blur: 0 }, from: { blur: lang.enterBlur } } as Omit<Act, 'type'>);
         if (style === 'draw') act({ id: uid(`draw_${k}_${i}`), target: k, at: typeof at === 'number' ? at : undefined, trigger: typeof at === 'string' ? at : undefined, dur: 0.9, ease: 'ease-in-out-cubic', props: { draw: 1 }, from: { draw: 0 } } as Omit<Act, 'type'>);
         if (style === 'mask') act({ id: uid(`clip_${k}_${i}`), target: k, at: typeof at === 'number' ? at : undefined, trigger: typeof at === 'string' ? at : undefined, dur: 0.7, ease: 'ease-out-quint', props: { clip: 1 }, from: { clip: 0 } } as Omit<Act, 'type'>);
       }
-      if (style === 'draw' && i === firstShot.get(id)) initial[`${k}.draw`] = 0;
-      if (style === 'mask' && i === firstShot.get(id)) initial[`${k}.clip`] = 0;
+      // the draw / clip track starts empty only when its own entrance runs (an element arriving on a cut or
+      // brought by a morph is whole at once)
+      if (style === 'draw' && i === firstShot.get(id) && !onCut && !broughtByMorph) initial[`${k}.draw`] = 0;
+      if (style === 'mask' && i === firstShot.get(id) && !onCut && !broughtByMorph) initial[`${k}.clip`] = 0;
       // ── persistence inside the run: glide to each next shot's box across the boundary
       for (let m = i; m < j; m++) {
         const nb = boxes[m + 1][id];
         const b = boundary(m);
         const sh = bplan[m];
-        const ease = sh?.ok && sh.kind === 'shared' ? { spring: { bounce: 0.1, visualDuration: 0.85 } } : { ease: 'ease-in-out-cubic' };
+        const ease = lang?.curve === 'precise' ? { ease: 'camera-whip' } : lang?.curve === 'glide' ? { ease: 'luxury-glide' } : sh?.ok && sh.kind === 'shared' ? { spring: { bounce: 0.1, visualDuration: 0.85 } } : { ease: 'ease-in-out-cubic' };
         const mid = uid(`move_${k}_${m + 1}`);
         act({ id: mid, target: k, at: b - 0.32, dur: 0.85, ...ease, props: { x: nb.x, y: nb.y, s: scaleIn(id, m + 1) } });
         const o2 = tgtOpacity(id, m + 1);
@@ -576,8 +597,10 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
       delete node.at;
       node.trigger = `${xid}.peak`;
       // arrives along the vector, but starts inside the frame (text never enters from off-canvas)
-      const fx = clamp(rb.x - dir[0] * (0.07 + 0.08 * vel), rb.w / 2 + 0.01, 0.99 - rb.w / 2);
-      const fy = clamp(rb.y - dir[1] * (0.07 + 0.08 * vel), rb.h / 2 + 0.01, 0.99 - rb.h / 2);
+      // (a styled film keeps a wider margin: its type can set wider than the P4.5 box)
+      const mg = lang?.style ? 0.04 : 0.01;
+      const fx = clamp(rb.x - dir[0] * (0.07 + 0.08 * vel), rb.w / 2 + mg, 1 - mg - rb.w / 2);
+      const fy = clamp(rb.y - dir[1] * (0.07 + 0.08 * vel), rb.h / 2 + mg, 1 - mg - rb.h / 2);
       node.from = { ...(node.from ?? {}), x: Math.abs(fx - rb.x) < 0.02 ? rb.x - dir[0] * 0.02 : fx, y: fy };
       node.spring = { bounce: clamp(0.12 + vel * 0.25, 0.1, 0.45), visualDuration: 0.62 };
       // its fade follows the same trigger
@@ -967,7 +990,8 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
     const c = fitTarget(rect, { W, H, depth, fill, maxZoom: 1.6, anchor, protect: [depth, LAYER_DEPTH.fg], margin: 0.14 });
     return { x: c.x, y: c.y, dolly: c.dolly, zoom: c.zoom };
   };
-  const camTo = (id: string, at: number | string, dur: number, c: Cam, ease = 'camera-dolly') => {
+  const camEase = script.style?.camera.ease ?? 'camera-dolly';
+  const camTo = (id: string, at: number | string, dur: number, c: Cam, ease = camEase) => {
     act({ id, target: CAMERA_KEY, ...(typeof at === 'number' ? { at } : { trigger: at }), dur, ease, props: { x: r3(c.x), y: r3(c.y), dolly: r3(c.dolly), zoom: r3(c.zoom) } } as Omit<Act, 'type'>);
   };
   const visibleOf = (rect: FracRect, d: number, a: Cam, b: Cam) => {
@@ -1085,7 +1109,7 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
       const c0 = { ...cam, x: cam.x - (fam === 'crane' ? 0 : sign * a), y: cam.y + (fam === 'crane' ? a * 0.6 : 0) };
       const c1 = { ...cam, x: cam.x + (fam === 'crane' ? 0 : sign * a), y: cam.y - (fam === 'crane' ? a * 0.6 : 0), dolly: cam.dolly + (fam === 'orbit' ? 0.04 : 0) };
       camTo(uid(`cam_${fam}set_${i}`), Math.max(0, t0 - 0.3), 0.3, c0, 'ease-out-quint');
-      camTo(uid(`cam_${fam}_${i}`), t0, t1 - t0, c1, fam === 'orbit' ? 'smooth' : 'camera-dolly');
+      camTo(uid(`cam_${fam}_${i}`), t0, t1 - t0, c1, fam === 'orbit' ? 'smooth' : camEase);
       if (tRect) shotCam.visible = visibleOf(tRect, depthOf(target!), c0, c1);
       cam = c1;
     } else if (fam === 'rack') {
@@ -1093,7 +1117,7 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
       const rects = names.map((nm) => ({ nm, r: targetBox(nm, i) })).filter((x) => x.r);
       rects.forEach((x, q) => {
         const c = fit(x.r!, depthOf(x.nm), STAGE_FILL[s.shotSize as ShotSize] ?? 0.62);
-        camTo(uid(`cam_rack_${i}_${q}`), t0 + ((t1 - t0) * q) / Math.max(1, rects.length), (t1 - t0) / Math.max(1, rects.length), c, 'camera-dolly');
+        camTo(uid(`cam_rack_${i}_${q}`), t0 + ((t1 - t0) * q) / Math.max(1, rects.length), (t1 - t0) / Math.max(1, rects.length), c, camEase);
         cam = c;
       });
     } else {
@@ -1370,6 +1394,18 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
     transitions,
     ending,
   };
+  let styleReport: StageReport['style'];
+  if (script.style) {
+    const moments = script.style.moments.flatMap((m) => {
+      const i = shots.findIndex((s) => s.id === m.shot);
+      if (i < 0) return [];
+      const settle = (compReports[i] && T[i].start + Math.min(1.2, T[i].duration * 0.35)) || T[i].start;
+      const t0 = m.at === 'end' && i < shots.length - 1 ? boundary(i) - m.dur * 0.55 : m.at === 'settle' ? settle : T[i].start + 0.05;
+      return [{ ...m, t0: r3(Math.max(0, t0)), t1: r3(Math.max(0, t0) + m.dur) }];
+    });
+    plan.style = { id: script.style.id, look: script.style.look, moments, identity: script.style.identity };
+    styleReport = { id: script.style.id, notes: styled?.notes ?? [], moments: moments.map((m) => ({ id: m.id, builder: m.builder, shot: m.shot, t0: m.t0, t1: m.t1 })) };
+  }
   const report: StageReport = {
     version: 1,
     elements: elements.length,
@@ -1384,6 +1420,7 @@ export function compileStage(input: StageCompileInput): { plan: StagePlan; repor
     warnings,
     causality,
     ...(artOps.length ? { art: artOps } : {}),
+    ...(styleReport ? { style: styleReport } : {}),
   };
   return { plan, report };
 }

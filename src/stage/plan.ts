@@ -147,4 +147,25 @@ export interface StagePlan {
   handoffs: StageHandoff[];
   transitions: StageTransition[];
   ending?: { settleAt: number; holdSec: number; maxSec: number; reason: string };
+  /** Style Library v2: the render look and the Native Style Moments (film seconds). Absent → the P4.5 look. */
+  style?: StageStyle;
+}
+
+export interface StageStyleMoment {
+  id: string;
+  builder: string;
+  shot: string;
+  element?: string;
+  into?: string;
+  at: 'start' | 'settle' | 'end';
+  dur: number;
+  t0: number;
+  t1: number;
+}
+
+export interface StageStyle {
+  id: string;
+  look: Record<string, unknown>;
+  moments: StageStyleMoment[];
+  identity: string[];
 }
