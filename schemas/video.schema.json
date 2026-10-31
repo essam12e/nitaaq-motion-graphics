@@ -312,6 +312,27 @@
               "type": "object",
               "additionalProperties": {},
               "default": {}
+            },
+            "look": {
+              "type": "object",
+              "properties": {
+                "style": {
+                  "type": "string"
+                },
+                "recipe": {
+                  "type": "string"
+                },
+                "palette": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "style"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
@@ -925,6 +946,15 @@
                         "minimum": -1,
                         "maximum": 1,
                         "default": 0
+                      },
+                      "role": {
+                        "type": "string"
+                      },
+                      "source": {
+                        "type": "string"
+                      },
+                      "gainDb": {
+                        "type": "number"
                       }
                     },
                     "required": [
@@ -938,6 +968,32 @@
                     ],
                     "additionalProperties": false
                   }
+                },
+                "pro": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "profile": {
+                      "type": "string",
+                      "enum": [
+                        "premium",
+                        "tech",
+                        "sport",
+                        "minimal"
+                      ]
+                    },
+                    "commercial": {
+                      "type": "boolean",
+                      "default": true
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "stem": {
+                  "type": "string"
                 }
               },
               "additionalProperties": false,
@@ -1176,6 +1232,11 @@
                 "MEDIUM",
                 "HIGH"
               ]
+            },
+            "grain": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.2
             }
           },
           "additionalProperties": false,
@@ -1204,6 +1265,14 @@
             },
             "heroScene": {
               "type": "string"
+            },
+            "model": {
+              "type": "string",
+              "enum": [
+                "legacy",
+                "principled",
+                "stage"
+              ]
             }
           },
           "additionalProperties": false,
@@ -1550,6 +1619,19 @@
             "poses"
           ],
           "additionalProperties": false
+        },
+        "stage": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "number",
+              "const": 1
+            }
+          },
+          "required": [
+            "version"
+          ],
+          "additionalProperties": true
         },
         "scenes": {
           "type": "array",
@@ -2023,6 +2105,155 @@
                     "items": {
                       "type": "number"
                     }
+                  },
+                  "lifecycle": {
+                    "type": "object",
+                    "properties": {
+                      "sustain": {
+                        "type": "string",
+                        "enum": [
+                          "auto",
+                          "still",
+                          "drift",
+                          "breathe",
+                          "parallax"
+                        ]
+                      },
+                      "hold": {
+                        "type": "object",
+                        "properties": {
+                          "intentional": {
+                            "type": "boolean"
+                          },
+                          "reason": {
+                            "type": "string",
+                            "maxLength": 240
+                          },
+                          "maxSec": {
+                            "type": "number",
+                            "minimum": 0.3,
+                            "maximum": 10
+                          }
+                        },
+                        "required": [
+                          "intentional"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "exit": {
+                        "type": "object",
+                        "properties": {
+                          "style": {
+                            "type": "string",
+                            "enum": [
+                              "auto",
+                              "none",
+                              "handoff",
+                              "lift",
+                              "fade",
+                              "scale-down"
+                            ],
+                            "default": "auto"
+                          },
+                          "direction": {
+                            "type": "string",
+                            "enum": [
+                              "left",
+                              "right",
+                              "up",
+                              "down",
+                              "in",
+                              "out"
+                            ]
+                          },
+                          "velocity": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "handoffVector": {
+                            "type": "object",
+                            "properties": {
+                              "dx": {
+                                "type": "number",
+                                "minimum": -1,
+                                "maximum": 1
+                              },
+                              "dy": {
+                                "type": "number",
+                                "minimum": -1,
+                                "maximum": 1
+                              },
+                              "depth": {
+                                "type": "number",
+                                "minimum": -1,
+                                "maximum": 1
+                              }
+                            },
+                            "required": [
+                              "dx",
+                              "dy"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "handoffTarget": {
+                            "type": "string",
+                            "maxLength": 80
+                          },
+                          "lead": {
+                            "type": "number",
+                            "minimum": 0.1,
+                            "maximum": 1.5
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "emphasis": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "word": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 60
+                            },
+                            "at": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "end": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "source": {
+                              "type": "string",
+                              "enum": [
+                                "voice",
+                                "estimated",
+                                "script"
+                              ],
+                              "default": "script"
+                            },
+                            "accent": {
+                              "type": "string",
+                              "enum": [
+                                "highlight",
+                                "pulse",
+                                "camera"
+                              ],
+                              "default": "pulse"
+                            }
+                          },
+                          "required": [
+                            "word",
+                            "at"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "additionalProperties": false,
@@ -2317,6 +2548,67 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "shot": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "purpose": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "shotSize": {
+                    "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "cameraTarget": {
+                    "type": "string"
+                  },
+                  "cameraReason": {
+                    "type": "string"
+                  },
+                  "transitionReason": {
+                    "type": "string"
+                  },
+                  "expectedEnergy": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "voiceAnchor": {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string"
+                      },
+                      "start": {
+                        "type": "number"
+                      },
+                      "end": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "start",
+                      "end",
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "id"
+                ],
+                "additionalProperties": true
               }
             },
             "required": [
@@ -2433,6 +2725,28 @@
             },
             "notes": {
               "type": "string"
+            },
+            "director": {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "fast",
+                    "full"
+                  ]
+                },
+                "shotScript": {
+                  "type": "string"
+                },
+                "voiceMap": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "mode"
+              ],
+              "additionalProperties": false
             }
           },
           "additionalProperties": false,

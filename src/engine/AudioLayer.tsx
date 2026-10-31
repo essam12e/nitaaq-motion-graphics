@@ -13,7 +13,9 @@ export function sfxUrl(file: string, assetBase: string): string {
 export function AudioLayer({ fps }: { fps: number }) {
   const v = useVideo();
   const { spec, timeline } = v;
-  const sfx = useMemo(() => planSfx(spec, timeline, (s) => SceneRegistry.get(s.type)?.manifest.sfx ?? []), [spec, timeline]);
+  const stem = spec.audio.sfx.enabled ? spec.audio.sfx.stem : undefined;
+  // Sound Production: the mixed SFX bus replaces the single cues (sample-exact placement and levels)
+  const sfx = useMemo(() => (stem ? [] : planSfx(spec, timeline, (s) => SceneRegistry.get(s.type)?.manifest.sfx ?? [])), [spec, timeline, stem]);
   const voice = spec.audio.mode !== 'none' ? spec.audio.voice : undefined;
   const music = spec.audio.music;
   const next = music ? spec.audio.musicNext : undefined;
@@ -48,6 +50,7 @@ export function AudioLayer({ fps }: { fps: number }) {
           />
         </Sequence>
       ) : null}
+      {stem ? <Audio src={resolveAssetUrl(stem, v.assetBase)} name="sfx bus" /> : null}
       {sfx.map((c, i) => (
         <Sequence key={i} from={Math.max(0, Math.round(c.atSec * fps))} durationInFrames={Math.max(1, Math.ceil((c.duration + 0.1) * fps))} name={`sfx ${c.sound}`}>
           <Audio src={sfxUrl(c.file, v.assetBase)} volume={Math.min(1, c.volume)} />

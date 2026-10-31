@@ -14,3 +14,5 @@ renders/
 public/sfx/gen/
 .scratch/
 public/mm/runtime/vendor/
+.venv-sound/
+public/sfx/uisfx/

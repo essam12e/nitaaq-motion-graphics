@@ -163,6 +163,15 @@
         "style": {
           "type": "string"
         },
+        "styleMix": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "signatureMove": {
+          "type": "string"
+        },
         "quality": {
           "type": "string",
           "enum": [
@@ -553,6 +562,18 @@
                 "cinematic",
                 "corporate"
               ]
+            },
+            "soundProfile": {
+              "type": "string",
+              "enum": [
+                "premium",
+                "tech",
+                "sport",
+                "minimal"
+              ]
+            },
+            "soundPro": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -1284,6 +1305,14 @@
             },
             "gsap": {
               "type": "boolean"
+            },
+            "motionmaxxing": {
+              "type": "boolean"
+            },
+            "grain": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.2
             },
             "logoReveal": {
               "type": "string"

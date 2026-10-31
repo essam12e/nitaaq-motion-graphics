@@ -19,6 +19,7 @@ import { directSound, SOUND_FOR_MOTION, type SoundReport } from '../audio/sound-
 import { SOUND_PERSONALITIES, type SoundPersonality } from '../audio/sfx-families';
 import { ensureSfxBank } from '../audio/synth/sfx-gen';
 import { voiceIntervals } from '../audio/mix';
+import { producePro } from './sound-pro';
 import { getSfx } from '../audio/sfx-library';
 import { TransitionRegistry, TRANSITIONS } from '../transitions/presentations';
 import { workspace } from './workspace';
@@ -127,14 +128,19 @@ export async function planSound(spec: VideoSpec, projectDir: string, opts: { bea
     seed: `${spec.motion.seed ?? spec.project.id}${opts.salt ? `:v${opts.salt}` : ''}`,
     overrides: spec.audio.sfx.overrides,
   });
-  const all = [...cues, ...explicitCues(spec)].sort((a, b) => a.atSec - b.atSec);
+  let all = [...cues, ...explicitCues(spec)].sort((a, b) => a.atSec - b.atSec);
+  const directed = all;
+  // Sound Production: roles, profile, licensed / generated takes, bed-relative levels, one SFX bus (off = the Director alone)
+  const pro = await producePro(spec, projectDir, { cues: all, events, personality, totalSec: tl.totalSec, seed: `${spec.motion.seed ?? spec.project.id}${opts.salt ? `:v${opts.salt}` : ''}`, write: opts.write });
+  if (pro) all = pro.cues;
   spec.audio.sfx.cues = all;
   spec.audio.sfx.personality = personality;
   if (opts.write !== false) {
-    writeFileSync(join(projectDir, 'sound-plan.json'), JSON.stringify({ personality, variation: opts.salt ?? 0, report, cues: all, events: events.map((e) => ({ type: e.type, scene: e.sceneId, syncSec: e.syncSec, anchor: e.anchor, importance: e.importance, element: e.element, mass: e.mass, transition: e.transition })) }, null, 2));
+    writeFileSync(join(projectDir, 'sound-plan.json'), JSON.stringify({ personality, variation: opts.salt ?? 0, report, production: pro ? { profile: pro.report.profile, cues: all.length, report: 'sound-pro.json' } : null, directed: pro ? directed : undefined, cues: all, events: events.map((e) => ({ type: e.type, scene: e.sceneId, syncSec: e.syncSec, anchor: e.anchor, importance: e.importance, element: e.element, mass: e.mass, transition: e.transition })) }, null, 2));
     writeSfxHistory(spec.project.id, cues.map((c) => c.sound));
   }
   const peaks = new Map(bank.variants.map((v) => [v.id, v.peakAt] as [string, number]));
+  if (pro) for (const [k, v] of pro.align) peaks.set(k, v);
   const keyMoments = events.filter((e) => KEY_EVENTS.has(e.type) && e.importance >= 0.7).map((e) => ({ type: e.type, t: e.syncSec, scene: e.sceneId }));
   return { cues: all, report, peaks, keyMoments };
 }

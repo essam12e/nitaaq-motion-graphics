@@ -70,3 +70,12 @@ Read the GreenSock Standard Licence before redistributing a build that contains 
 
 Showcase brands in MotionMaxxing's docs (Cluely, Spotify, Wispr Flow) are not copied. Logos fetched by
 `fetch_logo.mjs` stay their owners' trademarks (nominative use, unmodified).
+
+## Sound Production (optional, `docs/SOUND_PRODUCTION.md`)
+
+| Component | Licence | How it is used |
+|---|---|---|
+| earshot (github.com/Leonxlnx/earshot @ 591fa3e, Leon Lin) | MIT | installed by `npm run sound:setup` into `.venv-sound` (not vendored); its bank renders sound effects from code (no recorded audio). The `launch` kit's role medians (bed level, offsets, gaps) are reproduced as numbers in `src/audio/pro/roles.ts`. Its 15 `fit/*` entries are models fitted from CC0 recordings (credits: earshot `docs/CREDITS_FIT.md`). |
+| uisfx 0.4.0 (npm; the UI pack bundled with Clipwing's Real SFX) | MIT code, CC0-1.0 audio | optional npm dependency; `npm run sound:sync` copies four packs to `public/sfx/uisfx` with its LICENSE files |
+| Real SFX (github.com/Clipwing/skills, `skills/real-sfx`, Alexander Korbanov) | MIT | no code copied: its event map and mixing rules are reimplemented in `src/audio/pro/`; NITAAQ writes its typed cue format (`sfx-cues.realsfx.json`) for its `from_cues.py` |
+| Openverse API (api.openverse.org) | per sound (CC / PDM) | search and selective download at run time; each file keeps its licence record (author, licence + version + URL, file URL, landing page); the licence gate decides what is used |

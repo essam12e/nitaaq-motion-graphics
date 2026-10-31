@@ -123,7 +123,7 @@ export function compileSpec(input: {
             license: audio.music.license,
           }
         : undefined,
-      sfx: { enabled: audio.sfx, intensity: brief.audio.sfxIntensity ?? sfxIntensity, volume: brief.audio.sfxVolume ?? (voiceLed ? 0.45 : 0.6), overrides: {} },
+      sfx: { enabled: audio.sfx, intensity: brief.audio.sfxIntensity ?? sfxIntensity, volume: brief.audio.sfxVolume ?? (voiceLed ? 0.45 : 0.6), overrides: {}, ...(brief.audio.soundProfile || brief.audio.soundPro === false ? { pro: { enabled: brief.audio.soundPro !== false, profile: brief.audio.soundProfile, commercial: true } } : {}) },
     },
     scenes,
     design: { allowPatterns: input.design?.allowPatterns ?? [], decorations: input.design?.decorations ?? false, justification: input.design?.justification, effectBudget: input.effects, ...(brief.preferences.grain ? { grain: brief.preferences.grain } : {}) },

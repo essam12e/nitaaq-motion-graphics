@@ -147,6 +147,10 @@ export const BriefSchema = z.object({
       soundtrack: z.enum(['auto', 'off', 'tech', 'premium', 'cinematic', 'sport', 'playful', 'corporate', 'minimal', 'futuristic']).optional(),
       /** Sound personality override (otherwise from brand motion / film personality). */
       soundPersonality: z.enum(['luxury', 'tech', 'sport', 'playful', 'cinematic', 'corporate']).optional(),
+      /** Sound Production profile (otherwise from the sound personality / style): premium, tech, sport, minimal. */
+      soundProfile: z.enum(['premium', 'tech', 'sport', 'minimal']).optional(),
+      /** false = the Sound Director alone (no production layer). */
+      soundPro: z.boolean().optional(),
     })
     .default({}),
   content: z.object({

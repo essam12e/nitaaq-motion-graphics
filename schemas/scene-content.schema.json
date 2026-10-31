@@ -11244,5 +11244,353 @@
       "additionalProperties": false,
       "$schema": "http://json-schema.org/draft-07/schema#"
     }
+  },
+  "stage-shot": {
+    "variants": [
+      "stage"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "note": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "additionalProperties": true,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "mm-hero3d": {
+    "variants": [
+      "coin",
+      "logo",
+      "glass-slab",
+      "phone"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "colors": {
+          "type": "object",
+          "properties": {
+            "ground": {
+              "type": "string"
+            },
+            "ground2": {
+              "type": "string"
+            },
+            "ink": {
+              "type": "string"
+            },
+            "accent": {
+              "type": "string"
+            },
+            "metal": {
+              "type": "string"
+            },
+            "primary": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "mark": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "maxItems": 12
+        },
+        "material": {
+          "type": "string",
+          "enum": [
+            "satin",
+            "brandPlastic",
+            "chrome",
+            "glass",
+            "iridescent"
+          ]
+        },
+        "line": {
+          "type": "string",
+          "maxLength": 48
+        },
+        "accent": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "ground": {
+          "type": "string",
+          "enum": [
+            "light",
+            "dark"
+          ]
+        },
+        "screen": {
+          "type": "string"
+        },
+        "exit": {
+          "type": "string",
+          "enum": [
+            "to-camera",
+            "rest"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "mm-kinetic": {
+    "variants": [
+      "words",
+      "count"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "colors": {
+          "type": "object",
+          "properties": {
+            "ground": {
+              "type": "string"
+            },
+            "ground2": {
+              "type": "string"
+            },
+            "ink": {
+              "type": "string"
+            },
+            "accent": {
+              "type": "string"
+            },
+            "metal": {
+              "type": "string"
+            },
+            "primary": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 48
+          },
+          "minItems": 1,
+          "maxItems": 3
+        },
+        "accent": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "mech": {
+          "type": "string",
+          "enum": [
+            "rise",
+            "pop",
+            "shrink",
+            "slide",
+            "focus"
+          ]
+        },
+        "enter": {
+          "type": "string",
+          "enum": [
+            "snap",
+            "cut"
+          ]
+        },
+        "exit": {
+          "type": "string",
+          "enum": [
+            "drop",
+            "lift",
+            "dive",
+            "whip",
+            "rest"
+          ]
+        },
+        "ground": {
+          "type": "string",
+          "enum": [
+            "light",
+            "dark"
+          ]
+        },
+        "onsets": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "value": {
+          "type": "number"
+        },
+        "from": {
+          "type": "number"
+        },
+        "suffix": {
+          "type": "string",
+          "maxLength": 12
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "numerals": {
+          "type": "string",
+          "enum": [
+            "arab",
+            "latn"
+          ]
+        },
+        "lockup": {
+          "type": "object",
+          "properties": {
+            "logo": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 30
+            },
+            "line": {
+              "type": "string",
+              "maxLength": 60
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  "mm-phone": {
+    "variants": [
+      "lock-screen",
+      "screenshot"
+    ],
+    "content": {
+      "type": "object",
+      "properties": {
+        "colors": {
+          "type": "object",
+          "properties": {
+            "ground": {
+              "type": "string"
+            },
+            "ground2": {
+              "type": "string"
+            },
+            "ink": {
+              "type": "string"
+            },
+            "accent": {
+              "type": "string"
+            },
+            "metal": {
+              "type": "string"
+            },
+            "primary": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "app": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "time": {
+          "type": "string",
+          "maxLength": 16
+        },
+        "clock": {
+          "type": "string",
+          "maxLength": 8
+        },
+        "date": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "icon": {
+          "type": "string"
+        },
+        "older": {
+          "type": "object",
+          "properties": {
+            "app": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "body": {
+              "type": "string"
+            },
+            "time": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        "screenshot": {
+          "type": "string"
+        },
+        "carrier": {
+          "type": "string",
+          "enum": [
+            "coin",
+            "none"
+          ]
+        },
+        "press": {
+          "type": "boolean"
+        },
+        "ground": {
+          "type": "string",
+          "enum": [
+            "light",
+            "dark"
+          ]
+        },
+        "illustrative": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "app",
+        "title",
+        "body"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
   }
 }

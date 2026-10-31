@@ -218,6 +218,10 @@ export const SfxCueSchema = z.object({
   anchorSec: z.number().optional(),
   layer: z.enum(['movement', 'impact', 'detail', 'single']).default('single'),
   pan: z.number().min(-1).max(1).default(0),
+  /** Sound Production: the role that voiced it, where the take came from (earshot / library / uisfx) and its gain. */
+  role: z.string().optional(),
+  source: z.string().optional(),
+  gainDb: z.number().optional(),
 });
 
 /** Procedurally generated soundtrack (only when no user/licensed music exists). */
@@ -262,6 +266,20 @@ export const AudioSchema = z.object({
       personality: z.string().optional(),
       /** Planned cues from the Sound Director. When present the engine plays exactly these. */
       cues: z.array(SfxCueSchema).optional(),
+      /**
+       * Sound Production (on by default): roles, Sound Profile, licensed library / uisfx / earshot takes,
+       * bed-relative levels and one SFX bus. `enabled: false` (or NITAAQ_NO_SOUND_PRO=1) = the Sound Director alone.
+       */
+      pro: z
+        .object({
+          enabled: z.boolean().default(true),
+          profile: z.enum(['premium', 'tech', 'sport', 'minimal']).optional(),
+          /** Commercial work: only sounds whose licence clears commercial use are picked (default true). */
+          commercial: z.boolean().default(true),
+        })
+        .optional(),
+      /** The mixed SFX bus (project-relative WAV). When present the engine plays it instead of the single cues. */
+      stem: z.string().optional(),
     })
     .default({}),
   /** Master bus (Audio Engine 2.0): delivery loudness and true-peak ceiling (applied after render). */

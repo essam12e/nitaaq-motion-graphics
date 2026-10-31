@@ -113,6 +113,7 @@ export function referencedFiles(spec: VideoSpec): string[] {
   add(spec.brand?.logoOnDark);
   add(spec.audio.voice?.src);
   add(spec.audio.music?.src);
+  add(spec.audio.sfx.stem); // Sound Production: the mixed SFX bus
   add(Object.values(spec.audio.sfx.overrides));
   return [...out];
 }
