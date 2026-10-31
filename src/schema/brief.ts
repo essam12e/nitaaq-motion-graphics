@@ -239,6 +239,10 @@ export const BriefSchema = z.object({
       seed: z.union([z.string(), z.number()]).optional(),
       /** Allow the optional GSAP module for complex staggered/UI timelines (lazy-loaded). */
       gsap: z.boolean().optional(),
+      /** Allow the MotionMaxxing module (mm-kinetic / mm-hero3d / mm-phone on the original MotionMaxxing runtime). */
+      motionmaxxing: z.boolean().optional(),
+      /** Film grain on the final MP4 (MotionMaxxing render.mjs grain: seeded, deterministic). 0.03–0.06 on gradient / 3D films. */
+      grain: z.number().min(0).max(0.2).optional(),
       /** Logo reveal the user asked for (otherwise chosen from the logo's structure). */
       logoReveal: z.string().optional(),
       /** Explicit beat order (used by Ad Creative Variants); beats the brief can't support are dropped, never faked. */

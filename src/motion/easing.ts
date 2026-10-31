@@ -1,3 +1,5 @@
+import { MM_EASES } from '../mm/eases';
+
 /**
  * Easing library for Motion Engine 2.0 — custom cubic Bézier, back/anticipate,
  * elastic, bounce, steps, and combinators (mirror, reverse, blend). Every easing
@@ -115,6 +117,8 @@ export const CURVES: Record<string, EasingFn> = {
   'elastic-out': elasticOut(1, 0.45),
   'bounce-out': bounceOut,
   smooth: RATE.smooth,
+  // MotionMaxxing's 12 measured curves (mm/eases.ts), usable by name anywhere a curve name is accepted
+  ...Object.fromEntries(Object.entries(MM_EASES).map(([k, f]) => [`mm:${k}`, f])),
 };
 
 export function curve(name: string): EasingFn {

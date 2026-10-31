@@ -46,3 +46,27 @@ Only with `NITAAQ_AUDIO_ONLINE=1`, only CC0 (or CC-BY with a recorded attributio
 ## Concepts studied (no code copied)
 
 - **lemo-opuscar** (github.com/lemomo-ai/lemo-opuscar, MIT, Copyright 2026 LemoLab) — studied for Style Library v2: a style as a rules document (essence and "not this", material, colour logic, type, motion quality, a camera table, native moves with "fits content like…", transitions from the medium). These ideas were re-expressed as NITAAQ data (`src/style-system/`) over NITAAQ's own primitives. No file or function was copied, nothing is vendored, and its three.js / WebGL renderers are not used (a style that needs one is marked `REQUIRES_OPTIONAL_RENDERER`).
+
+## MotionMaxxing (optional module `motionmaxxing`)
+
+Source: https://github.com/Tejashmakwana/motionmaxxing (commit in `vendor/motionmaxxing/UPSTREAM_COMMIT`), © Tejas Makwana.
+Licence: **Apache License 2.0** — full text and the upstream NOTICE are kept unchanged in `public/mm/LICENSE`, `public/mm/NOTICE`,
+`vendor/motionmaxxing/LICENSE`, `vendor/motionmaxxing/NOTICE`.
+
+| Bundled | Licence | Notes |
+|---|---|---|
+| `public/mm/runtime/motion.js`, `native-ui/`, `hero3d/hero3d.js`, `hero3d/tools/fontconv.py`, `fonts.css` | Apache-2.0 | unmodified |
+| `public/mm/runtime/hero3d/vendor/` three.js r186 + addons, fflate | MIT (EXR loader keeps TinyEXR/OpenEXR BSD-3 notices; SVGLoader includes svg-numbers MIT) | unmodified |
+| `public/mm/runtime/hero3d/vendor/opentype.module.js` 1.3.4 | MIT | unmodified |
+| Inter (`public/mm/runtime/fonts/`, `hero3d/fonts/`) | SIL OFL 1.1 | unmodified |
+| `vendor/motionmaxxing/scripts/` brand.mjs, fetch_logo.mjs, _cdp.mjs, sync.mjs, render.mjs, lint.mjs | Apache-2.0 | unmodified; brand.mjs/fetch_logo.mjs run by `cli/brand-capture.ts` |
+| `docs/motionmaxxing/*.md` | Apache-2.0 | reference docs, unmodified |
+| `src/mm/eases.ts` (the 12 curves), `src/mm/sync.ts` (sync.mjs port), `grainFilter` (render.mjs grain) | Apache-2.0 (derived) | ported, attribution in the file headers |
+
+**GSAP**: MotionMaxxing ships GSAP 3.12.5 (`runtime/vendor/gsap.min.js`); we do **not** redistribute that copy.
+The runtime uses NITAAQ's existing optional dependency `gsap` (^3.15, GreenSock Standard "no charge" licence, not
+open source; no Club/bonus plugins), copied into `public/mm/runtime/vendor/` (git-ignored) by `npm run mm:sync`.
+Read the GreenSock Standard Licence before redistributing a build that contains it.
+
+Showcase brands in MotionMaxxing's docs (Cluely, Spotify, Wispr Flow) are not copied. Logos fetched by
+`fetch_logo.mjs` stay their owners' trademarks (nominative use, unmodified).

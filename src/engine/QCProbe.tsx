@@ -280,6 +280,28 @@ export function collectProbe(frame: number, width: number, height: number): Prob
     };
   });
   const boxes = Array.from(document.querySelectorAll('[data-qc="box"]')).map((el) => ({ scene: sceneOf(el), rect: rectOf(el), opacity: effOpacity(el) }));
+  // MotionMaxxing shots draw inside a same-origin srcDoc iframe: their visible text runs (Arabic i'jam dots,
+  // numerals, UI copy) are reported as boxes so pixel checks mask them and fill/occupancy counts them.
+  for (const fr of Array.from(document.querySelectorAll('iframe[data-qc-mm]')) as HTMLIFrameElement[]) {
+    const doc = fr.contentDocument;
+    if (!doc?.body) continue;
+    const fo = effOpacity(fr);
+    const fRect = fr.getBoundingClientRect();
+    const k = fr.clientWidth ? fRect.width / fr.clientWidth : 1;
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (!n.textContent?.trim()) continue;
+      const host = n.parentElement;
+      if (!host) continue;
+      const cs = doc.defaultView?.getComputedStyle(host);
+      if (!cs || cs.visibility === 'hidden' || cs.display === 'none') continue;
+      const range = doc.createRange();
+      range.selectNodeContents(n);
+      const r = range.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) continue;
+      boxes.push({ scene: sceneOf(fr), rect: { x: fRect.x + r.x * k, y: fRect.y + r.y * k, width: r.width * k, height: r.height * k }, opacity: fo });
+    }
+  }
   const characters: ProbeCharacter[] = Array.from(document.querySelectorAll('[data-qc="character"]')).map((el) => {
     const art = el.querySelector('[data-qc-art]') ?? el;
     const head = el.querySelector('[data-qc-head-marker]');

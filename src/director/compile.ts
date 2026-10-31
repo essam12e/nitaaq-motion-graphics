@@ -126,7 +126,7 @@ export function compileSpec(input: {
       sfx: { enabled: audio.sfx, intensity: brief.audio.sfxIntensity ?? sfxIntensity, volume: brief.audio.sfxVolume ?? (voiceLed ? 0.45 : 0.6), overrides: {} },
     },
     scenes,
-    design: { allowPatterns: input.design?.allowPatterns ?? [], decorations: input.design?.decorations ?? false, justification: input.design?.justification, effectBudget: input.effects },
+    design: { allowPatterns: input.design?.allowPatterns ?? [], decorations: input.design?.decorations ?? false, justification: input.design?.justification, effectBudget: input.effects, ...(brief.preferences.grain ? { grain: brief.preferences.grain } : {}) },
     motion: { personality: input.motion?.personality, seed: input.seed, ...(input.motion?.heroScene ? { heroScene: input.motion.heroScene } : {}) },
     timeline: {
       seamlessLoop: Boolean(input.loop),

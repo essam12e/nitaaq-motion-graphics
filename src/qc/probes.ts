@@ -50,7 +50,7 @@ export async function determinismCheck(spec: VideoSpec, projectDir: string, a: n
   const composition = await selectComposition({ serveUrl: prep.serveUrl, id: 'Main', inputProps: prep.inputProps, puppeteerInstance: browser, logLevel: 'error' });
   const shot = async (frame: number, name: string) => {
     const out = join(dir, name);
-    await renderStill({ serveUrl: prep.serveUrl, composition, inputProps: prep.inputProps, frame, output: out, scale: 0.25, puppeteerInstance: browser, logLevel: 'error' });
+    await renderStill({ serveUrl: prep.serveUrl, composition, inputProps: prep.inputProps, frame, output: out, scale: 0.25, puppeteerInstance: browser, logLevel: 'error', timeoutInMilliseconds: 180000 });
     return (await sharp(out).removeAlpha().raw().toBuffer()) as Buffer;
   };
   const first = await shot(a, 'seek-a1.png');
@@ -151,7 +151,9 @@ export async function collectProbes(spec: VideoSpec, projectDir: string, frames:
   process.stderr.write = filt(origErr);
   try {
     const composition = await selectComposition({ serveUrl: prep.serveUrl, id: 'Main', inputProps: prep.inputProps, puppeteerInstance: browser, logLevel: 'error' });
-    await pool(todo, renderConcurrency(), async ({ frame, key }) => {
+    // MotionMaxxing shots load a runtime (and WebGL for hero3d) per tab: fewer tabs, longer load budget
+    const mm = spec.scenes.some((sc) => sc.type.startsWith('mm-'));
+    await pool(todo, mm ? Math.min(3, renderConcurrency()) : renderConcurrency(), async ({ frame, key }) => {
       let got: DomProbe | null = null;
       const out = join(stillsDir, `probe-${String(frame).padStart(5, '0')}.png`);
       await renderStill({
@@ -163,6 +165,7 @@ export async function collectProbes(spec: VideoSpec, projectDir: string, frames:
         scale: 0.5,
         puppeteerInstance: browser,
         logLevel: 'error',
+        ...(mm ? { timeoutInMilliseconds: 180000 } : {}),
         onBrowserLog: (l) => {
           const i = l.text.indexOf('__AMD_QC__');
           if (i >= 0) {

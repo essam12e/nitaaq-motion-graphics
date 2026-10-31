@@ -496,6 +496,8 @@ export const DesignSchema = z.object({
   microFx: z.enum(['off', 'auto']).default('off'),
   /** Micro FX budget (density and concurrent cost). Default: the effect budget, else MEDIUM. */
   fxBudget: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
+  /** Film grain on the final MP4 (MotionMaxxing render.mjs: seeded ffmpeg luma noise, deterministic). Omitted = none. */
+  grain: z.number().min(0).max(0.2).optional(),
 });
 
 export const MotionPersonalitySchema = z.enum(['premium', 'energetic', 'playful', 'corporate', 'cinematic', 'tech', 'sport']);

@@ -20,6 +20,8 @@ import { TextMotionRegistry } from '../text-motion/families';
 import { SceneRegistry } from '../scenes';
 import { RECIPES, type RecipeCtx } from './recipes';
 import { normWord } from '../audio/voice-map';
+import { mmStyleCheck } from '../style-system/mm-tools';
+import { lineOnsets } from '../mm/sync';
 
 export type DecisionSource = 'script' | 'engine' | 'mapped' | 'fallback' | 'voice';
 
@@ -396,6 +398,20 @@ export function compileShots(input: CompileInput): { resolved: ResolvedShot[]; r
       intensity: r2(Math.max(0.25, Math.min(1, s.expectedEnergy))),
     };
   });
+  // MotionMaxxing families: style fit (Style Library v2) and word onsets on the voice (mm/sync.ts, lead 2 f)
+  for (const r of resolved) {
+    if (!r.family.startsWith('mm-')) continue;
+    for (const w of mmStyleCheck(script.style?.id, r.family, r.variant)) warn('MM_STYLE_FIT', w, r.shot.id);
+    const c = r.content as { lines?: string[]; onsets?: number[][] };
+    if (r.family === 'mm-kinetic' && r.variant === 'words' && voice && c.lines?.length && !c.onsets) {
+      const vw = voice.words.map((w) => ({ word: w.text, start: w.start, end: w.end }));
+      const on = c.lines.map((l) => lineOnsets(l, vw, r.start, 30, 2));
+      if (on.every((x) => x)) {
+        r.content = { ...c, onsets: on as number[][] };
+        decide(r.shot.id, 'onsets', on, 'voice', 'MotionMaxxing sync: each word lands 2 frames before it is heard');
+      }
+    }
+  }
   report.rng.push(
     { field: 'element micro-motion', scope: 'scene components', note: 'seeded per scene (particle drift, stagger jitter): non-directorial details' },
     ...resolved.filter((r) => !r.text).map((r) => ({ field: 'typography', scope: r.shot.id, note: 'not in the script: the text motion planner chose (seeded, deterministic)' })),

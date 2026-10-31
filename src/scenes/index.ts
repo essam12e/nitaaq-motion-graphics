@@ -31,9 +31,10 @@ import * as motion2 from './motion2/motion2-scenes';
 import * as interaction from './interaction/interaction-scenes';
 import * as spatial from './spatial/spatial-scenes';
 import * as stage from './stage/stage-shot';
+import * as mm from './mm/mm-scenes';
 
 const isScene = (x: unknown): x is SceneModule => Boolean(x && typeof x === 'object' && 'manifest' in x && 'Component' in x);
-const GROUPS: Record<string, unknown>[] = [moreTypography, brand, ui, mobile, commerce, data, media, infographic, cinematic, social, cta, flow, kinetic, logoAnim, productDirector, mapScenes, illustration, dataStory, web, character, motion2, interaction, spatial, stage];
+const GROUPS: Record<string, unknown>[] = [moreTypography, brand, ui, mobile, commerce, data, media, infographic, cinematic, social, cta, flow, kinetic, logoAnim, productDirector, mapScenes, illustration, dataStory, web, character, motion2, interaction, spatial, stage, mm];
 
 export const BUILTIN_SCENES: SceneModule[] = [kineticTitle, wordImpact, lineReveal, ...GROUPS.flatMap((g) => Object.values(g).filter(isScene))];
 

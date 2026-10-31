@@ -248,6 +248,9 @@ export async function renderVideo(input: { spec: VideoSpec; projectDir: string; 
         log.warn('MASTER', `mastering skipped: ${(e as Error).message.slice(0, 200)}`);
       }
     }
+    // film grain (MotionMaxxing render.mjs recipe): seeded luma noise after the picture, deterministic
+    const grain = opts.spec.design.grain ?? 0;
+    if (grain > 0 && profile !== 'animatic' && profile !== 'preview' && !input.frameRange) applyGrain(opts.output, grain, P.crf, P.x264Preset);
     stripEncoderStrings(opts.output);
     if (useCache) copyFileSync(opts.output, blob);
     const bytes = statSync(opts.output).size;
@@ -256,6 +259,17 @@ export async function renderVideo(input: { spec: VideoSpec; projectDir: string; 
     if (e instanceof MotionError) throw e;
     throw new MotionError({ code: 'RENDER_FAILED', what: 'Remotion render failed', why: String((e as Error).message).slice(0, 500), action: 'Check the scene named in the error; run `npm run quality` on a preview render for details.', cause: e });
   }
+}
+
+/** MotionMaxxing grain: `noise=c0s=<grain*100>:c0f=t+u:c0_seed=7` (same seed → same bytes); audio copied. */
+export function grainFilter(grain: number, seed = 7): string {
+  return `noise=c0s=${Math.max(1, Math.round(grain * 100))}:c0f=t+u:c0_seed=${seed}`;
+}
+export function applyGrain(file: string, grain: number, crf: number, preset: string): void {
+  const tmp = file.replace(/\.mp4$/, '.grain.mp4');
+  ffmpegRun(['-i', file, '-vf', grainFilter(grain), '-c:v', 'libx264', '-crf', String(crf), '-preset', preset, '-pix_fmt', 'yuv420p', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709', '-c:a', 'copy', tmp], 'film grain');
+  renameSync(tmp, file);
+  log.stage('RENDER', `film grain ${grain} (seeded)`);
 }
 
 /**
@@ -281,7 +295,7 @@ export const lastMaster = new Map<string, MasterReport>();
 export async function renderFrame(prep: PreparedRender, frame: number, output: string, scale = 1): Promise<void> {
   const browser = await getBrowser();
   const composition = await selectComposition({ serveUrl: prep.serveUrl, id: 'Main', inputProps: prep.inputProps, browserExecutable: prep.browserExecutable, puppeteerInstance: browser, logLevel: 'error' });
-  await renderStill({ serveUrl: prep.serveUrl, composition, inputProps: prep.inputProps, frame, output, scale, browserExecutable: prep.browserExecutable, puppeteerInstance: browser, logLevel: 'error' });
+  await renderStill({ serveUrl: prep.serveUrl, composition, inputProps: prep.inputProps, frame, output, scale, browserExecutable: prep.browserExecutable, puppeteerInstance: browser, logLevel: 'error', timeoutInMilliseconds: 180000 });
 }
 
 export function projectPaths(projectDir: string) {

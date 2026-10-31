@@ -114,6 +114,7 @@ const MODULES: ModuleDef[] = [
   { id: 'zero-asset', title: 'JavaScript Zero-Asset Animation', scenes: ['zero-asset-sequence'], needs: (c) => (c.genre === 'procedural' || c.brief.visualMode === 'zero-asset' || (c.genre === 'kinetic' && !c.brief.assets.length) ? 'no image assets: geometry + type only' : null) },
   { id: 'whiteboard', title: 'Whiteboard Animation', scenes: ['whiteboard'], needs: (c) => (c.genre === 'whiteboard' ? 'whiteboard film' : null) },
   { id: 'gsap', title: 'Web Animation / GSAP', scenes: ['gsap-sequence'], needs: (c) => (c.brief.preferences.gsap || (c.genre === 'web-ui' && c.brief.preferences.gsap !== false) ? 'complex staggered UI timeline' : null) },
+  { id: 'motionmaxxing', title: 'MotionMaxxing runtime (words, count, hero3d, native UI)', scenes: ['mm-kinetic', 'mm-hero3d', 'mm-phone'], needs: (c) => (c.brief.preferences.motionmaxxing ? 'MotionMaxxing production tools requested' : null) },
   { id: 'soundtrack', title: 'Code-Generated Soundtrack', needs: (c) => wantsSoundtrack(c), load: () => import('../audio/soundtrack/compose') },
   { id: 'beat-engine', title: 'Beat engine', needs: (c) => (c.hasMusic && c.brief.audio.beatSync !== false ? 'music supplied' : null) },
   {

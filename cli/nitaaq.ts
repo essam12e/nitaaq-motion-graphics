@@ -103,7 +103,6 @@ async function main(): Promise<number> {
       log.info('PREFLIGHT', r.ok ? 'ready' : 'not ready — fix the ✗ items above');
       return r.ok ? 0 : 1;
     }
-    case 'create':
     case 'redirect': {
       const [sub, dirArg, redFile] = pos;
       const dir = resolve(dirArg ?? '.');
@@ -149,6 +148,7 @@ async function main(): Promise<number> {
       }
       throw new Error('Usage: nitaaq redirect request|apply <projectDir> [redirection.json]');
     }
+    case 'create':
     case 'direct': {
       const file = pos[0];
       if (!file) throw new Error(`Usage: nitaaq ${cmd} <brief.json>`);
